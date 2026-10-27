@@ -409,7 +409,6 @@ func TestWarnLogOnUpstreamFailure_NonStream(t *testing.T) {
 	exec := &mockCustomErrorExecutor{
 		identifier: "codex",
 		executeFn: func(ctx context.Context, auth *Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (cliproxyexecutor.Response, error) {
-			time.Sleep(5 * time.Millisecond)
 			return cliproxyexecutor.Response{}, errors.New("500 Internal Server Error: upstream timeout")
 		},
 	}
@@ -584,7 +583,6 @@ func TestWarnLogOnStreamUpstreamFailure(t *testing.T) {
 	exec := &mockStreamErrorExecutor{
 		identifier: "claude",
 		executeStreamFn: func(ctx context.Context, auth *Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (*cliproxyexecutor.StreamResult, error) {
-			time.Sleep(5 * time.Millisecond)
 			return nil, errors.New("502 Bad Gateway: connection dropped")
 		},
 	}

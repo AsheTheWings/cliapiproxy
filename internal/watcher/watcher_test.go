@@ -11,11 +11,13 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/redisqueue"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/watcher/diff"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/watcher/synthesizer"
 	sdkAuth "github.com/router-for-me/CLIProxyAPI/v8/sdk/auth"
@@ -534,43 +536,45 @@ func TestAuthSliceToMap(t *testing.T) {
 }
 
 func TestTriggerServerUpdateCancelsPendingTimerOnImmediate(t *testing.T) {
-	tmpDir := t.TempDir()
-	cfg := &config.Config{AuthDir: tmpDir}
+	synctest.Test(t, func(t *testing.T) {
+		tmpDir := t.TempDir()
+		cfg := &config.Config{AuthDir: tmpDir}
 
-	var reloads int32
-	w := &Watcher{
-		reloadCallback: func(*config.Config) {
-			atomic.AddInt32(&reloads, 1)
-		},
-	}
-	w.SetConfig(cfg)
+		var reloads int32
+		w := &Watcher{
+			reloadCallback: func(*config.Config) {
+				atomic.AddInt32(&reloads, 1)
+			},
+		}
+		w.SetConfig(cfg)
 
-	w.serverUpdateMu.Lock()
-	w.serverUpdateLast = time.Now().Add(-(serverUpdateDebounce - 100*time.Millisecond))
-	w.serverUpdateMu.Unlock()
-	w.triggerServerUpdate(cfg)
-
-	if got := atomic.LoadInt32(&reloads); got != 0 {
-		t.Fatalf("expected no immediate reload, got %d", got)
-	}
-
-	w.serverUpdateMu.Lock()
-	if !w.serverUpdatePend || w.serverUpdateTimer == nil {
+		w.serverUpdateMu.Lock()
+		w.serverUpdateLast = time.Now().Add(-(serverUpdateDebounce - 100*time.Millisecond))
 		w.serverUpdateMu.Unlock()
-		t.Fatal("expected a pending server update timer")
-	}
-	w.serverUpdateLast = time.Now().Add(-(serverUpdateDebounce + 10*time.Millisecond))
-	w.serverUpdateMu.Unlock()
+		w.triggerServerUpdate(cfg)
 
-	w.triggerServerUpdate(cfg)
-	if got := atomic.LoadInt32(&reloads); got != 1 {
-		t.Fatalf("expected immediate reload once, got %d", got)
-	}
+		if got := atomic.LoadInt32(&reloads); got != 0 {
+			t.Fatalf("expected no immediate reload, got %d", got)
+		}
 
-	time.Sleep(250 * time.Millisecond)
-	if got := atomic.LoadInt32(&reloads); got != 1 {
-		t.Fatalf("expected pending timer to be cancelled, got %d reloads", got)
-	}
+		w.serverUpdateMu.Lock()
+		if !w.serverUpdatePend || w.serverUpdateTimer == nil {
+			w.serverUpdateMu.Unlock()
+			t.Fatal("expected a pending server update timer")
+		}
+		w.serverUpdateLast = time.Now().Add(-(serverUpdateDebounce + 10*time.Millisecond))
+		w.serverUpdateMu.Unlock()
+
+		w.triggerServerUpdate(cfg)
+		if got := atomic.LoadInt32(&reloads); got != 1 {
+			t.Fatalf("expected immediate reload once, got %d", got)
+		}
+
+		time.Sleep(250 * time.Millisecond)
+		if got := atomic.LoadInt32(&reloads); got != 1 {
+			t.Fatalf("expected pending timer to be cancelled, got %d reloads", got)
+		}
+	})
 }
 
 func TestShouldDebounceRemove(t *testing.T) {
@@ -779,7 +783,9 @@ func TestPersistAsyncErrorPaths(t *testing.T) {
 	w := &Watcher{storePersister: p}
 	w.persistConfigAsync()
 	w.persistAuthAsync("msg", "a")
-	time.Sleep(30 * time.Millisecond)
+	wait.Poll(5*time.Second, func() bool {
+		return atomic.LoadInt32(&p.configCalls) >= 1 && atomic.LoadInt32(&p.authCalls) >= 1
+	})
 	if atomic.LoadInt32(&p.configCalls) != 1 {
 		t.Fatalf("expected PersistConfig to be called once, got %d", p.configCalls)
 	}
@@ -794,7 +800,6 @@ func TestStopConfigReloadTimerSafeWhenNil(t *testing.T) {
 	w.configReloadMu.Lock()
 	w.configReloadTimer = time.AfterFunc(10*time.Millisecond, func() {})
 	w.configReloadMu.Unlock()
-	time.Sleep(1 * time.Millisecond)
 	w.stopConfigReloadTimer()
 }
 
@@ -856,63 +861,69 @@ func TestDispatchAuthUpdatesFlushesQueue(t *testing.T) {
 }
 
 func TestDispatchLoopExitsOnContextDoneWhileSending(t *testing.T) {
-	queue := make(chan AuthUpdate) // unbuffered to block sends
-	w := &Watcher{
-		authQueue: queue,
-		pendingUpdates: map[string]AuthUpdate{
-			"k": {Action: AuthUpdateActionAdd, ID: "k"},
-		},
-		pendingOrder: []string{"k"},
-	}
+	synctest.Test(t, func(t *testing.T) {
+		queue := make(chan AuthUpdate) // unbuffered to block sends
+		w := &Watcher{
+			authQueue: queue,
+			pendingUpdates: map[string]AuthUpdate{
+				"k": {Action: AuthUpdateActionAdd, ID: "k"},
+			},
+			pendingOrder: []string{"k"},
+		}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan struct{})
-	go func() {
-		w.dispatchLoop(ctx)
-		close(done)
-	}()
+		ctx, cancel := context.WithCancel(context.Background())
+		done := make(chan struct{})
+		go func() {
+			w.dispatchLoop(ctx)
+			close(done)
+		}()
 
-	time.Sleep(30 * time.Millisecond)
-	cancel()
+		// dispatchLoop is blocked sending on the unbuffered queue once Wait returns.
+		synctest.Wait()
+		cancel()
 
-	select {
-	case <-done:
-	case <-time.After(2 * time.Second):
-		t.Fatal("expected dispatchLoop to exit after ctx canceled while blocked on send")
-	}
+		select {
+		case <-done:
+		case <-time.After(2 * time.Second):
+			t.Fatal("expected dispatchLoop to exit after ctx canceled while blocked on send")
+		}
+	})
 }
 
 func TestProcessEventsHandlesEventErrorAndChannelClose(t *testing.T) {
-	w := &Watcher{
-		watcher: &fsnotify.Watcher{
-			Events: make(chan fsnotify.Event, 2),
-			Errors: make(chan error, 2),
-		},
-		configPath: "config.yaml",
-		authDir:    "auth",
-	}
+	synctest.Test(t, func(t *testing.T) {
+		w := &Watcher{
+			watcher: &fsnotify.Watcher{
+				Events: make(chan fsnotify.Event, 2),
+				Errors: make(chan error, 2),
+			},
+			configPath: "config.yaml",
+			authDir:    "auth",
+		}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
 
-	done := make(chan struct{})
-	go func() {
-		w.processEvents(ctx)
-		close(done)
-	}()
+		done := make(chan struct{})
+		go func() {
+			w.processEvents(ctx)
+			close(done)
+		}()
 
-	w.watcher.Events <- fsnotify.Event{Name: "unrelated.txt", Op: fsnotify.Write}
-	w.watcher.Errors <- fmt.Errorf("watcher error")
+		w.watcher.Events <- fsnotify.Event{Name: "unrelated.txt", Op: fsnotify.Write}
+		w.watcher.Errors <- fmt.Errorf("watcher error")
 
-	time.Sleep(20 * time.Millisecond)
-	close(w.watcher.Events)
-	close(w.watcher.Errors)
+		// processEvents has handled both values once Wait returns.
+		synctest.Wait()
+		close(w.watcher.Events)
+		close(w.watcher.Errors)
 
-	select {
-	case <-done:
-	case <-time.After(500 * time.Millisecond):
-		t.Fatal("processEvents did not exit after channels closed")
-	}
+		select {
+		case <-done:
+		case <-time.After(500 * time.Millisecond):
+			t.Fatal("processEvents did not exit after channels closed")
+		}
+	})
 }
 
 func TestProcessEventsReturnsWhenErrorsChannelClosed(t *testing.T) {
@@ -968,31 +979,33 @@ func TestHandleEventIgnoresUnrelatedFiles(t *testing.T) {
 }
 
 func TestHandleEventConfigChangeSchedulesReload(t *testing.T) {
-	tmpDir := t.TempDir()
-	authDir := filepath.Join(tmpDir, "auth")
-	if err := os.MkdirAll(authDir, 0o755); err != nil {
-		t.Fatalf("failed to create auth dir: %v", err)
-	}
-	configPath := filepath.Join(tmpDir, "config.yaml")
-	if err := os.WriteFile(configPath, []byte("auth_dir: "+authDir+"\n"), 0o644); err != nil {
-		t.Fatalf("failed to write config file: %v", err)
-	}
+	synctest.Test(t, func(t *testing.T) {
+		tmpDir := t.TempDir()
+		authDir := filepath.Join(tmpDir, "auth")
+		if err := os.MkdirAll(authDir, 0o755); err != nil {
+			t.Fatalf("failed to create auth dir: %v", err)
+		}
+		configPath := filepath.Join(tmpDir, "config.yaml")
+		if err := os.WriteFile(configPath, []byte("auth_dir: "+authDir+"\n"), 0o644); err != nil {
+			t.Fatalf("failed to write config file: %v", err)
+		}
 
-	var reloads int32
-	w := &Watcher{
-		authDir:        authDir,
-		configPath:     configPath,
-		lastAuthHashes: make(map[string]string),
-		reloadCallback: func(*config.Config) { atomic.AddInt32(&reloads, 1) },
-	}
-	w.SetConfig(&config.Config{AuthDir: authDir})
+		var reloads int32
+		w := &Watcher{
+			authDir:        authDir,
+			configPath:     configPath,
+			lastAuthHashes: make(map[string]string),
+			reloadCallback: func(*config.Config) { atomic.AddInt32(&reloads, 1) },
+		}
+		w.SetConfig(&config.Config{AuthDir: authDir})
 
-	w.handleEvent(fsnotify.Event{Name: configPath, Op: fsnotify.Write})
+		w.handleEvent(fsnotify.Event{Name: configPath, Op: fsnotify.Write})
 
-	time.Sleep(400 * time.Millisecond)
-	if atomic.LoadInt32(&reloads) != 1 {
-		t.Fatalf("expected config change to trigger reload once, got %d", reloads)
-	}
+		time.Sleep(400 * time.Millisecond)
+		if atomic.LoadInt32(&reloads) != 1 {
+			t.Fatalf("expected config change to trigger reload once, got %d", reloads)
+		}
+	})
 }
 
 func TestHandleEventAuthWriteTriggersUpdate(t *testing.T) {
@@ -1150,68 +1163,70 @@ func TestHandleEventRemoveUnknownFileIgnored(t *testing.T) {
 }
 
 func TestHandleEventAtomicReplaceDelayedStatPreservesClient(t *testing.T) {
-	tmpDir := t.TempDir()
-	authDir := filepath.Join(tmpDir, "auth")
-	if err := os.MkdirAll(authDir, 0o755); err != nil {
-		t.Fatalf("failed to create auth dir: %v", err)
-	}
-	configPath := filepath.Join(tmpDir, "config.yaml")
-	if err := os.WriteFile(configPath, []byte("auth_dir: "+authDir+"\n"), 0o644); err != nil {
-		t.Fatalf("failed to write config file: %v", err)
-	}
-	authFile := filepath.Join(authDir, "token.json")
-	oldContent := []byte(`{"type":"demo","v":1}`)
-	newContent := []byte(`{"type":"demo","v":2}`)
-	oldSum := sha256.Sum256(oldContent)
+	synctest.Test(t, func(t *testing.T) {
+		tmpDir := t.TempDir()
+		authDir := filepath.Join(tmpDir, "auth")
+		if err := os.MkdirAll(authDir, 0o755); err != nil {
+			t.Fatalf("failed to create auth dir: %v", err)
+		}
+		configPath := filepath.Join(tmpDir, "config.yaml")
+		if err := os.WriteFile(configPath, []byte("auth_dir: "+authDir+"\n"), 0o644); err != nil {
+			t.Fatalf("failed to write config file: %v", err)
+		}
+		authFile := filepath.Join(authDir, "token.json")
+		oldContent := []byte(`{"type":"demo","v":1}`)
+		newContent := []byte(`{"type":"demo","v":2}`)
+		oldSum := sha256.Sum256(oldContent)
 
-	w := &Watcher{
-		authDir:        authDir,
-		configPath:     configPath,
-		lastAuthHashes: make(map[string]string),
-	}
-	w.SetConfig(&config.Config{AuthDir: authDir})
-	normalized := w.normalizeAuthPath(authFile)
-	w.lastAuthHashes[normalized] = hexString(oldSum[:])
+		w := &Watcher{
+			authDir:        authDir,
+			configPath:     configPath,
+			lastAuthHashes: make(map[string]string),
+		}
+		w.SetConfig(&config.Config{AuthDir: authDir})
+		normalized := w.normalizeAuthPath(authFile)
+		w.lastAuthHashes[normalized] = hexString(oldSum[:])
 
-	mockAuth := &coreauth.Auth{
-		ID:       "token.json",
-		FileName: "token.json",
-		Provider: "demo",
-		Status:   coreauth.StatusActive,
-	}
-	w.currentAuths = map[string]*coreauth.Auth{"token.json": mockAuth}
-	w.fileAuthsByPath = map[string]map[string]*coreauth.Auth{
-		normalized: {"token.json": mockAuth},
-	}
+		mockAuth := &coreauth.Auth{
+			ID:       "token.json",
+			FileName: "token.json",
+			Provider: "demo",
+			Status:   coreauth.StatusActive,
+		}
+		w.currentAuths = map[string]*coreauth.Auth{"token.json": mockAuth}
+		w.fileAuthsByPath = map[string]map[string]*coreauth.Auth{
+			normalized: {"token.json": mockAuth},
+		}
 
-	// Delay writing the new file until 60ms (after the initial 50ms check, within retry window)
-	errChan := make(chan error, 1)
-	go func() {
-		time.Sleep(60 * time.Millisecond)
-		errChan <- os.WriteFile(authFile, newContent, 0o644)
-	}()
+		// Synthetic time: write the new file at 60ms, after the initial 50ms check and within the retry window.
+		errChan := make(chan error, 1)
+		go func() {
+			time.Sleep(60 * time.Millisecond)
+			errChan <- os.WriteFile(authFile, newContent, 0o644)
+		}()
 
-	w.handleEvent(fsnotify.Event{Name: authFile, Op: fsnotify.Rename})
-	if errWrite := <-errChan; errWrite != nil {
-		t.Fatalf("async WriteFile failed: %v", errWrite)
-	}
+		w.handleEvent(fsnotify.Event{Name: authFile, Op: fsnotify.Rename})
+		if errWrite := <-errChan; errWrite != nil {
+			t.Fatalf("async WriteFile failed: %v", errWrite)
+		}
 
-	// If the retry loop settles and detects the replaced file, it should NOT have been removed.
-	w.clientsMutex.RLock()
-	_, stillKnown := w.lastAuthHashes[normalized]
-	_, stillInCurrent := w.currentAuths["token.json"]
-	pathAuths := w.fileAuthsByPath[normalized]
-	w.clientsMutex.RUnlock()
+		// If the retry loop settles and detects the replaced file, it should NOT have been removed.
+		w.clientsMutex.RLock()
+		_, stillKnown := w.lastAuthHashes[normalized]
+		_, stillInCurrent := w.currentAuths["token.json"]
+		pathAuths := w.fileAuthsByPath[normalized]
+		w.clientsMutex.RUnlock()
 
-	if !stillKnown {
-		t.Fatal("expected known auth file to survive atomic replace with delayed stat, but hash was removed")
-	}
-	if !stillInCurrent {
-		t.Fatal("expected client to remain registered in currentAuths, but was removed")
-	}
-	if len(pathAuths) == 0 {
-		t.Fatal("expected client to remain registered in fileAuthsByPath, but was removed")
-	}
+		if !stillKnown {
+			t.Fatal("expected known auth file to survive atomic replace with delayed stat, but hash was removed")
+		}
+		if !stillInCurrent {
+			t.Fatal("expected client to remain registered in currentAuths, but was removed")
+		}
+		if len(pathAuths) == 0 {
+			t.Fatal("expected client to remain registered in fileAuthsByPath, but was removed")
+		}
+	})
 }
 
 func TestHandleEventRemoveKnownFileDeletes(t *testing.T) {
@@ -1755,19 +1770,11 @@ func TestScheduleConfigReloadDebounces(t *testing.T) {
 	w.scheduleConfigReload()
 	w.scheduleConfigReload()
 
-	deadline := time.Now().Add(time.Second)
-	for {
+	wait.Until(t, time.Second, func() bool {
 		w.clientsMutex.RLock()
-		hashSet := w.lastConfigHash != ""
-		w.clientsMutex.RUnlock()
-		if hashSet {
-			break
-		}
-		if time.Now().After(deadline) {
-			t.Fatal("timed out waiting for debounced config reload")
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
+		defer w.clientsMutex.RUnlock()
+		return w.lastConfigHash != ""
+	}, "timed out waiting for debounced config reload")
 	if got := atomic.LoadInt32(&reloads); got != 1 {
 		t.Fatalf("expected single debounced reload, got %d", got)
 	}
@@ -1807,31 +1814,34 @@ func TestAuthEqualIgnoresTemporalFields(t *testing.T) {
 }
 
 func TestDispatchLoopExitsWhenQueueNilAndContextCanceled(t *testing.T) {
-	w := &Watcher{
-		dispatchCond:   nil,
-		pendingUpdates: map[string]AuthUpdate{"k": {ID: "k"}},
-		pendingOrder:   []string{"k"},
-	}
-	w.dispatchCond = sync.NewCond(&w.dispatchMu)
+	synctest.Test(t, func(t *testing.T) {
+		w := &Watcher{
+			dispatchCond:   nil,
+			pendingUpdates: map[string]AuthUpdate{"k": {ID: "k"}},
+			pendingOrder:   []string{"k"},
+		}
+		w.dispatchCond = sync.NewCond(&w.dispatchMu)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan struct{})
-	go func() {
-		w.dispatchLoop(ctx)
-		close(done)
-	}()
+		ctx, cancel := context.WithCancel(context.Background())
+		done := make(chan struct{})
+		go func() {
+			w.dispatchLoop(ctx)
+			close(done)
+		}()
 
-	time.Sleep(20 * time.Millisecond)
-	cancel()
-	w.dispatchMu.Lock()
-	w.dispatchCond.Broadcast()
-	w.dispatchMu.Unlock()
+		// dispatchLoop is parked on dispatchCond once Wait returns.
+		synctest.Wait()
+		cancel()
+		w.dispatchMu.Lock()
+		w.dispatchCond.Broadcast()
+		w.dispatchMu.Unlock()
 
-	select {
-	case <-done:
-	case <-time.After(500 * time.Millisecond):
-		t.Fatal("dispatchLoop did not exit after context cancel")
-	}
+		select {
+		case <-done:
+		case <-time.After(500 * time.Millisecond):
+			t.Fatal("dispatchLoop did not exit after context cancel")
+		}
+	})
 }
 
 func TestReloadClientsFiltersOAuthProvidersWithoutRescan(t *testing.T) {

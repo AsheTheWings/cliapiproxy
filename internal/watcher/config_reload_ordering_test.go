@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 )
 
 func newIssue6631ConfigFile(t *testing.T) (configPath, authDir string) {
@@ -123,9 +124,10 @@ func TestReloadConfigIfChangedSerializesConcurrentReloads_Issue6631(t *testing.T
 	}()
 	// The bounded wait only gives an unserialized second reload the chance to
 	// overlap; a serialized reload stays blocked, so this cannot fail it.
+	wait.Settled(t, 5*time.Second)
 	select {
 	case <-secondEntered:
-	case <-time.After(200 * time.Millisecond):
+	default:
 	}
 	release()
 	wg.Wait()

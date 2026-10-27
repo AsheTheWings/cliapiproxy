@@ -12,10 +12,12 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	sdkaccess "github.com/router-for-me/CLIProxyAPI/v8/sdk/access"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	coreexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
@@ -2884,10 +2886,11 @@ func TestUsageManagerRegisterNamedReplacesWithoutDuplicateDispatch(t *testing.T)
 	case <-time.After(100 * time.Millisecond):
 		t.Fatal("timed out waiting for usage dispatch")
 	}
+	wait.Settled(t, 5*time.Second)
 	select {
 	case got := <-calls:
 		t.Fatalf("unexpected duplicate dispatch from %q", got)
-	case <-time.After(50 * time.Millisecond):
+	default:
 	}
 }
 
@@ -3760,32 +3763,35 @@ func TestExecutorAdapterPanicFusesAndReturnsError(t *testing.T) {
 }
 
 func TestMapExecutorStreamChunksExitsWhenContextCanceledWithoutDownstreamConsumer(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	in := make(chan pluginapi.ExecutorStreamChunk)
-	out := mapExecutorStreamChunks(ctx, in)
-	sent := make(chan struct{})
+	synctest.Test(t, func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		in := make(chan pluginapi.ExecutorStreamChunk)
+		out := mapExecutorStreamChunks(ctx, in)
+		sent := make(chan struct{})
 
-	go func() {
-		in <- pluginapi.ExecutorStreamChunk{Payload: []byte("chunk")}
-		close(sent)
-	}()
+		go func() {
+			in <- pluginapi.ExecutorStreamChunk{Payload: []byte("chunk")}
+			close(sent)
+		}()
 
-	select {
-	case <-sent:
-	case <-time.After(100 * time.Millisecond):
-		t.Fatal("input chunk was not accepted by bridge")
-	}
-	cancel()
-	time.Sleep(10 * time.Millisecond)
-
-	select {
-	case chunk, ok := <-out:
-		if ok {
-			t.Fatalf("output channel produced chunk after cancel: %#v", chunk)
+		select {
+		case <-sent:
+		case <-time.After(100 * time.Millisecond):
+			t.Fatal("input chunk was not accepted by bridge")
 		}
-	case <-time.After(100 * time.Millisecond):
-		t.Fatal("output channel was not closed after context cancellation")
-	}
+		cancel()
+		// Let the bridge observe the cancellation before reading its output.
+		synctest.Wait()
+
+		select {
+		case chunk, ok := <-out:
+			if ok {
+				t.Fatalf("output channel produced chunk after cancel: %#v", chunk)
+			}
+		case <-time.After(100 * time.Millisecond):
+			t.Fatal("output channel was not closed after context cancellation")
+		}
+	})
 }
 
 func newHostWithRecords(records ...capabilityRecord) *Host {

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 )
 
@@ -435,10 +436,11 @@ func TestScopeEndBlocksDrainUntilReleaseSinkFlushesFinalSequence(t *testing.T) {
 	drainDone := make(chan error, 1)
 	go func() { drainDone <- registry.Drain(drainCtx) }()
 
+	wait.Settled(t, 5*time.Second)
 	select {
 	case errDrain := <-drainDone:
 		t.Fatalf("Drain() returned before the release sink completed: %v", errDrain)
-	case <-time.After(20 * time.Millisecond):
+	default:
 	}
 
 	mutexAvailable := make(chan struct{})

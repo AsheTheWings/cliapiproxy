@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 )
 
@@ -52,10 +53,11 @@ func TestInterruptExecutionSessionRequiresActiveRead(t *testing.T) {
 	if !errors.Is(errIdle, cliproxyexecutor.ErrNoActiveUpstreamWebsocket) {
 		t.Fatalf("idle socket error = %v, want ErrNoActiveUpstreamWebsocket", errIdle)
 	}
+	wait.Settled(t, 5*time.Second)
 	select {
 	case payload := <-received:
 		t.Fatalf("idle socket was written: %s", payload)
-	case <-time.After(200 * time.Millisecond):
+	default:
 	}
 
 	readCh := sess.activate(client)

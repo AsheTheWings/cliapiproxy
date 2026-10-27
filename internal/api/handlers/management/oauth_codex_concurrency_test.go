@@ -15,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 )
 
@@ -108,15 +109,8 @@ func requestCodexTokenState(t *testing.T, router http.Handler) string {
 
 func waitForOAuthSessionDone(t *testing.T, state string) {
 	t.Helper()
-
-	deadline := time.Now().Add(3 * time.Second)
-	for time.Now().Before(deadline) {
-		if !IsOAuthSessionPending(state, "codex") {
-			return
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
-	t.Fatalf("timed out waiting for codex session %s to complete", state)
+	wait.Until(t, 3*time.Second, func() bool { return !IsOAuthSessionPending(state, "codex") },
+		"timed out waiting for codex session %s to complete", state)
 }
 
 func makeOAuthTestJWT(planType string) string {

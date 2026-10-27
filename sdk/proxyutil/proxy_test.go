@@ -878,14 +878,16 @@ func TestBuildHTTPTransportHTTPSProxyTLSHandshakeTimeout(t *testing.T) {
 		}
 	}()
 
+	stalled := make(chan struct{})
+	t.Cleanup(func() { close(stalled) })
 	go func() {
 		conn, errAccept := listener.Accept()
 		if errAccept != nil {
 			return
 		}
 		defer func() { _ = conn.Close() }()
-		// Stall indefinitely without performing TLS handshake
-		time.Sleep(2 * time.Second)
+		// Stall without performing the TLS handshake until the test ends.
+		<-stalled
 	}()
 
 	proxyURL := "https://" + listener.Addr().String()

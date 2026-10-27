@@ -5,6 +5,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 )
 
 type blockingGuardPluginClient struct {
@@ -60,10 +62,7 @@ func TestGuardedPluginClientShutdownContextDetachesBlockedCall(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("guarded call did not exit")
 	}
-	deadline := time.Now().Add(time.Second)
-	for inner.shutdown.Load() == 0 && time.Now().Before(deadline) {
-		time.Sleep(time.Millisecond)
-	}
+	wait.Poll(time.Second, func() bool { return !(inner.shutdown.Load() == 0) })
 	if got := inner.shutdown.Load(); got != 1 {
 		t.Fatalf("shutdown calls after active call exits = %d, want 1", got)
 	}

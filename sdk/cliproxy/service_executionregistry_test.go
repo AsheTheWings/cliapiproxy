@@ -20,6 +20,7 @@ import (
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/homeplugins"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
@@ -129,28 +130,25 @@ func TestServiceConcurrentReplacementWaitsForInFlightDrain(t *testing.T) {
 		service.startHomeSubscriber(ctx)
 		close(firstReturned)
 	}()
-	deadline := time.Now().Add(time.Second)
-	for {
+	wait.Until(t, time.Second, func() bool {
 		late, errLate := registry.BeginDispatch()
 		if errLate != nil {
-			break
+			return true
 		}
 		late.End()
-		if time.Now().After(deadline) {
-			t.Fatal("first replacement did not begin draining")
-		}
-		time.Sleep(time.Millisecond)
-	}
+		return false
+	}, "first replacement did not begin draining")
 
 	secondReturned := make(chan struct{})
 	go func() {
 		service.startHomeSubscriber(ctx)
 		close(secondReturned)
 	}()
+	wait.Settled(t, 5*time.Second)
 	select {
 	case <-secondReturned:
 		t.Fatal("concurrent replacement returned before the first drain completed")
-	case <-time.After(50 * time.Millisecond):
+	default:
 	}
 
 	pending.End()
@@ -470,10 +468,11 @@ func TestHomeConfigWorkerCommitCompletesBeforeReplacementCancellation(t *testing
 		service.startHomeSubscriber(parentCtx)
 		close(replacementDone)
 	}()
+	wait.Settled(t, 5*time.Second)
 	select {
 	case <-cancelled:
 		t.Fatal("replacement canceled while config commit owned the commit mutex")
-	case <-time.After(50 * time.Millisecond):
+	default:
 	}
 	releaseCommitOnce.Do(func() { close(releaseCommit) })
 	select {
@@ -706,8 +705,7 @@ func TestHomeConfigWorkerRetriesStageFailureForSameQueuedConfig(t *testing.T) {
 		service.runHomeConfigWorker(lifetimeCtx, context.Background(), 1, client, executionregistry.New(), queue, ready, &published, &cancelBound)
 	}()
 
-	deadline := time.Now().Add(time.Second)
-	for time.Now().Before(deadline) {
+	if wait.Poll(time.Second, func() bool {
 		service.cfgMu.RLock()
 		strategy := service.cfg.Routing.Strategy
 		service.cfgMu.RUnlock()
@@ -718,9 +716,11 @@ func TestHomeConfigWorkerRetriesStageFailureForSameQueuedConfig(t *testing.T) {
 			case <-time.After(time.Second):
 				t.Fatal("config worker did not stop after cancellation")
 			}
-			return
+			return true
 		}
-		time.Sleep(time.Millisecond)
+		return false
+	}) {
+		return
 	}
 	cancelLifetime()
 	<-workerDone
@@ -786,10 +786,11 @@ func TestServiceInitialOverlayStagesPluginWritesUntilReady(t *testing.T) {
 		"plugin tasks":  pluginTasks,
 		"plugin status": pluginStatus,
 	} {
+		wait.Settled(t, 5*time.Second)
 		select {
 		case <-observed:
 			t.Fatalf("initial overlay staged %s before subscription ACK and fresh command probe", name)
-		case <-time.After(50 * time.Millisecond):
+		default:
 		}
 	}
 	if gotDeletes := deletes.Load(); gotDeletes != 0 {
@@ -903,10 +904,7 @@ func TestServiceDiscardsStalePreACKPluginWork(t *testing.T) {
 		t.Fatalf("stale pre-ACK lifetime flushed %d plugin reports", got)
 	}
 	close(allowSecondAck)
-	deadline := time.Now().Add(time.Second)
-	for pluginWrites.Load() != 1 && time.Now().Before(deadline) {
-		time.Sleep(time.Millisecond)
-	}
+	wait.Poll(time.Second, func() bool { return !(pluginWrites.Load() != 1) })
 	if got := pluginWrites.Load(); got != 1 {
 		t.Fatalf("replacement lifetime plugin reports = %d, want 1", got)
 	}
@@ -992,10 +990,11 @@ func TestServiceExplicitReplacementDrainsPendingAndScopeBeforeStartingNewLifetim
 	case <-time.After(time.Second):
 		t.Fatal("explicit replacement did not start draining the active scope")
 	}
+	wait.Settled(t, 5*time.Second)
 	select {
 	case <-secondSubscribe:
 		t.Fatal("new subscriber started before the old pending dispatch drained")
-	case <-time.After(50 * time.Millisecond):
+	default:
 	}
 	pending.End()
 	select {
@@ -1085,12 +1084,13 @@ func TestServiceReplacementWaitsForBlockedDrainSupervisorExit(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("replacement did not begin draining the active scope")
 	}
+	wait.Settled(t, 5*time.Second)
 	select {
 	case <-firstDone:
 		t.Fatal("supervisor exited before the pending dispatch drained")
 	case <-secondSubscribe:
 		t.Fatal("replacement subscriber started before the old supervisor exited")
-	case <-time.After(50 * time.Millisecond):
+	default:
 	}
 
 	pending.End()
@@ -1184,10 +1184,11 @@ func TestServiceExplicitReplacementCancelsRunWhenDrainTimesOut(t *testing.T) {
 	case <-time.After(time.Second):
 		t.Fatal("explicit replacement did not cancel the Service run after drain timeout")
 	}
+	wait.Settled(t, 5*time.Second)
 	select {
 	case <-secondSubscribe:
 		t.Fatal("new subscriber started after explicit replacement drain timeout")
-	case <-time.After(50 * time.Millisecond):
+	default:
 	}
 
 	close(release)
@@ -1335,10 +1336,11 @@ func TestServicePreservesActiveScopeDuringPreACKFailoverRetries(t *testing.T) {
 	}
 
 	close(loseFirst)
+	wait.Settled(t, 5*time.Second)
 	select {
 	case <-resourceClosed:
 		t.Fatal("heartbeat failover drained the active scope")
-	case <-time.After(50 * time.Millisecond):
+	default:
 	}
 	firstPreAck := <-preAckAttempts
 	secondPreAck := <-preAckAttempts
@@ -1443,10 +1445,11 @@ func TestServiceHeartbeatFailoverDoesNotDrainBlockingScope(t *testing.T) {
 	}
 
 	close(loseFirst)
+	wait.Settled(t, 5*time.Second)
 	select {
 	case <-started:
 		t.Fatal("heartbeat failover started draining the blocking scope")
-	case <-time.After(50 * time.Millisecond):
+	default:
 	}
 	select {
 	case <-secondSubscribe:
@@ -1464,10 +1467,11 @@ func TestServiceHeartbeatFailoverDoesNotDrainBlockingScope(t *testing.T) {
 	if nextRegistry := waitForServiceRegistry(t, service, time.Second); nextRegistry != registry {
 		t.Fatal("heartbeat failover replaced the registry containing the active scope")
 	}
+	wait.Settled(t, 5*time.Second)
 	select {
 	case <-serviceCtx.Done():
 		t.Fatal("heartbeat failover canceled the service run")
-	case <-time.After(50 * time.Millisecond):
+	default:
 	}
 
 	close(release)
@@ -1551,18 +1555,10 @@ func TestServiceShutdownDrainsDetachedRegistryDuringRetry(t *testing.T) {
 		t.Fatal("ready Home client is unavailable")
 	}
 	close(loseFirst)
-	deadline := time.After(time.Second)
-	for {
+	wait.Until(t, time.Second, func() bool {
 		errRelease := client.PushConcurrencyRelease(context.Background(), home.ConcurrencyReleaseFrame{CredentialID: "cred-a", Model: "model-a", ReleaseSeq: 1})
-		if errors.Is(errRelease, home.ErrDispatchFenced) {
-			break
-		}
-		select {
-		case <-deadline:
-			t.Fatal("subscriber retry did not close the previous Home client")
-		case <-time.After(time.Millisecond):
-		}
-	}
+		return errors.Is(errRelease, home.ErrDispatchFenced)
+	}, "subscriber retry did not close the previous Home client")
 
 	shutdownDone := make(chan error, 1)
 	go func() {
@@ -1676,10 +1672,11 @@ func TestServiceAmbiguousDispatchDrainsRegistryBeforeRetry(t *testing.T) {
 	if nextRegistry == registry {
 		t.Fatal("ambiguous dispatch reused the drained execution registry")
 	}
+	wait.Settled(t, 5*time.Second)
 	select {
 	case <-serviceCtx.Done():
 		t.Fatal("successful ambiguous dispatch recovery canceled the service run")
-	case <-time.After(50 * time.Millisecond):
+	default:
 	}
 }
 
@@ -1730,10 +1727,11 @@ func TestServiceBacksOffAfterRepeatedPreAckFailures(t *testing.T) {
 		t.Fatalf("pre-ACK retry delay = %v, want at least %s", retryDelay, homeSubscriberRetryInitial/2)
 	}
 	cancel()
+	wait.Settled(t, 5*time.Second)
 	select {
 	case thirdAttempt := <-attempts:
 		t.Fatalf("pre-ACK retry continued after cancellation at %v", thirdAttempt)
-	case <-time.After(150 * time.Millisecond):
+	default:
 	}
 }
 
@@ -1798,10 +1796,11 @@ func TestServiceHeartbeatLossCancelsBlockedConfigFinalizationWithoutDrainingRegi
 	case <-time.After(time.Second):
 		t.Fatal("updated config did not enter blocked finalization")
 	}
+	wait.Settled(t, 5*time.Second)
 	select {
 	case <-resourceClosed:
 		t.Fatal("heartbeat loss drained the active execution")
-	case <-time.After(200 * time.Millisecond):
+	default:
 	}
 	select {
 	case <-secondConfig:
@@ -2021,18 +2020,14 @@ func newRegistryTestService(t *testing.T, listener net.Listener) *Service {
 
 func waitForServiceRegistry(t *testing.T, service *Service, timeout time.Duration) *executionregistry.Registry {
 	t.Helper()
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
+	var registry *executionregistry.Registry
+	wait.Until(t, timeout, func() bool {
 		service.homeMu.Lock()
-		registry := service.homeRegistry
+		registry = service.homeRegistry
 		service.homeMu.Unlock()
-		if registry != nil {
-			return registry
-		}
-		time.Sleep(time.Millisecond)
-	}
-	t.Fatal("service did not expose a ready execution registry")
-	return nil
+		return registry != nil
+	}, "service did not expose a ready execution registry")
+	return registry
 }
 
 type testHomeLogForwarder struct {
@@ -2161,18 +2156,14 @@ func waitForHomeLogForwarderACK(t *testing.T, acks <-chan struct{}) {
 
 func waitForServiceHomeClient(t *testing.T, service *Service, timeout time.Duration) *home.Client {
 	t.Helper()
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
+	var client *home.Client
+	wait.Until(t, timeout, func() bool {
 		service.homeMu.Lock()
-		client := service.homeClient
+		client = service.homeClient
 		service.homeMu.Unlock()
-		if client != nil {
-			return client
-		}
-		time.Sleep(time.Millisecond)
-	}
-	t.Fatal("service did not expose a Home client")
-	return nil
+		return client != nil
+	}, "service did not expose a Home client")
+	return client
 }
 
 func TestDetachHomeSubscriberLifetimeKeepsNewForwarderForStaleClient(t *testing.T) {
@@ -3010,10 +3001,11 @@ func TestServiceSerializesHomeAndWatcherConfigRuntimeApply(t *testing.T) {
 		service.applyWatcherConfigUpdate(&config.Config{Routing: internalconfig.RoutingConfig{Strategy: "round-robin"}})
 		close(watcherDone)
 	}()
+	wait.Settled(t, 5*time.Second)
 	select {
 	case <-watcherDone:
 		t.Fatal("watcher runtime apply completed before the older Home apply")
-	case <-time.After(100 * time.Millisecond):
+	default:
 	}
 	close(releaseFirst)
 	select {

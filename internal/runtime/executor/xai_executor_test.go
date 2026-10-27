@@ -22,6 +22,7 @@ import (
 	internalcache "github.com/router-for-me/CLIProxyAPI/v8/internal/cache"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	_ "github.com/router-for-me/CLIProxyAPI/v8/internal/translator"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
@@ -3730,10 +3731,11 @@ func waitForXAIUsageRecord(t *testing.T, records <-chan usage.Record) usage.Reco
 
 func assertNoAdditionalXAIUsageRecord(t *testing.T, records <-chan usage.Record) {
 	t.Helper()
+	wait.Settled(t, 5*time.Second)
 	select {
 	case record := <-records:
 		t.Fatalf("received additional xAI usage record: %+v", record)
-	case <-time.After(100 * time.Millisecond):
+	default:
 	}
 }
 

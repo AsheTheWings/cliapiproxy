@@ -13,6 +13,7 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	_ "github.com/router-for-me/CLIProxyAPI/v8/internal/translator"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
@@ -787,6 +788,7 @@ func codexReleasingFrameCases() []struct{ name, frame string } {
 // value unchanged and this test green.
 func TestCodexExecutor_BootstrapBuffering_CancelDuringBootstrapIsNotAnUpstreamFailure(t *testing.T) {
 	released := make(chan struct{})
+	flushed := make(chan struct{})
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.WriteHeader(http.StatusOK)
@@ -794,14 +796,20 @@ func TestCodexExecutor_BootstrapBuffering_CancelDuringBootstrapIsNotAnUpstreamFa
 		if flusher, ok := w.(http.Flusher); ok {
 			flusher.Flush()
 		}
+		close(flushed)
 		<-released
 	}))
 	defer server.Close()
 	defer close(released)
 
+	// Cancel once the upstream has sent a frame and the bootstrap is reading
+	// the stream body, so the frame is held when the read is canceled.
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() {
-		time.Sleep(150 * time.Millisecond)
+		<-flushed
+		wait.Poll(5*time.Second, func() bool {
+			return wait.GoroutineIn("(*CodexExecutor).ExecuteStream(", "bufio.(*Scanner).Scan(")
+		})
 		cancel()
 	}()
 
@@ -1828,9 +1836,10 @@ func TestCodexWebsocketsExecutor_UnbufferedUpstreamErrorIsDeliveredBeforeDisconn
 			}
 
 			// Give a premature disconnect notification time to cancel the context before the error is read.
+			wait.Settled(t, 5*time.Second)
 			select {
 			case <-canceled:
-			case <-time.After(200 * time.Millisecond):
+			default:
 			}
 
 			var streamErr error

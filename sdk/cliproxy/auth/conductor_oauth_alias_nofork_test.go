@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -1264,7 +1265,7 @@ func TestManager_NoForkAlias_ConcurrentReconcileAndMarkResult(t *testing.T) {
 		defer wg.Done()
 		for i := 0; i < iterations; i++ {
 			manager.ReconcileRegistryModelStates(context.Background(), auth.ID)
-			time.Sleep(time.Millisecond)
+			runtime.Gosched()
 		}
 	}()
 
@@ -1289,7 +1290,7 @@ func TestManager_NoForkAlias_ConcurrentReconcileAndMarkResult(t *testing.T) {
 			} else {
 				_, _, _ = manager.ResetQuota(context.Background(), auth.ID)
 			}
-			time.Sleep(time.Millisecond)
+			runtime.Gosched()
 		}
 	}()
 
@@ -1298,7 +1299,7 @@ func TestManager_NoForkAlias_ConcurrentReconcileAndMarkResult(t *testing.T) {
 		defer wg.Done()
 		for i := 0; i < iterations; i++ {
 			_, _ = manager.Execute(context.Background(), []string{provider}, cliproxyexecutor.Request{Model: routeModel}, cliproxyexecutor.Options{})
-			time.Sleep(time.Millisecond)
+			runtime.Gosched()
 		}
 	}()
 
@@ -1668,7 +1669,7 @@ func TestManager_NoForkAlias_ConcurrentReconcileMarkResult_FullConsistency(t *te
 		defer wg.Done()
 		for i := 0; i < iterations; i++ {
 			manager.ReconcileRegistryModelStates(context.Background(), auth.ID)
-			time.Sleep(50 * time.Microsecond)
+			runtime.Gosched()
 		}
 	}()
 
@@ -1702,7 +1703,7 @@ func TestManager_NoForkAlias_ConcurrentReconcileMarkResult_FullConsistency(t *te
 			} else {
 				_, _, _ = manager.ResetQuota(context.Background(), auth.ID)
 			}
-			time.Sleep(50 * time.Microsecond)
+			runtime.Gosched()
 		}
 	}()
 
@@ -1727,7 +1728,7 @@ func TestManager_NoForkAlias_ConcurrentReconcileMarkResult_FullConsistency(t *te
 			} else {
 				_, _, _ = manager.ResetQuota(context.Background(), auth.ID)
 			}
-			time.Sleep(50 * time.Microsecond)
+			runtime.Gosched()
 		}
 	}()
 
@@ -1736,7 +1737,7 @@ func TestManager_NoForkAlias_ConcurrentReconcileMarkResult_FullConsistency(t *te
 		defer wg.Done()
 		for i := 0; i < iterations; i++ {
 			_, _ = manager.Execute(context.Background(), []string{provider}, cliproxyexecutor.Request{Model: routeModel}, cliproxyexecutor.Options{})
-			time.Sleep(50 * time.Microsecond)
+			runtime.Gosched()
 		}
 	}()
 
@@ -2631,7 +2632,7 @@ func TestManager_NoForkAlias_ConcurrentOperations_NaturalFinalConsistency(t *tes
 		defer wg.Done()
 		for i := 0; i < iterations; i++ {
 			manager.ReconcileRegistryModelStates(context.Background(), auth.ID)
-			time.Sleep(100 * time.Microsecond)
+			runtime.Gosched()
 		}
 	}()
 
@@ -2663,7 +2664,7 @@ func TestManager_NoForkAlias_ConcurrentOperations_NaturalFinalConsistency(t *tes
 					Success:    true,
 				})
 			}
-			time.Sleep(100 * time.Microsecond)
+			runtime.Gosched()
 		}
 	}()
 
@@ -2674,7 +2675,7 @@ func TestManager_NoForkAlias_ConcurrentOperations_NaturalFinalConsistency(t *tes
 			if i%3 == 0 {
 				_, _, _ = manager.ResetQuota(context.Background(), auth.ID)
 			}
-			time.Sleep(100 * time.Microsecond)
+			runtime.Gosched()
 		}
 	}()
 
@@ -2683,7 +2684,7 @@ func TestManager_NoForkAlias_ConcurrentOperations_NaturalFinalConsistency(t *tes
 		defer wg.Done()
 		for i := 0; i < iterations; i++ {
 			_, _ = manager.Execute(context.Background(), []string{provider}, cliproxyexecutor.Request{Model: routeModel}, cliproxyexecutor.Options{})
-			time.Sleep(100 * time.Microsecond)
+			runtime.Gosched()
 		}
 	}()
 

@@ -7,10 +7,12 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 )
@@ -361,31 +363,33 @@ func waitForHomeInFlightPublisherPayload(t *testing.T, payloads <-chan homeInFli
 }
 
 func TestHomeInFlightPublisherSkipsFreezeAndPublishWithoutHeartbeat(t *testing.T) {
-	manager := NewManager(nil, nil, nil)
-	manager.ApplyHomeInFlightPublisherConfig(homeInFlightPublisherTestConfig(10 * time.Millisecond))
-	registry := executionregistry.New()
-	transport := newHomeInFlightLifecycleTransport(false)
-	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan struct{})
-	go func() {
-		manager.StartHomeInFlightPublisher(ctx, transport, registry)
-		close(done)
-	}()
-	time.Sleep(30 * time.Millisecond)
-	cancel()
-	select {
-	case <-done:
-	case <-time.After(time.Second):
-		t.Fatal("publisher did not exit after cancellation")
-	}
-	select {
-	case published := <-transport.payloads:
-		t.Fatalf("publisher sent payload without heartbeat at %v", published.observedAt)
-	default:
-	}
-	if freeze := registry.FreezeInFlight(time.Now()); freeze.Revision != 1 {
-		t.Fatalf("publisher froze registry without heartbeat: %#v", freeze)
-	}
+	synctest.Test(t, func(t *testing.T) {
+		manager := NewManager(nil, nil, nil)
+		manager.ApplyHomeInFlightPublisherConfig(homeInFlightPublisherTestConfig(10 * time.Millisecond))
+		registry := executionregistry.New()
+		transport := newHomeInFlightLifecycleTransport(false)
+		ctx, cancel := context.WithCancel(context.Background())
+		done := make(chan struct{})
+		go func() {
+			manager.StartHomeInFlightPublisher(ctx, transport, registry)
+			close(done)
+		}()
+		time.Sleep(30 * time.Millisecond)
+		cancel()
+		select {
+		case <-done:
+		case <-time.After(time.Second):
+			t.Fatal("publisher did not exit after cancellation")
+		}
+		select {
+		case published := <-transport.payloads:
+			t.Fatalf("publisher sent payload without heartbeat at %v", published.observedAt)
+		default:
+		}
+		if freeze := registry.FreezeInFlight(time.Now()); freeze.Revision != 1 {
+			t.Fatalf("publisher froze registry without heartbeat: %#v", freeze)
+		}
+	})
 }
 
 func TestHomeInFlightPublisherCancellationExits(t *testing.T) {
@@ -406,51 +410,53 @@ func TestHomeInFlightPublisherCancellationExits(t *testing.T) {
 }
 
 func TestHomeInFlightPublisherReplacementStopsOldLifetimeAndPinsDependencies(t *testing.T) {
-	manager := NewManager(nil, nil, nil)
-	manager.ApplyHomeInFlightPublisherConfig(homeInFlightPublisherTestConfig(10 * time.Millisecond))
-	oldRegistry := executionregistry.New()
-	oldRegistry.ObserveBarrier(11)
-	oldTransport := newHomeInFlightLifecycleTransport(true)
-	oldCtx, cancelOld := context.WithCancel(context.Background())
-	oldDone := make(chan struct{})
-	go func() {
-		manager.StartHomeInFlightPublisher(oldCtx, oldTransport, oldRegistry)
-		close(oldDone)
-	}()
-	oldPayload := waitForHomeInFlightPublisherPayload(t, oldTransport.payloads)
-	var oldFrame home.InFlightSnapshotFrame
-	if errUnmarshal := json.Unmarshal(oldPayload.raw, &oldFrame); errUnmarshal != nil || oldFrame.BarrierRevision != 11 {
-		t.Fatalf("old publisher frame = %#v, error = %v", oldFrame, errUnmarshal)
-	}
-	cancelOld()
-	select {
-	case <-oldDone:
-	case <-time.After(time.Second):
-		t.Fatal("old publisher did not stop")
-	}
+	synctest.Test(t, func(t *testing.T) {
+		manager := NewManager(nil, nil, nil)
+		manager.ApplyHomeInFlightPublisherConfig(homeInFlightPublisherTestConfig(10 * time.Millisecond))
+		oldRegistry := executionregistry.New()
+		oldRegistry.ObserveBarrier(11)
+		oldTransport := newHomeInFlightLifecycleTransport(true)
+		oldCtx, cancelOld := context.WithCancel(context.Background())
+		oldDone := make(chan struct{})
+		go func() {
+			manager.StartHomeInFlightPublisher(oldCtx, oldTransport, oldRegistry)
+			close(oldDone)
+		}()
+		oldPayload := waitForHomeInFlightPublisherPayload(t, oldTransport.payloads)
+		var oldFrame home.InFlightSnapshotFrame
+		if errUnmarshal := json.Unmarshal(oldPayload.raw, &oldFrame); errUnmarshal != nil || oldFrame.BarrierRevision != 11 {
+			t.Fatalf("old publisher frame = %#v, error = %v", oldFrame, errUnmarshal)
+		}
+		cancelOld()
+		select {
+		case <-oldDone:
+		case <-time.After(time.Second):
+			t.Fatal("old publisher did not stop")
+		}
 
-	newRegistry := executionregistry.New()
-	newRegistry.ObserveBarrier(22)
-	newTransport := newHomeInFlightLifecycleTransport(true)
-	newCtx, cancelNew := context.WithCancel(context.Background())
-	defer cancelNew()
-	go manager.StartHomeInFlightPublisher(newCtx, newTransport, newRegistry)
-	newPayload := waitForHomeInFlightPublisherPayload(t, newTransport.payloads)
-	var newFrame home.InFlightSnapshotFrame
-	if errUnmarshal := json.Unmarshal(newPayload.raw, &newFrame); errUnmarshal != nil || newFrame.BarrierRevision != 22 {
-		t.Fatalf("new publisher frame = %#v, error = %v", newFrame, errUnmarshal)
-	}
-	time.Sleep(30 * time.Millisecond)
-	select {
-	case published := <-oldTransport.payloads:
-		t.Fatalf("replaced publisher sent payload at %v", published.observedAt)
-	default:
-	}
+		newRegistry := executionregistry.New()
+		newRegistry.ObserveBarrier(22)
+		newTransport := newHomeInFlightLifecycleTransport(true)
+		newCtx, cancelNew := context.WithCancel(context.Background())
+		defer cancelNew()
+		go manager.StartHomeInFlightPublisher(newCtx, newTransport, newRegistry)
+		newPayload := waitForHomeInFlightPublisherPayload(t, newTransport.payloads)
+		var newFrame home.InFlightSnapshotFrame
+		if errUnmarshal := json.Unmarshal(newPayload.raw, &newFrame); errUnmarshal != nil || newFrame.BarrierRevision != 22 {
+			t.Fatalf("new publisher frame = %#v, error = %v", newFrame, errUnmarshal)
+		}
+		time.Sleep(30 * time.Millisecond)
+		select {
+		case published := <-oldTransport.payloads:
+			t.Fatalf("replaced publisher sent payload at %v", published.observedAt)
+		default:
+		}
 
-	freeze := newRegistry.FreezeInFlight(time.Now())
-	if freeze.BarrierRevision != 22 {
-		t.Fatalf("new publisher did not use replacement registry: %#v", freeze)
-	}
+		freeze := newRegistry.FreezeInFlight(time.Now())
+		if freeze.BarrierRevision != 22 {
+			t.Fatalf("new publisher did not use replacement registry: %#v", freeze)
+		}
+	})
 }
 
 func TestHomeInFlightPublisherAppliesConfigUpdateAtNextTimerCycle(t *testing.T) {
@@ -463,10 +469,11 @@ func TestHomeInFlightPublisherAppliesConfigUpdateAtNextTimerCycle(t *testing.T) 
 	waitForHomeInFlightPublisherPayload(t, transport.payloads)
 
 	manager.ApplyHomeInFlightPublisherConfig(homeInFlightPublisherTestConfig(10 * time.Millisecond))
+	wait.Settled(t, 5*time.Second)
 	select {
 	case published := <-transport.payloads:
 		t.Fatalf("publisher applied hot interval before the next timer cycle at %v", published)
-	case <-time.After(30 * time.Millisecond):
+	default:
 	}
 	second := waitForHomeInFlightPublisherPayload(t, transport.payloads)
 	third := waitForHomeInFlightPublisherPayload(t, transport.payloads)

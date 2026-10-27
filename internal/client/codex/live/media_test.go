@@ -12,6 +12,7 @@ import (
 	"github.com/pion/rtp"
 	"github.com/pion/webrtc/v4"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	log "github.com/sirupsen/logrus"
 	logtest "github.com/sirupsen/logrus/hooks/test"
 )
@@ -411,12 +412,13 @@ func completeAnswer(t *testing.T, connection *webrtc.PeerConnection) string {
 
 func waitDataChannelOpen(t *testing.T, channel *webrtc.DataChannel) {
 	t.Helper()
-	deadline := time.Now().Add(5 * time.Second)
-	for time.Now().Before(deadline) {
+	if wait.Poll(5*time.Second, func() bool {
 		if channel.ReadyState() == webrtc.DataChannelStateOpen {
-			return
+			return true
 		}
-		time.Sleep(10 * time.Millisecond)
+		return false
+	}) {
+		return
 	}
 	t.Fatalf("DataChannel %q did not open", channel.Label())
 }
@@ -443,8 +445,12 @@ func receiveDataMessage(t *testing.T, messages <-chan webrtc.DataChannelMessage)
 	}
 }
 
+// sendTestRTP writes a numbered RTP packet every resend interval until the
+// relay delivers one, since RTP over the media transport may drop packets.
 func sendTestRTP(t *testing.T, track *webrtc.TrackLocalStaticRTP, payload []byte, received <-chan []byte) {
 	t.Helper()
+	resend := time.NewTicker(20 * time.Millisecond)
+	defer resend.Stop()
 	for sequence := uint16(1); sequence <= 25; sequence++ {
 		packet := &rtp.Packet{
 			Header: rtp.Header{
@@ -465,7 +471,7 @@ func sendTestRTP(t *testing.T, track *webrtc.TrackLocalStaticRTP, payload []byte
 				t.Fatalf("relayed RTP payload = %v, want %v", got, payload)
 			}
 			return
-		case <-time.After(20 * time.Millisecond):
+		case <-resend.C:
 		}
 	}
 	t.Fatal("RTP packet was not relayed")
@@ -490,46 +496,49 @@ func assertForwardingAfterRemoteConnected(t *testing.T, hook *logtest.Hook) {
 
 func assertForwardingLog(t *testing.T, hook *logtest.Hook, connection, credential, authIndex, state string) {
 	t.Helper()
-	deadline := time.Now().Add(time.Second)
-	for time.Now().Before(deadline) {
+	if wait.Poll(time.Second, func() bool {
 		for _, entry := range hook.AllEntries() {
 			if entry.Message == "codex live remote media forwarding started" &&
 				entry.Data["connection"] == connection &&
 				entry.Data["credential"] == credential &&
 				entry.Data["auth_index"] == authIndex &&
 				entry.Data["state"] == state {
-				return
+				return true
 			}
 		}
-		time.Sleep(time.Millisecond)
+		return false
+	}) {
+		return
 	}
 	t.Fatalf("missing forwarding log for connection %q and credential %q", connection, credential)
 }
 
 func assertSessionLog(t *testing.T, hook *logtest.Hook, message, reason, callID string) {
 	t.Helper()
-	deadline := time.Now().Add(time.Second)
-	for time.Now().Before(deadline) {
+	if wait.Poll(time.Second, func() bool {
 		for _, entry := range hook.AllEntries() {
 			if entry.Message == message && entry.Data["reason"] == reason && entry.Data["call_id"] == callID {
-				return
+				return true
 			}
 		}
-		time.Sleep(time.Millisecond)
+		return false
+	}) {
+		return
 	}
 	t.Fatalf("missing session log message %q for reason %q and call %q", message, reason, callID)
 }
 
 func assertPeerLog(t *testing.T, hook *logtest.Hook, message, peer, callID string) {
 	t.Helper()
-	deadline := time.Now().Add(time.Second)
-	for time.Now().Before(deadline) {
+	if wait.Poll(time.Second, func() bool {
 		for _, entry := range hook.AllEntries() {
 			if entry.Message == message && entry.Data["peer"] == peer && entry.Data["call_id"] == callID {
-				return
+				return true
 			}
 		}
-		time.Sleep(time.Millisecond)
+		return false
+	}) {
+		return
 	}
 	t.Fatalf("missing log message %q for peer %q and call %q", message, peer, callID)
 }

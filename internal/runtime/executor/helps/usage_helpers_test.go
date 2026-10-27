@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -649,94 +650,98 @@ func TestUsageReporterBuildRecordIncludesLatency(t *testing.T) {
 }
 
 func TestUsageReporterTrackHTTPClientStartsTTFTBeforeRoundTrip(t *testing.T) {
-	delay := 40 * time.Millisecond
-	ctx := cliproxyexecutor.WithUpstreamAttemptTracker(context.Background())
-	reporter := NewUsageReporter(ctx, "openai", "gpt-5.4", nil)
-	client := reporter.TrackHTTPClient(&http.Client{
-		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-			time.Sleep(delay)
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Status:     "200 OK",
-				Header:     make(http.Header),
-				Body:       io.NopCloser(strings.NewReader("ok")),
-				Request:    req,
-			}, nil
-		}),
-	})
+	synctest.Test(t, func(t *testing.T) {
+		delay := 40 * time.Millisecond
+		ctx := cliproxyexecutor.WithUpstreamAttemptTracker(context.Background())
+		reporter := NewUsageReporter(ctx, "openai", "gpt-5.4", nil)
+		client := reporter.TrackHTTPClient(&http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				time.Sleep(delay)
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Status:     "200 OK",
+					Header:     make(http.Header),
+					Body:       io.NopCloser(strings.NewReader("ok")),
+					Request:    req,
+				}, nil
+			}),
+		})
 
-	req, errNewRequest := http.NewRequestWithContext(ctx, http.MethodPost, "https://example.invalid/v1/chat/completions", strings.NewReader("{}"))
-	if errNewRequest != nil {
-		t.Fatalf("NewRequestWithContext() error = %v", errNewRequest)
-	}
-	resp, errDo := client.Do(req)
-	if errDo != nil {
-		t.Fatalf("Do() error = %v", errDo)
-	}
-	if _, errRead := io.ReadAll(resp.Body); errRead != nil {
-		t.Fatalf("ReadAll() error = %v", errRead)
-	}
-	if errClose := resp.Body.Close(); errClose != nil {
-		t.Fatalf("response body close error = %v", errClose)
-	}
-	if got := reporter.ttftDuration(); got < delay {
-		t.Fatalf("ttft = %v, want >= %v", got, delay)
-	}
-	if !cliproxyexecutor.UpstreamAttempted(ctx) {
-		t.Fatal("HTTP RoundTrip did not mark an upstream attempt")
-	}
+		req, errNewRequest := http.NewRequestWithContext(ctx, http.MethodPost, "https://example.invalid/v1/chat/completions", strings.NewReader("{}"))
+		if errNewRequest != nil {
+			t.Fatalf("NewRequestWithContext() error = %v", errNewRequest)
+		}
+		resp, errDo := client.Do(req)
+		if errDo != nil {
+			t.Fatalf("Do() error = %v", errDo)
+		}
+		if _, errRead := io.ReadAll(resp.Body); errRead != nil {
+			t.Fatalf("ReadAll() error = %v", errRead)
+		}
+		if errClose := resp.Body.Close(); errClose != nil {
+			t.Fatalf("response body close error = %v", errClose)
+		}
+		if got := reporter.ttftDuration(); got < delay {
+			t.Fatalf("ttft = %v, want >= %v", got, delay)
+		}
+		if !cliproxyexecutor.UpstreamAttempted(ctx) {
+			t.Fatal("HTTP RoundTrip did not mark an upstream attempt")
+		}
+	})
 }
 
 func TestUsageReporterTrackHTTPClientRoundTripOnly_DoesNotTriggerOnBodyRead(t *testing.T) {
-	reporter := NewUsageReporter(context.Background(), "codex", "gpt-5.6-luna", nil)
-	client := reporter.TrackHTTPClientRoundTripOnly(&http.Client{
-		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-			time.Sleep(10 * time.Millisecond)
-			return &http.Response{
-				StatusCode: http.StatusOK,
-				Status:     "200 OK",
-				Header:     make(http.Header),
-				Body:       io.NopCloser(strings.NewReader("data: {\"type\":\"response.created\"}\n\n")),
-				Request:    req,
-			}, nil
-		}),
+	synctest.Test(t, func(t *testing.T) {
+		reporter := NewUsageReporter(context.Background(), "codex", "gpt-5.6-luna", nil)
+		client := reporter.TrackHTTPClientRoundTripOnly(&http.Client{
+			Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+				time.Sleep(10 * time.Millisecond)
+				return &http.Response{
+					StatusCode: http.StatusOK,
+					Status:     "200 OK",
+					Header:     make(http.Header),
+					Body:       io.NopCloser(strings.NewReader("data: {\"type\":\"response.created\"}\n\n")),
+					Request:    req,
+				}, nil
+			}),
+		})
+
+		req, errNewRequest := http.NewRequestWithContext(context.Background(), http.MethodPost, "https://example.invalid/v1/responses", strings.NewReader("{}"))
+		if errNewRequest != nil {
+			t.Fatalf("NewRequestWithContext() error = %v", errNewRequest)
+		}
+		resp, errDo := client.Do(req)
+		if errDo != nil {
+			t.Fatalf("Do() error = %v", errDo)
+		}
+		bodyBytes, errRead := io.ReadAll(resp.Body)
+		if errRead != nil {
+			t.Fatalf("ReadAll() error = %v", errRead)
+		}
+		if errClose := resp.Body.Close(); errClose != nil {
+			t.Fatalf("response body close error = %v", errClose)
+		}
+
+		// 1. Plain body reading must NOT set TTFT
+		if reporter.IsTTFTSet() {
+			t.Fatalf("TrackHTTPClientRoundTripOnly must not set TTFT on plain body read")
+		}
+
+		// 2. Observing metadata event records fallback, but does NOT set effective TTFT
+		ObserveResponsesTokenEvent(reporter, bodyBytes)
+		if reporter.IsTTFTSet() {
+			t.Fatalf("Observing metadata event must not set effective TTFT")
+		}
+		if reporter.ttftDuration() <= 0 {
+			t.Fatalf("Fallback TTFT should be recorded and > 0, got %v", reporter.ttftDuration())
+		}
+
+		// 3. Observing substantive token event sets effective TTFT
+		ObserveResponsesTokenEvent(reporter, []byte(`{"type":"response.output_text.delta","delta":"hello"}`))
+		if !reporter.IsTTFTSet() {
+			t.Fatalf("Observing token event must set effective TTFT")
+		}
 	})
-
-	req, errNewRequest := http.NewRequestWithContext(context.Background(), http.MethodPost, "https://example.invalid/v1/responses", strings.NewReader("{}"))
-	if errNewRequest != nil {
-		t.Fatalf("NewRequestWithContext() error = %v", errNewRequest)
-	}
-	resp, errDo := client.Do(req)
-	if errDo != nil {
-		t.Fatalf("Do() error = %v", errDo)
-	}
-	bodyBytes, errRead := io.ReadAll(resp.Body)
-	if errRead != nil {
-		t.Fatalf("ReadAll() error = %v", errRead)
-	}
-	if errClose := resp.Body.Close(); errClose != nil {
-		t.Fatalf("response body close error = %v", errClose)
-	}
-
-	// 1. Plain body reading must NOT set TTFT
-	if reporter.IsTTFTSet() {
-		t.Fatalf("TrackHTTPClientRoundTripOnly must not set TTFT on plain body read")
-	}
-
-	// 2. Observing metadata event records fallback, but does NOT set effective TTFT
-	ObserveResponsesTokenEvent(reporter, bodyBytes)
-	if reporter.IsTTFTSet() {
-		t.Fatalf("Observing metadata event must not set effective TTFT")
-	}
-	if reporter.ttftDuration() <= 0 {
-		t.Fatalf("Fallback TTFT should be recorded and > 0, got %v", reporter.ttftDuration())
-	}
-
-	// 3. Observing substantive token event sets effective TTFT
-	ObserveResponsesTokenEvent(reporter, []byte(`{"type":"response.output_text.delta","delta":"hello"}`))
-	if !reporter.IsTTFTSet() {
-		t.Fatalf("Observing token event must set effective TTFT")
-	}
 }
 
 func TestUsageReporterTrackHTTPClientRoundTripOnly_ErrorResponseRecordsFirstPacketFallback(t *testing.T) {

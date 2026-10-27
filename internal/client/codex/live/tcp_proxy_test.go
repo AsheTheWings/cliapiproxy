@@ -19,6 +19,7 @@ import (
 	"github.com/pion/stun/v3"
 	"github.com/pion/webrtc/v4"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 )
 
 type recordedProxyDial struct {
@@ -411,21 +412,23 @@ func TestTCPCandidateTunnelRejectsUnauthenticatedConnectionWithoutDial(t *testin
 		t.Fatalf("write unauthenticated frame: %v", errWrite)
 	}
 	_ = client.Close()
+	wait.Settled(t, 5*time.Second)
 	select {
 	case dial := <-dialer.dials:
 		_ = dial.connection.Close()
 		t.Fatalf("unauthenticated connection triggered proxy dial to %q", dial.address)
-	case <-time.After(100 * time.Millisecond):
+	default:
 	}
 	assertNoForwardingStart(t, forwardingStarted)
 }
 
 func assertNoForwardingStart(t *testing.T, started <-chan struct{}) {
 	t.Helper()
+	wait.Settled(t, 5*time.Second)
 	select {
 	case <-started:
 		t.Fatal("forwarding start handler was called for an unestablished tunnel")
-	case <-time.After(100 * time.Millisecond):
+	default:
 	}
 }
 

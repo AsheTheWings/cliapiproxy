@@ -286,7 +286,7 @@ func TestAIStudioExecutorExecuteStartsTTFTBeforeRelayWait(t *testing.T) {
 			clientDone <- fmt.Errorf("relay message type = %q, want %q", msg.Type, wsrelay.MessageTypeHTTPReq)
 			return
 		}
-		time.Sleep(delay)
+		time.Sleep(delay) // fixture latency: the relay reply must arrive after a measurable TTFT
 		response := wsrelay.Message{
 			ID:   msg.ID,
 			Type: wsrelay.MessageTypeHTTPResp,
