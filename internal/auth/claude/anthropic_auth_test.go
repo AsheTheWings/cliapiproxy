@@ -10,6 +10,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 )
 
 type roundTripFunc func(*http.Request) (*http.Response, error)
@@ -453,7 +455,7 @@ func TestRefreshTokens_DeduplicatesConcurrentRefresh(t *testing.T) {
 	go runRefresh()
 
 	<-started
-	time.Sleep(20 * time.Millisecond)
+	wait.Until(t, 5*time.Second, wait.SingleflightDuplicate, "second refresh did not join the in-flight refresh")
 	if got := atomic.LoadInt32(&tokenCalls); got != 1 {
 		t.Fatalf("expected concurrent refresh to share a single upstream call, got %d", got)
 	}

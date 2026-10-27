@@ -30,9 +30,15 @@ func TestServerStop_ViolentShutdownImmediatelyClosesWithoutContextDeadlineError(
 	server := NewServer(cfg, nil, nil, "")
 	engine := gin.New()
 	reqStarted := make(chan struct{})
+	released := make(chan struct{})
+	t.Cleanup(func() { close(released) })
 	engine.GET("/slow", func(c *gin.Context) {
 		close(reqStarted)
-		time.Sleep(2 * time.Second)
+		// Hold the request in flight until shutdown closes its connection.
+		select {
+		case <-c.Request.Context().Done():
+		case <-released:
+		}
 		c.String(http.StatusOK, "ok")
 	})
 	server.server.Handler = engine

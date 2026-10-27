@@ -16,6 +16,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/pluginhost"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
@@ -109,12 +110,8 @@ func TestRefreshAuthFiles_AllAndSpecific(t *testing.T) {
 		t.Fatalf("expected ok=true, got %v", resp)
 	}
 
-	// Wait briefly for refresh to execute
-	time.Sleep(50 * time.Millisecond)
-
-	if cnt := exec.refreshCnt.Load(); cnt < 2 {
-		t.Fatalf("expected at least 2 refreshes, got %d", cnt)
-	}
+	wait.Until(t, 5*time.Second, func() bool { return exec.refreshCnt.Load() >= 2 },
+		"expected at least 2 refreshes within 5s")
 
 	// 2. Auth2 was in StatusError, now should be active/recovering
 	a2, exists := manager.GetByID("antigravity-2.json")

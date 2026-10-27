@@ -12,6 +12,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/redisqueue"
 	runtimeexecutor "github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 	sdktranslator "github.com/router-for-me/CLIProxyAPI/v8/sdk/translator"
@@ -71,8 +72,7 @@ func TestGeminiExecutorRecordsSuccessfulZeroUsageInQueue(t *testing.T) {
 func waitForQueuedUsageModelTotalTokens(t *testing.T, wantProvider, wantModel string, wantTokens int64) {
 	t.Helper()
 
-	deadline := time.Now().Add(2 * time.Second)
-	for time.Now().Before(deadline) {
+	if wait.Poll(2*time.Second, func() bool {
 		items := redisqueue.PopOldest(10)
 		for _, item := range items {
 			got, ok := parseQueuedUsagePayload(t, item)
@@ -88,9 +88,11 @@ func waitForQueuedUsageModelTotalTokens(t *testing.T, wantProvider, wantModel st
 			if got.Tokens.TotalTokens != wantTokens {
 				t.Fatalf("payload total tokens = %d, want %d", got.Tokens.TotalTokens, wantTokens)
 			}
-			return
+			return true
 		}
-		time.Sleep(10 * time.Millisecond)
+		return false
+	}) {
+		return
 	}
 
 	t.Fatalf("timed out waiting for queued usage payload for provider=%q model=%q", wantProvider, wantModel)

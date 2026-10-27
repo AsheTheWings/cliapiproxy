@@ -8,10 +8,12 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -72,10 +74,7 @@ func TestHomeAppLogForwarder_ForwardsFormattedLogWhenBoundOwnerIsHealthy(t *test
 		t.Fatalf("Fire error: %v", errFire)
 	}
 
-	deadline := time.Now().Add(time.Second)
-	for stub.pushedCount() == 0 && time.Now().Before(deadline) {
-		time.Sleep(10 * time.Millisecond)
-	}
+	wait.Poll(time.Second, func() bool { return !(stub.pushedCount() == 0) })
 	if stub.pushedCount() != 1 {
 		t.Fatalf("pushed records = %d, want 1", stub.pushedCount())
 	}
@@ -164,56 +163,57 @@ func homeAppLogForwarderTargetCount() int {
 }
 
 func TestHomeAppLogForwarder_RebindsOnlyToCurrentOwner(t *testing.T) {
-	first := &stubHomeAppLogClient{heartbeatOK: true}
-	second := &stubHomeAppLogClient{heartbeatOK: true}
-	forwarder := &HomeAppLogForwarder{
-		formatter: &LogFormatter{},
-		queue:     make(chan homeAppLogPayload, 4),
-		stop:      make(chan struct{}),
-	}
-	forwarder.enabled.Store(true)
-	forwarder.wg.Add(1)
-	go forwarder.run()
-	t.Cleanup(forwarder.Stop)
+	synctest.Test(t, func(t *testing.T) {
+		first := &stubHomeAppLogClient{heartbeatOK: true}
+		second := &stubHomeAppLogClient{heartbeatOK: true}
+		forwarder := &HomeAppLogForwarder{
+			formatter: &LogFormatter{},
+			queue:     make(chan homeAppLogPayload, 4),
+			stop:      make(chan struct{}),
+		}
+		forwarder.enabled.Store(true)
+		forwarder.wg.Add(1)
+		go forwarder.run()
+		t.Cleanup(forwarder.Stop)
 
-	forwarder.bind(first)
-	if errFire := forwarder.Fire(log.NewEntry(log.StandardLogger())); errFire != nil {
-		t.Fatalf("Fire() error = %v", errFire)
-	}
-	waitForHomeAppLogPush(t, first, 1)
+		forwarder.bind(first)
+		if errFire := forwarder.Fire(log.NewEntry(log.StandardLogger())); errFire != nil {
+			t.Fatalf("Fire() error = %v", errFire)
+		}
+		waitForHomeAppLogPush(t, first, 1)
 
-	forwarder.bind(second)
-	forwarder.deactivate(first)
-	if errFire := forwarder.Fire(log.NewEntry(log.StandardLogger())); errFire != nil {
-		t.Fatalf("Fire() error = %v", errFire)
-	}
-	waitForHomeAppLogPush(t, second, 1)
-	if first.pushedCount() != 1 {
-		t.Fatalf("stale owner received %d records, want 1", first.pushedCount())
-	}
+		forwarder.bind(second)
+		forwarder.deactivate(first)
+		if errFire := forwarder.Fire(log.NewEntry(log.StandardLogger())); errFire != nil {
+			t.Fatalf("Fire() error = %v", errFire)
+		}
+		waitForHomeAppLogPush(t, second, 1)
+		if first.pushedCount() != 1 {
+			t.Fatalf("stale owner received %d records, want 1", first.pushedCount())
+		}
 
-	forwarder.deactivate(first)
-	if errFire := forwarder.Fire(log.NewEntry(log.StandardLogger())); errFire != nil {
-		t.Fatalf("Fire() error = %v", errFire)
-	}
-	waitForHomeAppLogPush(t, second, 2)
+		forwarder.deactivate(first)
+		if errFire := forwarder.Fire(log.NewEntry(log.StandardLogger())); errFire != nil {
+			t.Fatalf("Fire() error = %v", errFire)
+		}
+		waitForHomeAppLogPush(t, second, 2)
 
-	forwarder.deactivate(second)
-	if errFire := forwarder.Fire(log.NewEntry(log.StandardLogger())); errFire != nil {
-		t.Fatalf("Fire() error = %v", errFire)
-	}
-	time.Sleep(20 * time.Millisecond)
-	if second.pushedCount() != 2 {
-		t.Fatalf("detached owner received %d records, want 2", second.pushedCount())
-	}
+		forwarder.deactivate(second)
+		if errFire := forwarder.Fire(log.NewEntry(log.StandardLogger())); errFire != nil {
+			t.Fatalf("Fire() error = %v", errFire)
+		}
+		// Every forwarder goroutine is idle once Wait returns, so a push the
+		// detached owner would receive has already happened.
+		synctest.Wait()
+		if second.pushedCount() != 2 {
+			t.Fatalf("detached owner received %d records, want 2", second.pushedCount())
+		}
+	})
 }
 
 func waitForHomeAppLogPush(t *testing.T, client *stubHomeAppLogClient, want int) {
 	t.Helper()
-	deadline := time.Now().Add(time.Second)
-	for client.pushedCount() < want && time.Now().Before(deadline) {
-		time.Sleep(time.Millisecond)
-	}
+	wait.Poll(time.Second, func() bool { return !(client.pushedCount() < want) })
 	if got := client.pushedCount(); got != want {
 		t.Fatalf("pushed records = %d, want %d", got, want)
 	}

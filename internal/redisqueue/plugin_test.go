@@ -10,6 +10,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	internallogging "github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	coresession "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/session"
 	coreusage "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/usage"
 )
@@ -433,24 +434,19 @@ func popSinglePayload(t *testing.T) map[string]json.RawMessage {
 func waitForSinglePayload(t *testing.T, timeout time.Duration) map[string]json.RawMessage {
 	t.Helper()
 
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		items := PopOldest(10)
-		if len(items) == 0 {
-			time.Sleep(10 * time.Millisecond)
-			continue
-		}
-		if len(items) != 1 {
-			t.Fatalf("PopOldest() items = %d, want 1", len(items))
-		}
-		var payload map[string]json.RawMessage
-		if err := json.Unmarshal(items[0], &payload); err != nil {
-			t.Fatalf("unmarshal payload: %v", err)
-		}
-		return payload
+	var items [][]byte
+	wait.Until(t, timeout, func() bool {
+		items = PopOldest(10)
+		return len(items) > 0
+	}, "timeout waiting for queued payload")
+	if len(items) != 1 {
+		t.Fatalf("PopOldest() items = %d, want 1", len(items))
 	}
-	t.Fatalf("timeout waiting for queued payload")
-	return nil
+	var payload map[string]json.RawMessage
+	if err := json.Unmarshal(items[0], &payload); err != nil {
+		t.Fatalf("unmarshal payload: %v", err)
+	}
+	return payload
 }
 
 func requireStringField(t *testing.T, payload map[string]json.RawMessage, key, want string) {

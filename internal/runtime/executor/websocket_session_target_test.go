@@ -19,6 +19,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	internalhome "github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
@@ -1028,14 +1029,8 @@ func TestAuditHomeCodex426WebsocketToHTTPFreshSelection(t *testing.T) {
 	if got := httpFallbackCalls.Load(); got != 1 {
 		t.Fatalf("HTTP fallback calls = %d, want 1 on the fresh Home selection", got)
 	}
-	deadline := time.NewTimer(time.Second)
-	defer deadline.Stop()
-	for dispatcher.releases.Load() != 2 {
-		select {
-		case <-deadline.C:
-			t.Fatalf("accounted releases after response completion = %d, want 2", dispatcher.releases.Load())
-		case <-time.After(time.Millisecond):
-		}
+	if !wait.Poll(time.Second, func() bool { return dispatcher.releases.Load() == 2 }) {
+		t.Fatalf("accounted releases after response completion = %d, want 2", dispatcher.releases.Load())
 	}
 	releaseGroupsMu.Lock()
 	gotReleaseGroups := append([]executionregistry.ReleaseGroup(nil), releaseGroups...)

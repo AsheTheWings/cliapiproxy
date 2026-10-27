@@ -11,6 +11,7 @@ import (
 	"time"
 
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 )
 
 type recordingCooldownStateStore struct {
@@ -440,10 +441,11 @@ func TestManagerApplyConfigWithCooldownStoreSerializesTransitions(t *testing.T) 
 	go func() {
 		secondDone <- manager.ApplyConfigWithCooldownStateStore(context.Background(), &internalconfig.Config{}, secondStore)
 	}()
+	wait.Settled(t, 5*time.Second)
 	select {
 	case <-secondDone:
 		t.Fatal("concurrent config transition completed while old-store persistence was blocked")
-	case <-time.After(100 * time.Millisecond):
+	default:
 	}
 
 	close(oldStore.release)
@@ -659,10 +661,11 @@ func TestManagerResultSaveWaitsForCooldownStoreTransition(t *testing.T) {
 		})
 		close(resultDone)
 	}()
+	wait.Settled(t, 5*time.Second)
 	select {
 	case <-resultDone:
 		t.Fatal("result save completed while the store transition was blocked")
-	case <-time.After(100 * time.Millisecond):
+	default:
 	}
 
 	close(oldStore.release)

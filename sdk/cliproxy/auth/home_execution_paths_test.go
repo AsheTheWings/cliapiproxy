@@ -13,6 +13,7 @@ import (
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
 	internallogging "github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 	coreusage "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/usage"
@@ -1093,10 +1094,11 @@ func TestAccountedHomeStreamErrorDrainsUntilSourceClosesBeforeRelease(t *testing
 		t.Fatalf("stream released while source remained open: %#v", group)
 	default:
 	}
+	wait.Settled(t, 5*time.Second)
 	select {
 	case chunk, ok := <-result.Chunks:
 		t.Fatalf("chunk after error = %#v, open = %v", chunk, ok)
-	case <-time.After(50 * time.Millisecond):
+	default:
 	}
 
 	close(chunks)

@@ -255,9 +255,17 @@ func TestManager_AutoRefreshLoop_DisabledAuthWithInvalidGrantNeverRefreshes(t *t
 	manager.StartAutoRefresh(ctx, 10*time.Millisecond)
 	defer manager.StopAutoRefresh()
 
-	// Wait 100ms to allow refresh loop cycles
-	time.Sleep(100 * time.Millisecond)
-
+	// StartAutoRefresh builds the schedule before its loop runs; an auth the
+	// schedule omits is never refreshed by the loop.
+	manager.mu.RLock()
+	loop := manager.refreshLoop
+	manager.mu.RUnlock()
+	loop.mu.Lock()
+	_, scheduled := loop.index[auth.ID]
+	loop.mu.Unlock()
+	if scheduled {
+		t.Fatal("disabled+invalid_grant auth is scheduled for refresh")
+	}
 	if calls := executor.refreshCalls.Load(); calls != 0 {
 		t.Fatalf("executor.Refresh called %d times for disabled+invalid_grant auth, want 0", calls)
 	}

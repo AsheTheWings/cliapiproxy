@@ -12,6 +12,7 @@ import (
 
 	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	internalhome "github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 )
@@ -373,14 +374,8 @@ func TestHomeRetainedRouteRewritesReasoningSuffixAndWaitsForReleaseACK(t *testin
 	}
 
 	manager.CloseExecutionSession("retained-route-ack")
-	deadline := time.NewTimer(time.Second)
-	defer deadline.Stop()
-	for dispatcher.acks.Load() != 2 {
-		select {
-		case <-deadline.C:
-			t.Fatalf("final release acknowledgements = %d, want 2", dispatcher.acks.Load())
-		case <-time.After(time.Millisecond):
-		}
+	if !wait.Poll(time.Second, func() bool { return dispatcher.acks.Load() == 2 }) {
+		t.Fatalf("final release acknowledgements = %d, want 2", dispatcher.acks.Load())
 	}
 }
 

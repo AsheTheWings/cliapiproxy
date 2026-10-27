@@ -6,10 +6,12 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/config"
@@ -497,7 +499,7 @@ func TestAntigravityAsyncProbe_ConcurrentConfigUpdateRace(t *testing.T) {
 				},
 			}
 			svc.cfgMu.Unlock()
-			time.Sleep(time.Millisecond)
+			runtime.Gosched()
 		}
 	}()
 
@@ -590,9 +592,7 @@ func TestAntigravityColdStart_RefreshesExpiredTokenUsingAuthProxy(t *testing.T) 
 	defer svc.coreManager.StopAutoRefresh()
 
 	// Poll until refresh is called (should be immediate since expired)
-	for start := time.Now(); refreshCalls.Load() == 0 && time.Since(start) < 2*time.Second; {
-		time.Sleep(10 * time.Millisecond)
-	}
+	wait.Poll(2*time.Second, func() bool { return refreshCalls.Load() != 0 })
 
 	if refreshCalls.Load() == 0 {
 		t.Fatal("expected auto-refresh loop to invoke executor for expired credential on cold start")

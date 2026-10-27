@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 )
 
 func TestValidateDevinModelsJSONAggregatesLightning(t *testing.T) {
@@ -265,8 +267,13 @@ func TestFetchDevinModelsFromRemote_ContextNotCanceledBeforeRead_Issue6095(t *te
 
 	go func() {
 		<-headerFlushed
-		// Yield briefly to let client.Do return and advance to body reading before streaming body chunks.
-		time.Sleep(20 * time.Millisecond)
+		// Stream the body only once client.Do has returned and the fetch is
+		// reading the body, so a context canceled after Do would fail the read.
+		if wait.Poll(5*time.Second, func() bool { return wait.GoroutineIn("registry.readCatalogSource(", "io.ReadAll(") }) {
+			close(sendBody)
+			return
+		}
+		t.Error("fetch did not start reading the response body")
 		close(sendBody)
 	}()
 

@@ -27,6 +27,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginstore"
 )
 
@@ -490,10 +491,11 @@ func TestEnsureClientsWaitsForPreviousTargetClose(t *testing.T) {
 		done <- client.ensureClients()
 	}()
 
+	wait.Settled(t, 5*time.Second)
 	select {
 	case errEnsure := <-done:
 		t.Fatalf("ensureClients() returned before previous target closed: %v", errEnsure)
-	case <-time.After(20 * time.Millisecond):
+	default:
 	}
 	close(closing)
 	select {
@@ -949,7 +951,7 @@ func TestGetPluginSyncExceedsBaseTimeoutAndKeepsBaseClientUsable(t *testing.T) {
 		}
 		switch args[1] {
 		case redisKeyPluginSync:
-			time.Sleep(3 * homeRedisTestOperationTimeout)
+			time.Sleep(3 * homeRedisTestOperationTimeout) // fixture latency: the reply must outlast the base read timeout
 			return fmt.Sprintf("$%d\r\n%s\r\n", len(payload), payload)
 		case redisKeyPluginTasks:
 			return "$2\r\n[]\r\n"
@@ -1181,14 +1183,18 @@ func TestProcessPluginSyncCommandCancellationUnderTLSBackpressure(t *testing.T) 
 }
 
 func TestGetPluginTasksRetainsBaseTimeout(t *testing.T) {
+	released := make(chan struct{})
 	client, _ := newRedisCommandTestClient(t, func(args []string) string {
 		if len(args) >= 2 && args[1] == redisKeyPluginTasks {
-			time.Sleep(3 * homeRedisTestOperationTimeout)
+			// Withhold the reply until the test ends, past the base timeout.
+			<-released
 			return "$2\r\n[]\r\n"
 		}
 		return "-ERR unexpected command\r\n"
 	})
-	if _, errTasks := client.GetPluginTasks(context.Background()); errTasks == nil {
+	_, errTasks := client.GetPluginTasks(context.Background())
+	close(released)
+	if errTasks == nil {
 		t.Fatal("GetPluginTasks() error = nil, want base read timeout")
 	}
 }
@@ -2186,7 +2192,10 @@ func TestTrackedRedisConnectionCloseRemovesContendedEntries(t *testing.T) {
 	for range connections {
 		<-started
 	}
-	time.Sleep(20 * time.Millisecond)
+	// Every Close must be parked on the client lock before it is released.
+	wait.Until(t, 5*time.Second, func() bool {
+		return wait.GoroutinesIn("homeDispatchConn).Close(", "(*Mutex).lockSlow(") == len(connections)
+	}, "tracked connection closes did not all wait on the client lock")
 	client.mu.Unlock()
 	for range connections {
 		if errClose := <-closed; errClose != nil && !errors.Is(errClose, net.ErrClosed) {

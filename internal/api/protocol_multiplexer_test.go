@@ -12,6 +12,7 @@ import (
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	"sync/atomic"
 	"syscall"
 	"testing"
@@ -395,10 +396,11 @@ func TestServerRejectsIncompleteUnauthenticatedRequestBodiesPromptly(t *testing.
 }
 
 func TestAcceptMuxNotBlockedByIdleConnection(t *testing.T) {
-	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	tcpListener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("failed to listen: %v", err)
 	}
+	listener := &signalingListener{Listener: tcpListener, accepted: make(chan struct{}, 4)}
 	defer listener.Close()
 
 	var routed atomic.Int32
@@ -428,8 +430,8 @@ func TestAcceptMuxNotBlockedByIdleConnection(t *testing.T) {
 	}
 	defer idleConn.Close()
 
-	// Give the accept loop time to pick up the idle connection.
-	time.Sleep(50 * time.Millisecond)
+	// The accept loop has picked up the idle connection once Accept returned it.
+	wait.Receive(t, listener.accepted, 2*time.Second, "accept loop did not pick up the idle connection")
 
 	// Send a real HTTP request. Before the fix, the accept loop would be
 	// blocked on Peek(1) for the idle connection, causing this request to
@@ -447,4 +449,21 @@ func TestAcceptMuxNotBlockedByIdleConnection(t *testing.T) {
 	if routed.Load() == 0 {
 		t.Error("expected at least one request to be routed")
 	}
+}
+
+// signalingListener reports each connection its Accept returns.
+type signalingListener struct {
+	net.Listener
+	accepted chan struct{}
+}
+
+func (l *signalingListener) Accept() (net.Conn, error) {
+	conn, err := l.Listener.Accept()
+	if err == nil {
+		select {
+		case l.accepted <- struct{}{}:
+		default:
+		}
+	}
+	return conn, err
 }

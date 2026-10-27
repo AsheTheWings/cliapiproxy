@@ -11,6 +11,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	coreexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 	coreusage "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/usage"
@@ -51,12 +52,13 @@ func (p *testUsageCapturePlugin) waitRecord(t *testing.T, timeout time.Duration)
 	}
 }
 
-func (p *testUsageCapturePlugin) assertNoRecord(t *testing.T, wait time.Duration) {
+func (p *testUsageCapturePlugin) assertNoRecord(t *testing.T) {
 	t.Helper()
+	wait.Settled(t, 5*time.Second)
 	select {
 	case rec := <-p.records:
 		t.Fatalf("expected no usage record for %q, got %+v", p.targetProvider, rec)
-	case <-time.After(wait):
+	default:
 	}
 }
 
@@ -235,7 +237,7 @@ func TestExecutorAdapterExecuteNilAuthSkipsUsage(t *testing.T) {
 		t.Fatal("adapter.Execute returned empty payload")
 	}
 
-	plugin.assertNoRecord(t, 50*time.Millisecond)
+	plugin.assertNoRecord(t)
 }
 
 func TestExecutorAdapterExecuteErrorPublishesFailure(t *testing.T) {
@@ -711,7 +713,7 @@ func TestExecutorAdapterExecuteStreamNilAuthSkipsUsage(t *testing.T) {
 	for range streamRes.Chunks {
 	}
 
-	plugin.assertNoRecord(t, 50*time.Millisecond)
+	plugin.assertNoRecord(t)
 }
 
 func TestExecutorAdapterExecuteStreamSplitAcrossBraceBoundary(t *testing.T) {

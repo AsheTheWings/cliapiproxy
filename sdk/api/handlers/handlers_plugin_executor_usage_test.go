@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	coreexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/usage"
@@ -54,10 +55,11 @@ func (p *capturePluginExecutorUsagePlugin) waitRecord(t *testing.T) usage.Record
 
 func (p *capturePluginExecutorUsagePlugin) assertNoRecord(t *testing.T) {
 	t.Helper()
+	wait.Settled(t, 5*time.Second)
 	select {
 	case rec := <-p.records:
 		t.Fatalf("expected no usage record for %q, got %+v", p.targetProvider, rec)
-	case <-time.After(50 * time.Millisecond):
+	default:
 	}
 }
 

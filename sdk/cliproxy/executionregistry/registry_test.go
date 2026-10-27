@@ -5,7 +5,10 @@ import (
 	"errors"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 )
 
 func TestDrainRejectsLateInstallAndCancelsBoundScopes(t *testing.T) {
@@ -70,61 +73,65 @@ func TestScopeEndIsExactlyOnce(t *testing.T) {
 }
 
 func TestDrainWaitsForPendingDispatch(t *testing.T) {
-	registry := New()
-	pending, errBegin := registry.BeginDispatch()
-	if errBegin != nil {
-		t.Fatal(errBegin)
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	done := make(chan error, 1)
-	go func() { done <- registry.Drain(ctx) }()
+	synctest.Test(t, func(t *testing.T) {
+		registry := New()
+		pending, errBegin := registry.BeginDispatch()
+		if errBegin != nil {
+			t.Fatal(errBegin)
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		done := make(chan error, 1)
+		go func() { done <- registry.Drain(ctx) }()
 
-	select {
-	case errDrain := <-done:
-		t.Fatalf("Drain() returned before pending dispatch ended: %v", errDrain)
-	case <-time.After(20 * time.Millisecond):
-	}
-	pending.End()
-	if errDrain := <-done; errDrain != nil {
-		t.Fatalf("Drain() error = %v", errDrain)
-	}
+		select {
+		case errDrain := <-done:
+			t.Fatalf("Drain() returned before pending dispatch ended: %v", errDrain)
+		case <-time.After(20 * time.Millisecond):
+		}
+		pending.End()
+		if errDrain := <-done; errDrain != nil {
+			t.Fatalf("Drain() error = %v", errDrain)
+		}
+	})
 }
 
 func TestWaitPendingDoesNotDrainActiveScope(t *testing.T) {
-	registry := New()
-	activePending, errBegin := registry.BeginDispatch()
-	if errBegin != nil {
-		t.Fatal(errBegin)
-	}
-	scope, errInstall := registry.Install(activePending, ScopeSpec{})
-	if errInstall != nil {
-		t.Fatal(errInstall)
-	}
-	defer scope.End("test cleanup")
-	pending, errBegin := registry.BeginDispatch()
-	if errBegin != nil {
-		t.Fatal(errBegin)
-	}
+	synctest.Test(t, func(t *testing.T) {
+		registry := New()
+		activePending, errBegin := registry.BeginDispatch()
+		if errBegin != nil {
+			t.Fatal(errBegin)
+		}
+		scope, errInstall := registry.Install(activePending, ScopeSpec{})
+		if errInstall != nil {
+			t.Fatal(errInstall)
+		}
+		defer scope.End("test cleanup")
+		pending, errBegin := registry.BeginDispatch()
+		if errBegin != nil {
+			t.Fatal(errBegin)
+		}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	done := make(chan error, 1)
-	go func() { done <- registry.WaitPending(ctx) }()
-	select {
-	case errWait := <-done:
-		t.Fatalf("WaitPending() returned before pending dispatch ended: %v", errWait)
-	case <-time.After(20 * time.Millisecond):
-	}
-	pending.End()
-	if errWait := <-done; errWait != nil {
-		t.Fatalf("WaitPending() error = %v", errWait)
-	}
-	nextPending, errNext := registry.BeginDispatch()
-	if errNext != nil {
-		t.Fatalf("WaitPending() stopped registry acceptance: %v", errNext)
-	}
-	nextPending.End()
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		done := make(chan error, 1)
+		go func() { done <- registry.WaitPending(ctx) }()
+		select {
+		case errWait := <-done:
+			t.Fatalf("WaitPending() returned before pending dispatch ended: %v", errWait)
+		case <-time.After(20 * time.Millisecond):
+		}
+		pending.End()
+		if errWait := <-done; errWait != nil {
+			t.Fatalf("WaitPending() error = %v", errWait)
+		}
+		nextPending, errNext := registry.BeginDispatch()
+		if errNext != nil {
+			t.Fatalf("WaitPending() stopped registry acceptance: %v", errNext)
+		}
+		nextPending.End()
+	})
 }
 
 func TestDrainReturnsWhenBlockingResourceCloseExceedsContext(t *testing.T) {
@@ -179,148 +186,154 @@ func TestDrainReturnsWhenBlockingResourceCloseExceedsContext(t *testing.T) {
 }
 
 func TestDrainWaitsForBlockingResourceClose(t *testing.T) {
-	registry := New()
-	pending, errBegin := registry.BeginDispatch()
-	if errBegin != nil {
-		t.Fatal(errBegin)
-	}
-	scope, errInstall := registry.Install(pending, ScopeSpec{})
-	if errInstall != nil {
-		t.Fatal(errInstall)
-	}
-	started := make(chan struct{})
-	release := make(chan struct{})
-	if errBind := scope.Bind(func() error {
-		close(started)
-		<-release
-		return nil
-	}); errBind != nil {
-		t.Fatal(errBind)
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	done := make(chan error, 1)
-	go func() { done <- registry.Drain(ctx) }()
+	synctest.Test(t, func(t *testing.T) {
+		registry := New()
+		pending, errBegin := registry.BeginDispatch()
+		if errBegin != nil {
+			t.Fatal(errBegin)
+		}
+		scope, errInstall := registry.Install(pending, ScopeSpec{})
+		if errInstall != nil {
+			t.Fatal(errInstall)
+		}
+		started := make(chan struct{})
+		release := make(chan struct{})
+		if errBind := scope.Bind(func() error {
+			close(started)
+			<-release
+			return nil
+		}); errBind != nil {
+			t.Fatal(errBind)
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		done := make(chan error, 1)
+		go func() { done <- registry.Drain(ctx) }()
 
-	select {
-	case <-started:
-	case <-time.After(time.Second):
-		t.Fatal("Drain() did not close the bound resource")
-	}
-	go scope.End("canceled")
-	select {
-	case errDrain := <-done:
-		t.Fatalf("Drain() returned before the resource close completed: %v", errDrain)
-	case <-time.After(20 * time.Millisecond):
-	}
-	close(release)
-	if errDrain := <-done; errDrain != nil {
-		t.Fatalf("Drain() error = %v", errDrain)
-	}
+		select {
+		case <-started:
+		case <-time.After(time.Second):
+			t.Fatal("Drain() did not close the bound resource")
+		}
+		go scope.End("canceled")
+		select {
+		case errDrain := <-done:
+			t.Fatalf("Drain() returned before the resource close completed: %v", errDrain)
+		case <-time.After(20 * time.Millisecond):
+		}
+		close(release)
+		if errDrain := <-done; errDrain != nil {
+			t.Fatalf("Drain() error = %v", errDrain)
+		}
+	})
 }
 
 func TestConcurrentDrainWaitsForBlockingResourceClose(t *testing.T) {
-	registry := New()
-	pending, errBegin := registry.BeginDispatch()
-	if errBegin != nil {
-		t.Fatal(errBegin)
-	}
-	scope, errInstall := registry.Install(pending, ScopeSpec{})
-	if errInstall != nil {
-		t.Fatal(errInstall)
-	}
-	started := make(chan struct{})
-	release := make(chan struct{})
-	if errBind := scope.Bind(func() error {
-		close(started)
-		<-release
-		return nil
-	}); errBind != nil {
-		t.Fatal(errBind)
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-	firstDrain := make(chan error, 1)
-	go func() { firstDrain <- registry.Drain(ctx) }()
-	select {
-	case <-started:
-	case <-time.After(time.Second):
-		t.Fatal("first Drain() did not close the bound resource")
-	}
-	ended := make(chan struct{})
-	go func() {
-		scope.End("canceled")
-		close(ended)
-	}()
-	select {
-	case <-ended:
-		t.Fatal("Scope.End() returned before the resource close completed")
-	case <-time.After(20 * time.Millisecond):
-	}
-	secondDrain := make(chan error, 1)
-	go func() { secondDrain <- registry.Drain(ctx) }()
-	select {
-	case errDrain := <-secondDrain:
-		t.Fatalf("second Drain() returned before resource close completed: %v", errDrain)
-	case <-time.After(20 * time.Millisecond):
-	}
-	close(release)
-	select {
-	case <-ended:
-	case <-time.After(time.Second):
-		t.Fatal("Scope.End() did not complete after the resource close")
-	}
-	if errDrain := <-firstDrain; errDrain != nil {
-		t.Fatalf("first Drain() error = %v", errDrain)
-	}
-	if errDrain := <-secondDrain; errDrain != nil {
-		t.Fatalf("second Drain() error = %v", errDrain)
-	}
+	synctest.Test(t, func(t *testing.T) {
+		registry := New()
+		pending, errBegin := registry.BeginDispatch()
+		if errBegin != nil {
+			t.Fatal(errBegin)
+		}
+		scope, errInstall := registry.Install(pending, ScopeSpec{})
+		if errInstall != nil {
+			t.Fatal(errInstall)
+		}
+		started := make(chan struct{})
+		release := make(chan struct{})
+		if errBind := scope.Bind(func() error {
+			close(started)
+			<-release
+			return nil
+		}); errBind != nil {
+			t.Fatal(errBind)
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		firstDrain := make(chan error, 1)
+		go func() { firstDrain <- registry.Drain(ctx) }()
+		select {
+		case <-started:
+		case <-time.After(time.Second):
+			t.Fatal("first Drain() did not close the bound resource")
+		}
+		ended := make(chan struct{})
+		go func() {
+			scope.End("canceled")
+			close(ended)
+		}()
+		select {
+		case <-ended:
+			t.Fatal("Scope.End() returned before the resource close completed")
+		case <-time.After(20 * time.Millisecond):
+		}
+		secondDrain := make(chan error, 1)
+		go func() { secondDrain <- registry.Drain(ctx) }()
+		select {
+		case errDrain := <-secondDrain:
+			t.Fatalf("second Drain() returned before resource close completed: %v", errDrain)
+		case <-time.After(20 * time.Millisecond):
+		}
+		close(release)
+		select {
+		case <-ended:
+		case <-time.After(time.Second):
+			t.Fatal("Scope.End() did not complete after the resource close")
+		}
+		if errDrain := <-firstDrain; errDrain != nil {
+			t.Fatalf("first Drain() error = %v", errDrain)
+		}
+		if errDrain := <-secondDrain; errDrain != nil {
+			t.Fatalf("second Drain() error = %v", errDrain)
+		}
+	})
 }
 
 func TestConcurrentCloseWaitsForBlockingResourceClose(t *testing.T) {
-	registry := New()
-	pending, errBegin := registry.BeginDispatch()
-	if errBegin != nil {
-		t.Fatal(errBegin)
-	}
-	scope, errInstall := registry.Install(pending, ScopeSpec{})
-	if errInstall != nil {
-		t.Fatal(errInstall)
-	}
-	started := make(chan struct{})
-	release := make(chan struct{})
-	if errBind := scope.Bind(func() error {
-		close(started)
-		<-release
-		return nil
-	}); errBind != nil {
-		t.Fatal(errBind)
-	}
+	synctest.Test(t, func(t *testing.T) {
+		registry := New()
+		pending, errBegin := registry.BeginDispatch()
+		if errBegin != nil {
+			t.Fatal(errBegin)
+		}
+		scope, errInstall := registry.Install(pending, ScopeSpec{})
+		if errInstall != nil {
+			t.Fatal(errInstall)
+		}
+		started := make(chan struct{})
+		release := make(chan struct{})
+		if errBind := scope.Bind(func() error {
+			close(started)
+			<-release
+			return nil
+		}); errBind != nil {
+			t.Fatal(errBind)
+		}
 
-	firstClose := make(chan error, 1)
-	go func() { firstClose <- registry.Close() }()
-	select {
-	case <-started:
-	case <-time.After(time.Second):
-		t.Fatal("first Close() did not close the bound resource")
-	}
+		firstClose := make(chan error, 1)
+		go func() { firstClose <- registry.Close() }()
+		select {
+		case <-started:
+		case <-time.After(time.Second):
+			t.Fatal("first Close() did not close the bound resource")
+		}
 
-	secondClose := make(chan error, 1)
-	go func() { secondClose <- registry.Close() }()
-	select {
-	case errClose := <-secondClose:
-		t.Fatalf("second Close() returned before resource close completed: %v", errClose)
-	case <-time.After(20 * time.Millisecond):
-	}
+		secondClose := make(chan error, 1)
+		go func() { secondClose <- registry.Close() }()
+		select {
+		case errClose := <-secondClose:
+			t.Fatalf("second Close() returned before resource close completed: %v", errClose)
+		case <-time.After(20 * time.Millisecond):
+		}
 
-	close(release)
-	if errClose := <-firstClose; errClose != nil {
-		t.Fatalf("first Close() error = %v", errClose)
-	}
-	if errClose := <-secondClose; errClose != nil {
-		t.Fatalf("second Close() error = %v", errClose)
-	}
+		close(release)
+		if errClose := <-firstClose; errClose != nil {
+			t.Fatalf("first Close() error = %v", errClose)
+		}
+		if errClose := <-secondClose; errClose != nil {
+			t.Fatalf("second Close() error = %v", errClose)
+		}
+	})
 }
 
 func TestDrainRejectsLateBind(t *testing.T) {
@@ -338,15 +351,8 @@ func TestDrainRejectsLateBind(t *testing.T) {
 	done := make(chan error, 1)
 	go func() { done <- registry.Drain(ctx) }()
 
-	deadline := time.After(time.Second)
-	for State(registry.state.Load()) == StateAccepting {
-		select {
-		case <-deadline:
-			t.Fatal("registry did not begin draining")
-		default:
-			time.Sleep(time.Millisecond)
-		}
-	}
+	wait.Until(t, time.Second, func() bool { return State(registry.state.Load()) != StateAccepting },
+		"registry did not begin draining")
 	if errBind := scope.Bind(func() error { return nil }); !errors.Is(errBind, ErrRegistryNotAccepting) {
 		t.Fatalf("Bind() error = %v, want ErrRegistryNotAccepting", errBind)
 	}
@@ -367,15 +373,8 @@ func TestDrainRejectsLateInstall(t *testing.T) {
 	done := make(chan error, 1)
 	go func() { done <- registry.Drain(ctx) }()
 
-	deadline := time.After(time.Second)
-	for State(registry.state.Load()) == StateAccepting {
-		select {
-		case <-deadline:
-			t.Fatal("registry did not begin draining")
-		default:
-			time.Sleep(time.Millisecond)
-		}
-	}
+	wait.Until(t, time.Second, func() bool { return State(registry.state.Load()) != StateAccepting },
+		"registry did not begin draining")
 	if _, errInstall := registry.Install(pending, ScopeSpec{}); !errors.Is(errInstall, ErrRegistryNotAccepting) {
 		t.Fatalf("Install() error = %v, want ErrRegistryNotAccepting", errInstall)
 	}

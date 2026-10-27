@@ -12,6 +12,7 @@ import (
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/api"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 )
 
 func TestServiceShutdown_ViolentShutdownImmediatelyClosesServer(t *testing.T) {
@@ -37,13 +38,10 @@ func TestServiceShutdown_ViolentShutdownImmediatelyClosesServer(t *testing.T) {
 	// Wait briefly for server to bind.
 	var conn net.Conn
 	var errDial error
-	for i := 0; i < 20; i++ {
+	wait.Poll(400*time.Millisecond, func() bool {
 		conn, errDial = net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", port))
-		if errDial == nil {
-			break
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
+		return errDial == nil
+	})
 	if errDial != nil {
 		t.Fatalf("server failed to start listening: %v", errDial)
 	}
@@ -119,13 +117,10 @@ func TestServiceRun_ShutdownContextFreshAtExit(t *testing.T) {
 	// Wait for server to accept connections.
 	var conn net.Conn
 	var errDial error
-	for i := 0; i < 50; i++ {
+	wait.Poll(1000*time.Millisecond, func() bool {
 		conn, errDial = net.Dial("tcp", fmt.Sprintf("127.0.0.1:%d", port))
-		if errDial == nil {
-			break
-		}
-		time.Sleep(20 * time.Millisecond)
-	}
+		return errDial == nil
+	})
 	if errDial != nil {
 		cancel()
 		t.Fatalf("failed to dial service server: %v", errDial)

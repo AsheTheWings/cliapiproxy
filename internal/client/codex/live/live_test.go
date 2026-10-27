@@ -15,6 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 	coreexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
@@ -878,16 +879,17 @@ func TestHomeLiveSessionExpiryReleasesSelection(t *testing.T) {
 		t.Fatalf("stored Home live session = %#v, ok=%t", stored, ok)
 	}
 
-	deadline := time.Now().Add(time.Second)
-	for time.Now().Before(deadline) {
+	if wait.Poll(time.Second, func() bool {
 		_, stillStored := handler.sessions.peek("call-123")
 		if !stillStored && !stored.homeSelection.Active() {
 			if errDrain := registry.Drain(context.Background()); errDrain != nil {
 				t.Fatalf("Drain() error = %v", errDrain)
 			}
-			return
+			return true
 		}
-		time.Sleep(time.Millisecond)
+		return false
+	}) {
+		return
 	}
 	t.Fatal("expired Home live session remained active")
 }
@@ -1260,12 +1262,13 @@ func TestSessionStoreClaimsAndExpiresSessions(t *testing.T) {
 	}
 	store.release(session)
 
-	deadline := time.Now().Add(time.Second)
-	for time.Now().Before(deadline) {
+	if wait.Poll(time.Second, func() bool {
 		if _, ok := store.peek("call-claim"); !ok {
-			return
+			return true
 		}
-		time.Sleep(time.Millisecond)
+		return false
+	}) {
+		return
 	}
 	t.Fatal("released live session did not expire")
 }

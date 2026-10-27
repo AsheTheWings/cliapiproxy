@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	"golang.org/x/sync/singleflight"
 )
@@ -171,7 +172,7 @@ func TestAntigravityRefresh_DeduplicatesConcurrentRefresh(t *testing.T) {
 	secondLaunched := make(chan struct{})
 	go runRefresh(authB, secondLaunched)
 	<-secondLaunched
-	time.Sleep(20 * time.Millisecond)
+	wait.Until(t, 5*time.Second, wait.SingleflightDuplicate, "second refresh did not join the in-flight refresh")
 	if got := atomic.LoadInt32(&tokenCalls); got != 1 {
 		t.Fatalf("expected concurrent refresh to share a single upstream token call, got %d", got)
 	}

@@ -21,6 +21,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/pluginhost"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/watcher/synthesizer"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
@@ -141,16 +142,12 @@ func startForwardHTTPProxy(t *testing.T, hits *atomic.Int32, expectedProxyAuth s
 
 func waitForOAuthStatus(t *testing.T, router http.Handler, state string) oauthStatusResponse {
 	t.Helper()
-	deadline := time.Now().Add(5 * time.Second)
-	for time.Now().Before(deadline) {
-		resp := performOAuthStatusRequest(t, router, state)
-		if resp.Status != "wait" {
-			return resp
-		}
-		time.Sleep(15 * time.Millisecond)
-	}
-	t.Fatalf("timed out waiting for OAuth session %s status", state)
-	return oauthStatusResponse{}
+	var resp oauthStatusResponse
+	wait.Until(t, 5*time.Second, func() bool {
+		resp = performOAuthStatusRequest(t, router, state)
+		return resp.Status != "wait"
+	}, "timed out waiting for OAuth session %s status", state)
+	return resp
 }
 
 func TestStartOAuthV8SessionScopedProxyAndPersistence(t *testing.T) {

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginabi"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
@@ -1210,12 +1211,13 @@ func TestHostApplyConfigSerializesLifecycleDuringQuiesce(t *testing.T) {
 		h.ApplyConfig(context.Background(), cfg)
 		close(secondDone)
 	}()
+	wait.Settled(t, 5*time.Second)
 	select {
 	case <-replacementRegisterStarted:
 		t.Fatal("replacement registration started before quiesce completed")
 	case <-secondDone:
 		t.Fatal("second ApplyConfig completed while quiesce was blocked")
-	case <-time.After(200 * time.Millisecond):
+	default:
 	}
 
 	release()
@@ -1642,10 +1644,11 @@ func TestHostApplyConfigSerializesLifecycleCalls(t *testing.T) {
 		h.ApplyConfig(context.Background(), cfg)
 		close(secondDone)
 	}()
+	wait.Settled(t, 5*time.Second)
 	select {
 	case <-secondEntered:
 		t.Fatal("second ApplyConfig entered plugin lifecycle before first ApplyConfig finished")
-	case <-time.After(200 * time.Millisecond):
+	default:
 	}
 
 	releaseFirst()
@@ -1813,10 +1816,7 @@ func TestHostCanceledLoadDiscardsLateClientWithoutReplacingCurrentPlugin(t *test
 	}
 
 	close(loader.firstRelease)
-	deadline := time.Now().Add(time.Second)
-	for first.shutdown.Load() == 0 && time.Now().Before(deadline) {
-		time.Sleep(time.Millisecond)
-	}
+	wait.Poll(time.Second, func() bool { return !(first.shutdown.Load() == 0) })
 	if got := first.shutdown.Load(); got != 1 {
 		t.Fatalf("late client shutdown calls = %d, want 1", got)
 	}
@@ -1860,10 +1860,7 @@ func TestHostCanceledBlockedLoadKeepsOneLoaderAndCleanupPerPlugin(t *testing.T) 
 	}
 
 	close(loader.firstRelease)
-	deadline := time.Now().Add(time.Second)
-	for first.shutdown.Load() == 0 && time.Now().Before(deadline) {
-		time.Sleep(time.Millisecond)
-	}
+	wait.Poll(time.Second, func() bool { return !(first.shutdown.Load() == 0) })
 	if got := first.shutdown.Load(); got != 1 {
 		t.Fatalf("late client shutdown calls = %d, want one cleanup", got)
 	}
@@ -1908,10 +1905,7 @@ func TestHostUnloadPluginContextDetachesBlockedCall(t *testing.T) {
 	}
 
 	close(client.release)
-	deadline := time.Now().Add(time.Second)
-	for client.shutdown.Load() == 0 && time.Now().Before(deadline) {
-		time.Sleep(time.Millisecond)
-	}
+	wait.Poll(time.Second, func() bool { return !(client.shutdown.Load() == 0) })
 	if got := client.shutdown.Load(); got != 1 {
 		t.Fatalf("shutdown calls after blocked plugin call exits = %d, want 1", got)
 	}
@@ -1930,10 +1924,11 @@ func TestHostUnloadWaitsForBlockingLoad(t *testing.T) {
 	go func() {
 		unloadDone <- h.UnloadPlugin("alpha")
 	}()
+	wait.Settled(t, 5*time.Second)
 	select {
 	case <-unloadDone:
 		t.Fatal("UnloadPlugin completed while ApplyConfig was still loading")
-	case <-time.After(200 * time.Millisecond):
+	default:
 	}
 
 	releaseOpen()
@@ -1993,10 +1988,11 @@ func TestHostUnloadAndShutdownWaitForBlockingRegister(t *testing.T) {
 			go func() {
 				actionDone <- tt.action(h)
 			}()
+			wait.Settled(t, 5*time.Second)
 			select {
 			case <-actionDone:
 				t.Fatalf("%s completed while ApplyConfig was still registering", tt.name)
-			case <-time.After(200 * time.Millisecond):
+			default:
 			}
 
 			releaseRegister()
@@ -2476,10 +2472,7 @@ func TestHostShutdownAllRetainsBlockedLoadTokenUntilCleanup(t *testing.T) {
 	}
 
 	close(client.shutdownRelease)
-	deadline := time.Now().Add(time.Second)
-	for h.PluginBusy("alpha") && time.Now().Before(deadline) {
-		time.Sleep(time.Millisecond)
-	}
+	wait.Poll(time.Second, func() bool { return !(h.PluginBusy("alpha")) })
 	if h.PluginBusy("alpha") {
 		t.Fatal("PluginBusy(alpha) = true after physical shutdown returned")
 	}
@@ -2523,10 +2516,7 @@ func TestHostCanceledRegisterRetainsLoadTokenUntilShutdownReturns(t *testing.T) 
 	}
 
 	close(client.shutdownRelease)
-	deadline := time.Now().Add(time.Second)
-	for h.PluginBusy("alpha") && time.Now().Before(deadline) {
-		time.Sleep(time.Millisecond)
-	}
+	wait.Poll(time.Second, func() bool { return !(h.PluginBusy("alpha")) })
 	if h.PluginBusy("alpha") {
 		t.Fatal("PluginBusy(alpha) = true after physical shutdown returned")
 	}

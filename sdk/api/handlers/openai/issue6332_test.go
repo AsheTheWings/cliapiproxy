@@ -19,6 +19,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	runtimeexecutor "github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	_ "github.com/router-for-me/CLIProxyAPI/v8/internal/translator"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
 	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
@@ -433,10 +434,11 @@ func TestIssue6332NativeGeminiCompletedWithoutEOF(t *testing.T) {
 		t.Fatal("completion not delivered")
 	}
 	// The unsupported executor must retain its EOF lifecycle, not be cancelled by completion.
+	wait.Settled(t, 5*time.Second)
 	select {
 	case <-done:
 		t.Error("native Gemini cancelled before EOF without client cancellation")
-	case <-time.After(100 * time.Millisecond):
+	default:
 	}
 	release <- struct{}{}
 	<-done
