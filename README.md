@@ -171,6 +171,11 @@ Modern Ant Design-based management console for CLIProxyAPI v8+, combining CPAMC-
 - Watcher: [docs/sdk-watcher.md](docs/sdk-watcher.md)
 - Custom Provider Example: `examples/custom-provider`
 
+## Development
+
+- Building: [docs/building.md](docs/building.md)
+- Testing: [docs/testing.md](docs/testing.md)
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
