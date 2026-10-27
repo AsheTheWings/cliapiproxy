@@ -1,3 +1,5 @@
+//go:build unit
+
 package multiagentv2
 
 import (

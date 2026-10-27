@@ -1,3 +1,5 @@
+//go:build component
+
 package auth_test
 
 import (

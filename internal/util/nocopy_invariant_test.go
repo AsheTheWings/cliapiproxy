@@ -1,3 +1,5 @@
+//go:build conformance
+
 package util
 
 import (
