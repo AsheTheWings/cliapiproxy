@@ -15,12 +15,15 @@ import (
 	sdktranslator "github.com/router-for-me/CLIProxyAPI/v8/sdk/translator"
 )
 
+// captureClaudeUsagePlugin keeps the records of one test's upstream. Usage
+// is dispatched asynchronously, so an earlier test's record can arrive late.
 type captureClaudeUsagePlugin struct {
+	baseURL string
 	records chan usage.Record
 }
 
 func (p *captureClaudeUsagePlugin) HandleUsage(_ context.Context, record usage.Record) {
-	if p == nil || record.Provider != "claude" {
+	if p == nil || record.Provider != "claude" || record.BaseURL != p.baseURL {
 		return
 	}
 	select {
@@ -68,6 +71,7 @@ func TestClaudeExecutor_ExecuteStream_Translated_ClientDisconnectAfterTerminalEv
 
 	pluginName := "test-claude-translated-disconnect"
 	plugin := &captureClaudeUsagePlugin{
+		baseURL: server.URL,
 		records: make(chan usage.Record, 4),
 	}
 	usage.RegisterNamedPlugin(pluginName, plugin)
@@ -164,6 +168,7 @@ func TestClaudeExecutor_ExecuteStream_Passthrough_ClientDisconnectAfterTerminalE
 
 	pluginName := "test-claude-passthrough-disconnect"
 	plugin := &captureClaudeUsagePlugin{
+		baseURL: server.URL,
 		records: make(chan usage.Record, 4),
 	}
 	usage.RegisterNamedPlugin(pluginName, plugin)
