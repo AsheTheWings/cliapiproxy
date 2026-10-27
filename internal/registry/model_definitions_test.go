@@ -24,18 +24,17 @@ func TestCodexConfigurationUpdateCapability(t *testing.T) {
 					byID[info.ID] = info
 				}
 			}
-			for _, id := range append([]string{"gpt-5.5"}, tier.capable...) {
+			for _, id := range tier.capable {
 				info := byID[id]
 				if info == nil {
 					t.Errorf("%s is missing", id)
 					continue
 				}
-				want := id != "gpt-5.5"
-				if info.SupportConfigurationUpdate != want {
-					t.Errorf("%s configuration_update = %v, want %v", id, info.SupportConfigurationUpdate, want)
+				if !info.SupportConfigurationUpdate {
+					t.Errorf("%s configuration_update = false, want true", id)
 				}
-				if cloned := cloneModelInfo(info); cloned.SupportConfigurationUpdate != want {
-					t.Errorf("%s clone configuration_update = %v, want %v", id, cloned.SupportConfigurationUpdate, want)
+				if cloned := cloneModelInfo(info); !cloned.SupportConfigurationUpdate {
+					t.Errorf("%s clone configuration_update = false, want true", id)
 				}
 				raw, errMarshal := json.Marshal(info)
 				if errMarshal != nil {

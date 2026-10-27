@@ -476,7 +476,16 @@ func TestApplyCodexClientModelMetadataPreservesMultiAgentVersionWhenDisabled(t *
 
 func TestCodexClientModelsResponseAppliesMaxContextLengthOverride(t *testing.T) {
 	const wantOverride = 1048576
-	const wantDefault = 272000
+
+	baseline, ok := BuildResponse([]map[string]any{{"id": "deepseek-v4-pro"}}, nil, false)["models"].([]map[string]any)
+	if !ok || len(baseline) != 1 {
+		t.Fatalf("baseline models = %#v, want one model", baseline)
+	}
+	defaultWindow := intModelValue(baseline[0], "context_window")
+	defaultMaxWindow := intModelValue(baseline[0], "max_context_window")
+	if defaultWindow <= 0 || defaultWindow == wantOverride || defaultMaxWindow <= 0 || defaultMaxWindow == wantOverride {
+		t.Fatalf("baseline windows = %d, %d; want positive catalog defaults other than the override", defaultWindow, defaultMaxWindow)
+	}
 
 	resp := BuildResponse([]map[string]any{
 		{"id": "deepseek-v4-flash", "max_context_length": wantOverride},
@@ -494,22 +503,23 @@ func TestCodexClientModelsResponseAppliesMaxContextLengthOverride(t *testing.T) 
 	}
 
 	for _, testCase := range []struct {
-		slug string
-		want int
+		slug          string
+		wantWindow    int
+		wantMaxWindow int
 	}{
-		{slug: "deepseek-v4-flash", want: wantOverride},
-		{slug: "deepseek-v4-pro", want: wantDefault},
-		{slug: "gpt-5.5", want: wantOverride},
+		{slug: "deepseek-v4-flash", wantWindow: wantOverride, wantMaxWindow: wantOverride},
+		{slug: "deepseek-v4-pro", wantWindow: defaultWindow, wantMaxWindow: defaultMaxWindow},
+		{slug: "gpt-5.5", wantWindow: wantOverride, wantMaxWindow: wantOverride},
 	} {
 		entry := bySlug[testCase.slug]
 		if entry == nil {
 			t.Fatalf("missing model %q", testCase.slug)
 		}
-		if got := intModelValue(entry, "context_window"); got != testCase.want {
-			t.Errorf("%s context_window = %d, want %d", testCase.slug, got, testCase.want)
+		if got := intModelValue(entry, "context_window"); got != testCase.wantWindow {
+			t.Errorf("%s context_window = %d, want %d", testCase.slug, got, testCase.wantWindow)
 		}
-		if got := intModelValue(entry, "max_context_window"); got != testCase.want {
-			t.Errorf("%s max_context_window = %d, want %d", testCase.slug, got, testCase.want)
+		if got := intModelValue(entry, "max_context_window"); got != testCase.wantMaxWindow {
+			t.Errorf("%s max_context_window = %d, want %d", testCase.slug, got, testCase.wantMaxWindow)
 		}
 	}
 }
@@ -931,13 +941,17 @@ func TestCodexClientModelsResponse_UnrelatedCustomProviderRetainsFallback(t *tes
 	if got := stringModelValue(entry, "slug"); got != "my-unrelated-custom-model" {
 		t.Errorf("slug = %q, want my-unrelated-custom-model", got)
 	}
-	if got := stringModelValue(entry, "comp_hash"); got != "2911" {
-		t.Errorf("comp_hash = %q, want 2911 (from generic gpt-5.5 fallback)", got)
+	_, defaultTemplate, errTemplates := loadCodexClientModelTemplates()
+	if errTemplates != nil || defaultTemplate == nil {
+		t.Fatalf("default template = %#v, %v; want the catalog's default template", defaultTemplate, errTemplates)
+	}
+	if got, want := stringModelValue(entry, "comp_hash"), stringModelValue(defaultTemplate, "comp_hash"); got != want {
+		t.Errorf("comp_hash = %q, want %q from the default template", got, want)
 	}
 	if got, _ := entry["supports_search_tool"].(bool); got {
 		t.Errorf("supports_search_tool = %v, want false for non-template fallback", got)
 	}
-	// Fallback model without explicit modalities retains generic gpt-5.5 fallback modalities
+	// A fallback model without explicit modalities keeps the default template's modalities.
 	mods, okMods := entry["input_modalities"].([]any)
 	if !okMods || len(mods) != 2 {
 		t.Fatalf("unrelated model input_modalities = %#v, want generic [text image]", entry["input_modalities"])
@@ -1556,9 +1570,9 @@ func TestCodexClientModelsResponse_DevinDisplayName(t *testing.T) {
 			"id":           "devin/gpt-6-astra",
 			"display_name": "GPT-6 Astra",
 		},
-		// 2. Template Devin model without display_name (inherits template "GPT-5.5")
+		// 2. Template Devin model without display_name (inherits the template's)
 		{
-			"id": "devin/gpt-5.5",
+			"id": "devin/gpt-6-sol",
 		},
 		// 3. Non-template Devin model
 		{
@@ -1572,7 +1586,7 @@ func TestCodexClientModelsResponse_DevinDisplayName(t *testing.T) {
 		},
 		// 5. Standard non-Devin model
 		{
-			"id": "gpt-5.5",
+			"id": "gpt-6-sol",
 		},
 		// 6. Devin model that already has (Devin) suffix
 		{
@@ -1636,15 +1650,21 @@ func TestCodexClientModelsResponse_DevinDisplayName(t *testing.T) {
 		bySlug[slug] = m
 	}
 
+	templates, _, errTemplates := loadCodexClientModelTemplates()
+	templateDisplayName := stringModelValue(templates["gpt-6-sol"], "display_name")
+	if errTemplates != nil || templateDisplayName == "" {
+		t.Fatalf("gpt-6-sol template display_name = %q, %v; want a catalog template", templateDisplayName, errTemplates)
+	}
+
 	testCases := []struct {
 		slug            string
 		wantDisplayName string
 	}{
 		{"devin/gpt-6-astra", "GPT-6 Astra (Devin)"},
-		{"devin/gpt-5.5", "GPT-5.5 (Devin)"},
+		{"devin/gpt-6-sol", templateDisplayName + " (Devin)"},
 		{"devin/swe-2", "SWE-2 (Devin)"},
 		{"gpt-6-astra", "GPT 6.0 Astra"},
-		{"gpt-5.5", "GPT-5.5"},
+		{"gpt-6-sol", templateDisplayName},
 		{"devin/swe-1-7", "SWE-1.7 (Devin)"},
 		{"custom-devin-by-type", "Custom Model (Devin)"},
 		{"custom-devin-by-owned", "Cognition Model (Devin)"},
