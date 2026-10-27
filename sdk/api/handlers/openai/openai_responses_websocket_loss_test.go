@@ -18,6 +18,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	runtimeexecutor "github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	sdkaccess "github.com/router-for-me/CLIProxyAPI/v8/sdk/access"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
@@ -245,6 +246,8 @@ func TestResponsesWebsocketIdleUpstreamEOFIsSilent(t *testing.T) {
 	f.create("")
 	f.awaitCompleted()
 	<-closed
+	// Let the proxy read the EOF; a continuation written first meets a lost socket.
+	wait.Settled(t, 5*time.Second)
 	// A read deadline would break the client conn for good, so silence is checked in order:
 	// awaitCompleted fails on any error frame, and a loss frame would precede the completion.
 	// The idle socket is gone: a continuation cannot resume it.

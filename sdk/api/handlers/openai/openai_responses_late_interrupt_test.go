@@ -15,6 +15,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	runtimeexecutor "github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	"github.com/tidwall/gjson"
@@ -143,6 +144,9 @@ func TestResponsesLateInterruptDoesNotPoisonNextCreate(t *testing.T) {
 	send(fmt.Sprintf(`{"type":"response.create","model":%q,"input":[]}`, model))
 	expect("response.created", "r1")
 	expect("response.completed", "r1")
+	// The completion reaches the client before the executor retires r1; an
+	// interrupt sent earlier is still forwarded to the active upstream.
+	wait.Settled(t, 5*time.Second)
 	send(`{"type":"response.interrupt","response_id":"unknown"}`)
 	expect("error", "")
 	send(`{"type":"response.interrupt","response_id":"r1","mode":"discard_partial_items"}`)
