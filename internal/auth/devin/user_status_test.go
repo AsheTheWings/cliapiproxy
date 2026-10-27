@@ -2,12 +2,8 @@ package devin
 
 import (
 	"context"
-	"crypto/tls"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
-	"os"
 	"testing"
 	"time"
 
@@ -189,61 +185,5 @@ func TestFetchUserStatusLiveMock(t *testing.T) {
 	}
 	if status.DailyQuotaRemainingPercent != 100 {
 		t.Errorf("expected daily quota 100, got %d", status.DailyQuotaRemainingPercent)
-	}
-}
-
-func TestLiveDevinUserStatus(t *testing.T) {
-	if os.Getenv("CPA_LIVE_TEST") != "true" {
-		t.Skip("skipping live test; set CPA_LIVE_TEST=true to run")
-	}
-	authPath := "../../../auths/devin-cli.json"
-	data, err := os.ReadFile(authPath)
-	if err != nil {
-		t.Skip("auths/devin-cli.json not found, skipping live probe")
-	}
-
-	var authJSON struct {
-		APIKey string `json:"api_key"`
-	}
-	if err := json.Unmarshal(data, &authJSON); err != nil || authJSON.APIKey == "" {
-		t.Skip("invalid auths/devin-cli.json, skipping")
-	}
-
-	// Route through local mitmproxy / direct
-	proxyURL, _ := url.Parse("http://127.0.0.1:28082")
-	transport := &http.Transport{
-		Proxy: http.ProxyURL(proxyURL),
-		TLSClientConfig: &tls.Config{
-			InsecureSkipVerify: true,
-		},
-	}
-	client := &http.Client{
-		Transport: transport,
-		Timeout:   15 * time.Second,
-	}
-
-	svc := NewDevinAuthService(client)
-	status, err := svc.FetchUserStatus(context.Background(), authJSON.APIKey, "")
-	if err != nil {
-		t.Skipf("Live FetchUserStatus skipped (network or proxy unreachable): %v", err)
-	}
-
-	t.Logf("Live Devin User Status:")
-	t.Logf("  Email: %s", status.Email)
-	t.Logf("  UserName: %s", status.UserName)
-	t.Logf("  UserID: %s", status.UserID)
-	t.Logf("  TeamID: %s", status.TeamID)
-	t.Logf("  OrgID: %s", status.OrgID)
-	t.Logf("  OrgName: %s", status.OrgName)
-	t.Logf("  Plan: %s", status.Plan)
-	t.Logf("  Daily Quota: %d%% (Resets at %v)", status.DailyQuotaRemainingPercent, status.DailyQuotaResetAt)
-	t.Logf("  Weekly Quota: %d%% (Resets at %v)", status.WeeklyQuotaRemainingPercent, status.WeeklyQuotaResetAt)
-	t.Logf("  Plan Period: %v -> %v", status.PlanStart, status.PlanEnd)
-
-	if status.Plan != "Pro" {
-		t.Errorf("expected plan Pro, got %s", status.Plan)
-	}
-	if status.Email == "" {
-		t.Error("expected non-empty email")
 	}
 }
