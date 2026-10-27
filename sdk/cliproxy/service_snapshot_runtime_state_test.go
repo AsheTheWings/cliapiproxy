@@ -100,6 +100,7 @@ func TestHandleAuthUpdatesDiscardedSnapshotTriggersWatcherReread(t *testing.T) {
 
 	id := "acct.json"
 	path := filepath.Join(dir, id)
+	t.Cleanup(func() { GlobalModelRegistry().UnregisterClient(id) })
 	initial := `{"type":"codex","email":"a@b.c","prefix":"pfx-0"}`
 	edit := `{"type":"codex","email":"a@b.c","prefix":"pfx-1"}`
 	synthesize := func(raw string) *coreauth.Auth {

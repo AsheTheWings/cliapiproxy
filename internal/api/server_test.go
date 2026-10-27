@@ -1605,6 +1605,7 @@ func TestManagementResponseExposesPluginSupportHeaderForCORS(t *testing.T) {
 }
 
 func TestOAuthCallbackRouteSkipsManagementKeyMiddleware(t *testing.T) {
+	t.Cleanup(managementHandlers.ReplaceOAuthSessionsForTest())
 	t.Setenv("MANAGEMENT_PASSWORD", "test-management-key")
 
 	server := newTestServer(t)

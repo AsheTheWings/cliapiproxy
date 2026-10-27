@@ -33,6 +33,7 @@ func resetAntigravityCreditsRetryState() {
 	antigravityShortCooldownByAuth.Clear()
 	antigravityCreditsBalanceByAuth.Clear()
 	antigravityCreditsHintRefreshByID.Clear()
+	cliproxyauth.ResetAntigravityCreditsHintsForTest()
 }
 
 type closeSignalReadCloser struct {
