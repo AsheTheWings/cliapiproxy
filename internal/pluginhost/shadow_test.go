@@ -1,4 +1,4 @@
-//go:build windows || (cgo && (linux || darwin || freebsd))
+//go:build (windows || (cgo && (linux || darwin || freebsd))) && integration
 
 package pluginhost
 

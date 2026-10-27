@@ -1,3 +1,5 @@
+//go:build component
+
 package cache_test
 
 import (
