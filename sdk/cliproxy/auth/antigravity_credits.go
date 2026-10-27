@@ -48,6 +48,12 @@ func IsAntigravityCreditsHintFresh(hint AntigravityCreditsHint, now time.Time) b
 
 var antigravityCreditsHintByAuth sync.Map
 
+// ResetAntigravityCreditsHintsForTest forgets every process-local credits
+// hint, so a test that records hints leaves none for later tests.
+func ResetAntigravityCreditsHintsForTest() {
+	antigravityCreditsHintByAuth.Clear()
+}
+
 // SetAntigravityCreditsHint updates the latest known AI credits state for an auth.
 func SetAntigravityCreditsHint(authID string, hint AntigravityCreditsHint) {
 	authID = strings.TrimSpace(authID)

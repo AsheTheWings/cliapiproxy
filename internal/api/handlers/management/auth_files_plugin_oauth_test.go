@@ -294,6 +294,7 @@ func (p *testAuthProvider) RefreshAuth(context.Context, pluginapi.AuthRefreshReq
 }
 
 func TestServePluginAuthURLPassesQueryParamsAsMetadata(t *testing.T) {
+	t.Cleanup(ReplaceOAuthSessionsForTest())
 	host := pluginhost.New()
 	var capturedReq pluginapi.AuthLoginStartRequest
 	callCount := 0

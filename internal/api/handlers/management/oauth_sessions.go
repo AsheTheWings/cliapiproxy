@@ -391,6 +391,16 @@ func cloneOAuthSessionMetadata(in map[string]any) map[string]any {
 
 var oauthSessions = newOAuthSessionStore(oauthSessionTTL)
 
+// ReplaceOAuthSessionsForTest installs an empty OAuth session store and
+// returns a function that restores the previous one, so a test that starts
+// sessions with fixed states leaves no session or completed state behind.
+// Tests that call it must not run in parallel with other OAuth session users.
+func ReplaceOAuthSessionsForTest() (restore func()) {
+	previous := oauthSessions
+	oauthSessions = newOAuthSessionStore(oauthSessionTTL)
+	return func() { oauthSessions = previous }
+}
+
 func RegisterOAuthSession(state, provider string) { oauthSessions.Register(state, provider) }
 
 func RegisterOAuthSessionWithProxy(state, provider, proxyURL string) {
