@@ -72,7 +72,10 @@ A group has a `name` of lowercase letters, digits, and hyphens, and may set
 `base-url` and at least one model, because the server offers only the models
 such a group lists. A model has a `name` and may set `alias`,
 `display-name`, `max-context-length`, `thinking.levels`, and, for
-OpenAI-compatible groups, `input-modalities`:
+OpenAI-compatible groups, `input-modalities`. A Meta group without models
+offers the built-in Meta catalog; one with models offers only those it lists.
+A listed Meta model takes every property it does not set from its catalog
+entry:
 
 ```yaml
 api-keys:

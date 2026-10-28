@@ -936,12 +936,58 @@ func buildConfigModels[T modelEntry](models []T, ownedBy, modelType, metadataCha
 		if resolved := modelconfig.ResolveModelInfo(name, modelType, model.GetThinking()); resolved.Thinking != nil {
 			info.Thinking = resolved.Thinking
 		}
-		if staticInfo := registry.LookupStaticModelInfoByChannel(name, metadataChannel); staticInfo != nil && staticInfo.NativeCapabilities != nil {
-			info.NativeCapabilities = cloneModelInfoForCatalogRoute(staticInfo).NativeCapabilities
+		if staticInfo := registry.LookupStaticModelInfoByChannel(name, metadataChannel); staticInfo != nil {
+			inheritCatalogModelInfo(info, staticInfo, strings.TrimSpace(model.GetDisplayName()) == "")
 		}
 		out = append(out, info)
 	}
 	return out
+}
+
+// inheritCatalogModelInfo fills the metadata a configured model leaves unset
+// from the built-in catalog entry of the same upstream model, so listing a
+// catalog model in a group selects it without dropping its properties.
+func inheritCatalogModelInfo(info, catalog *ModelInfo, inheritDisplayName bool) {
+	catalogRoute := cloneModelInfoForCatalogRoute(catalog)
+	if catalogRoute.NativeCapabilities != nil {
+		info.NativeCapabilities = catalogRoute.NativeCapabilities
+	}
+	if inheritDisplayName && catalog.DisplayName != "" {
+		info.DisplayName = catalog.DisplayName
+	}
+	if info.Description == "" {
+		info.Description = catalog.Description
+	}
+	if info.Version == "" {
+		info.Version = catalog.Version
+	}
+	if info.ContextLength == 0 {
+		info.ContextLength = catalog.ContextLength
+	}
+	if info.InputTokenLimit == 0 {
+		info.InputTokenLimit = catalog.InputTokenLimit
+	}
+	if info.OutputTokenLimit == 0 {
+		info.OutputTokenLimit = catalog.OutputTokenLimit
+	}
+	if info.MaxCompletionTokens == 0 {
+		info.MaxCompletionTokens = catalog.MaxCompletionTokens
+	}
+	if len(info.SupportedGenerationMethods) == 0 {
+		info.SupportedGenerationMethods = catalogRoute.SupportedGenerationMethods
+	}
+	if len(info.SupportedParameters) == 0 {
+		info.SupportedParameters = catalogRoute.SupportedParameters
+	}
+	if len(info.SupportedInputModalities) == 0 {
+		info.SupportedInputModalities = catalogRoute.SupportedInputModalities
+	}
+	if len(info.SupportedOutputModalities) == 0 {
+		info.SupportedOutputModalities = catalogRoute.SupportedOutputModalities
+	}
+	if !info.SupportsWebSearch {
+		info.SupportsWebSearch = catalog.SupportsWebSearch
+	}
 }
 
 func buildVertexCompatConfigModels(entry *config.VertexCompatKey) []*ModelInfo {
