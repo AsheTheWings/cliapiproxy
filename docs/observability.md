@@ -12,8 +12,8 @@ list.
 
 `OTEL_TRACES_EXPORTER`, `OTEL_METRICS_EXPORTER`, and `OTEL_LOGS_EXPORTER` each
 select `otlp`, `console`, or `none`. The OTLP exporters send OTLP/HTTP to the
-signal paths under `OTEL_EXPORTER_OTLP_ENDPOINT`, with the headers of the
-protected `telemetry.otlp-headers` input. Export is batched with bounded
+signal paths under `OTEL_EXPORTER_OTLP_ENDPOINT`, with the headers the
+protected file's `OTEL_EXPORTER_OTLP_HEADERS` line holds. Export is batched with bounded
 queues and a 10-second timeout, and the server flushes on shutdown; a failed
 export is dropped, never written elsewhere. [Configuration](configuration.md)
 explains where these inputs come from.

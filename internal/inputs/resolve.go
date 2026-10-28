@@ -7,6 +7,7 @@ import (
 	"io"
 	"io/fs"
 	"os"
+	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -218,6 +219,10 @@ func (f *flagValue) Set(text string) error {
 
 func (f *flagValue) IsBoolFlag() bool { return f.in.Shape.Type == TypeBoolean }
 
+// protectedLine is one line of the protected file: a secret name and its
+// single-quoted value, which holds no quote or line break.
+var protectedLine = regexp.MustCompile(`^([A-Z][A-Z0-9_]*)='([^'\r\n]*)'$`)
+
 // readFile reads one overlay or protected file. An absent file is an absent
 // layer; an unreadable, malformed, or unprotected file is a problem.
 func (r *resolver) readFile(files Files, path string, class Class) {
@@ -233,6 +238,10 @@ func (r *resolver) readFile(files Files, path string, class Class) {
 		r.problem("%s: protected file must be accessible by its owner alone", path)
 		return
 	}
+	if class == Protected {
+		r.readProtected(path, string(data))
+		return
+	}
 	var doc yaml.Node
 	if errParse := yaml.Unmarshal(data, &doc); errParse != nil {
 		r.problem("%s: malformed YAML", path)
@@ -246,10 +255,53 @@ func (r *resolver) readFile(files Files, path string, class Class) {
 		r.problem("%s: want a mapping of input keys", path)
 		return
 	}
-	r.walk(path, class, "", root)
+	r.walk(path, "", root)
 }
 
-func (r *resolver) walk(path string, class Class, prefix string, node *yaml.Node) {
+// readProtected reads the protected file's NAME='value' lines; blank lines
+// and lines starting with # are ignored. Problems name lines, never values.
+func (r *resolver) readProtected(path, text string) {
+	seen := map[string]bool{}
+	for i, line := range strings.Split(text, "\n") {
+		if strings.TrimSpace(line) == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		match := protectedLine.FindStringSubmatch(line)
+		if match == nil {
+			r.problem("%s: line %d is not NAME='value'", path, i+1)
+			continue
+		}
+		name, text := match[1], match[2]
+		in, declared := r.secretInput(name)
+		switch {
+		case !declared:
+			r.problem("%s: %s is not a protected input", path, name)
+		case seen[name]:
+			r.problem("%s: %s is set twice", path, name)
+		case !in.AppliesTo(r.profile):
+			r.problem("%s: %s does not apply to profile %s", path, name, r.profile)
+		default:
+			seen[name] = true
+			v, errValue := in.Shape.fromText(text)
+			if errValue != nil {
+				r.problem("%s: %s: %v", path, name, errValue)
+				continue
+			}
+			r.files[in.Name] = v
+		}
+	}
+}
+
+func (r *resolver) secretInput(name string) (Input, bool) {
+	for _, in := range r.schema.Inputs {
+		if in.Secret == name {
+			return in, true
+		}
+	}
+	return Input{}, false
+}
+
+func (r *resolver) walk(path string, prefix string, node *yaml.Node) {
 	for i := 0; i+1 < len(node.Content); i += 2 {
 		key := node.Content[i].Value
 		if prefix != "" {
@@ -258,12 +310,12 @@ func (r *resolver) walk(path string, class Class, prefix string, node *yaml.Node
 		child := node.Content[i+1]
 		in, declared := r.keyInput(key)
 		switch {
+		case declared && in.Class == Protected:
+			r.problem("%s: %s is a protected input and belongs in the protected file as %s", path, key, in.Secret)
 		case declared:
 			switch {
 			case !in.AppliesTo(r.profile):
 				r.problem("%s: %s does not apply to profile %s", path, key, r.profile)
-			case in.Class != class:
-				r.problem("%s: %s is a %s input and belongs in the %s", path, key, in.Class, layerName(in.Class))
 			default:
 				v, errValue := in.Shape.fromYAML(child)
 				if errValue != nil {
@@ -273,18 +325,11 @@ func (r *resolver) walk(path string, class Class, prefix string, node *yaml.Node
 				r.files[in.Name] = v
 			}
 		case child.Kind == yaml.MappingNode && r.keyPrefix(key):
-			r.walk(path, class, key, child)
+			r.walk(path, key, child)
 		default:
 			r.problem("%s: %s is not an input", path, key)
 		}
 	}
-}
-
-func layerName(class Class) string {
-	if class == Protected {
-		return "protected file"
-	}
-	return "overlay files"
 }
 
 func (r *resolver) keyInput(key string) (Input, bool) {

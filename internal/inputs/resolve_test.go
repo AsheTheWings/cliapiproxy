@@ -31,7 +31,7 @@ func (m memFiles) ReadFile(name string) ([]byte, fs.FileMode, error) {
 	return []byte(f.data), f.mode, nil
 }
 
-const protectedPath = "/run/cliapiproxy/protected.yaml"
+const protectedPath = "/run/cliapiproxy/protected.env"
 
 func mustSchema(t *testing.T) *Schema {
 	t.Helper()
@@ -48,7 +48,7 @@ func production(env ...string) []string {
 }
 
 func validProtected() memFile {
-	return memFile{data: "access:\n  api-keys: [client-key-1]\n", mode: 0o600}
+	return memFile{data: "# client keys\nCLIPROXY_API_KEYS='client-key-1'\n\n", mode: 0o600}
 }
 
 func problems(t *testing.T, err error) []string {
@@ -133,7 +133,7 @@ func TestProcessInputOverridesDefault(t *testing.T) {
 }
 
 func TestDevelopmentDefaultsDeriveFromXDG(t *testing.T) {
-	files := memFiles{"/run/user/1/cliapiproxy/protected.yaml": validProtected()}
+	files := memFiles{"/run/user/1/cliapiproxy/protected.env": validProtected()}
 	eff, err := Resolve(mustSchema(t), Process{Environ: []string{"CLIPROXY_PROFILE=development", "HOME=/home/u/", "XDG_RUNTIME_DIR=/run/user/1"}}, files)
 	if err != nil {
 		t.Fatal(err)
@@ -169,26 +169,27 @@ func TestInputsNotInTheProfileAreIgnored(t *testing.T) {
 
 func TestFileLayersKeepTheirClass(t *testing.T) {
 	files := memFiles{
-		protectedPath: {data: "access: {api-keys: [k]}\nserver: {port: 9000}\n", mode: 0o600},
+		protectedPath: {data: "CLIPROXY_API_KEYS='k'\nCLIPROXY_PROFILE='production'\nCLIPROXY_API_KEYS='k2'\n", mode: 0o600},
 		"/etc/a.yaml": {data: "requests: {proxy-url: http://user:pass@proxy}\nserver: {porrt: 1}\nunknown: 1\n"},
 	}
 	_, err := Resolve(mustSchema(t), Process{Environ: production("CLIPROXY_OVERLAY_FILES=/etc/a.yaml")}, files)
-	wantProblem(t, err, protectedPath+": server.port is a configuration input and belongs in the overlay files")
-	wantProblem(t, err, "/etc/a.yaml: requests.proxy-url is a protected input and belongs in the protected file")
+	wantProblem(t, err, protectedPath+": CLIPROXY_PROFILE is not a protected input")
+	wantProblem(t, err, protectedPath+": CLIPROXY_API_KEYS is set twice")
+	wantProblem(t, err, "/etc/a.yaml: requests.proxy-url is a protected input and belongs in the protected file as CLIPROXY_PROXY_URL")
 	wantProblem(t, err, "/etc/a.yaml: server.porrt is not an input")
 	wantProblem(t, err, "/etc/a.yaml: unknown is not an input")
 }
 
 func TestFileValuesMustHaveTheirShape(t *testing.T) {
 	files := memFiles{
-		protectedPath: {data: "access: {api-keys: secret-value-1}\n", mode: 0o600},
+		protectedPath: {data: "CLIPROXY_API_KEYS='secret-value-1,'\n", mode: 0o600},
 		"/etc/a.yaml": {data: "server: {port: \"9000\"}\nrouting: {strategy: random, retry: {request-retry: 11}}\n"},
 	}
 	_, err := Resolve(mustSchema(t), Process{Environ: production("CLIPROXY_OVERLAY_FILES=/etc/a.yaml")}, files)
 	wantProblem(t, err, "server.port: want an integer")
 	wantProblem(t, err, "routing.strategy: want one of")
 	wantProblem(t, err, "routing.retry.request-retry: want at most 10")
-	wantProblem(t, err, "access.api-keys: want a list")
+	wantProblem(t, err, "access.api-keys: want items of at least 1 characters")
 	if strings.Contains(err.Error(), "secret-value-1") {
 		t.Fatal("an error printed a protected value")
 	}
@@ -196,13 +197,15 @@ func TestFileValuesMustHaveTheirShape(t *testing.T) {
 
 func TestPresentLayersFailClosed(t *testing.T) {
 	cases := map[string]memFiles{
-		"accessible by its owner alone": {protectedPath: {data: "access: {api-keys: [k]}\n", mode: 0o640}},
+		"accessible by its owner alone": {protectedPath: {data: "CLIPROXY_API_KEYS='k'\n", mode: 0o640}},
 		"unreadable":                    {protectedPath: {err: fs.ErrPermission}},
-		"malformed YAML":                {protectedPath: {data: "access: [\n", mode: 0o600}},
-		"want a mapping of input keys":  {protectedPath: {data: "- k\n", mode: 0o600}},
+		"line 1 is not NAME='value'":    {protectedPath: {data: "CLIPROXY_API_KEYS=k\n", mode: 0o600}},
+		"line 2 is not NAME='value'":    {protectedPath: {data: "\naccess: {api-keys: [k]}\n", mode: 0o600}},
+		"malformed YAML":                {"/etc/a.yaml": {data: "server: [\n"}},
+		"want a mapping of input keys":  {"/etc/a.yaml": {data: "- k\n"}},
 	}
 	for want, files := range cases {
-		_, err := Resolve(mustSchema(t), Process{Environ: production()}, files)
+		_, err := Resolve(mustSchema(t), Process{Environ: production("CLIPROXY_OVERLAY_FILES=/etc/a.yaml")}, files)
 		wantProblem(t, err, want)
 	}
 }
@@ -246,7 +249,10 @@ func TestSchemaRejectsMalformedDeclarations(t *testing.T) {
 	for want, extra := range map[string]string{
 		"declared twice":                         `{"name": "CLIPROXY_PROFILE", "env": "X", "class": "configuration", "description": "d", "shape": {"type": "string"}, "defaults": {}}`,
 		"must come from the protected file":      `{"name": "S", "env": "S", "class": "protected", "description": "d", "shape": {"type": "string"}, "defaults": {}}`,
-		"may default only to empty":              `{"name": "k", "key": "a.k", "class": "protected", "description": "d", "shape": {"type": "string"}, "defaults": {"production": "secret"}}`,
+		"declare its key and secret name":        `{"name": "k", "key": "a.k", "class": "protected", "description": "d", "shape": {"type": "string"}, "defaults": {}}`,
+		"only protected inputs have a secret":    `{"name": "k", "key": "a.k", "secret": "K", "class": "configuration", "description": "d", "shape": {"type": "string"}, "defaults": {}}`,
+		"share the secret name":                  `{"name": "k", "key": "a.k", "secret": "CLIPROXY_PROFILE", "class": "protected", "description": "d", "shape": {"type": "string"}, "defaults": {}}, {"name": "j", "key": "a.j", "secret": "CLIPROXY_PROFILE", "class": "protected", "description": "d", "shape": {"type": "string"}, "defaults": {}}`,
+		"may default only to empty":              `{"name": "k", "key": "a.k", "secret": "K", "class": "protected", "description": "d", "shape": {"type": "string"}, "defaults": {"production": "secret"}}`,
 		"exactly one of env, flag, and key":      `{"name": "k", "key": "a.k", "flag": "k", "class": "configuration", "description": "d", "shape": {"type": "string"}, "defaults": {}}`,
 		"does not apply to":                      `{"name": "k", "key": "a.k", "class": "configuration", "description": "d", "shape": {"type": "string"}, "profiles": ["development"], "defaults": {"production": ""}}`,
 		"want an integer":                        `{"name": "k", "key": "a.k", "class": "configuration", "description": "d", "shape": {"type": "integer"}, "defaults": {"production": "1"}}`,
