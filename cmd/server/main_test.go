@@ -27,6 +27,7 @@ const overlay = `server: {host: 0.0.0.0, port: 9100}
 oauth: {auth-dir: /var/lib/cliapiproxy/auths}
 routing:
   strategy: fill-first
+  force-model-prefix: true
   retry: {request-retry: 5, max-retry-interval: 90}
 client:
   codex: {enable-apply-patch: true, optimize-multi-agent-v2: true}
@@ -75,6 +76,7 @@ func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
 		"access.api-keys":                      cfg.APIKeys,
 		"requests.proxy-url":                   cfg.ProxyURL,
 		"routing.strategy":                     cfg.Routing.Strategy,
+		"routing.force-model-prefix":           cfg.ForceModelPrefix,
 		"routing.retry.request-retry":          cfg.RequestRetry,
 		"routing.retry.max-retry-interval":     cfg.MaxRetryInterval,
 		"client.codex.enable-apply-patch":      cfg.Client.Codex.EnableApplyPatch,
@@ -89,6 +91,7 @@ func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
 		"access.api-keys":                      []string{"client-key-a", "client-key-b"},
 		"requests.proxy-url":                   "http://proxy.invalid:3128",
 		"routing.strategy":                     "fill-first",
+		"routing.force-model-prefix":           true,
 		"routing.retry.request-retry":          5,
 		"routing.retry.max-retry-interval":     90,
 		"client.codex.enable-apply-patch":      true,

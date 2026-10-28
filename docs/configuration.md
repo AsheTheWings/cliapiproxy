@@ -103,6 +103,17 @@ field outside this list. A key of a group the overlay does not declare is
 unused, so keys can be delivered before the overlay that declares their
 group.
 
+## Model prefixes
+
+A group's `prefix`, or the `prefix` field of an OAuth credential file,
+publishes each of its models a second time as `<prefix>/<model>`, and a
+request for that name uses only the credentials with that prefix. An
+unprefixed name is shared by every credential serving the model, whatever
+its provider. With `routing.force-model-prefix` set, a prefixed
+credential's models are published and routed only under their prefixed
+names, so giving every credential a prefix makes each published model
+name select exactly one provider.
+
 ## During a run
 
 Once its inputs are resolved, the server clears its environment, so no part of
