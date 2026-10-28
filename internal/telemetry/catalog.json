@@ -6,7 +6,12 @@
      "attributes": ["http.request.method", "http.route", "http.response.status_code", "error.type"]},
     {"name": "cliapiproxy.execute", "kind": "internal",
      "description": "One model execution across its credential attempts; a stream's span ends once it opens.",
-     "attributes": ["cliapiproxy.operation", "cliapiproxy.provider", "error.type"]}
+     "attributes": ["cliapiproxy.operation", "cliapiproxy.provider", "error.type"]},
+    {"name": "cliapiproxy.codex.client_models", "kind": "internal",
+     "description": "One Codex client catalog build.",
+     "attributes": ["cliapiproxy.codex.optimize_multi_agent_v2", "cliapiproxy.codex.template_models",
+                    "cliapiproxy.codex.synthesized_models", "cliapiproxy.codex.synthesized_multi_agent_v2",
+                    "cliapiproxy.codex.fallback_template"]}
   ],
   "metrics": [
     {"name": "http.server.request.duration", "kind": "histogram", "unit": "s",

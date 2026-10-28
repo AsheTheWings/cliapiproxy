@@ -27,6 +27,9 @@ and `deployment.environment.name` from `CLIPROXY_DEPLOYMENT_ENVIRONMENT`.
   forward trace context to upstream providers.
 - Each model execution is a span across its credential attempts, with the
   operation, the provider, and a stable error class.
+- Each Codex client catalog build is a span that reports how many models came
+  from their own template, how many were synthesized from the fallback
+  template, and which template that was.
 - Log records at info level and above become LogRecords. Debug records are
   never exported, since they can carry payloads, and every exported message
   and field is scrubbed of authorization values, tokens, API keys, and

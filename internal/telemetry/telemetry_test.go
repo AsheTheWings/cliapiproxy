@@ -132,10 +132,13 @@ func TestCatalogListsEverySignalAttribute(t *testing.T) {
 		t.Fatal("the catalog must carry a version")
 	}
 	execute, _ := catalog.SpanAttributes("cliapiproxy.execute")
+	codex, _ := catalog.SpanAttributes("cliapiproxy.codex.client_models")
 	server, _ := catalog.SpanAttributes("GET /v1/models")
 	for attrs, keys := range map[*[]string][]string{
 		&execute: {string(AttrOperation), string(AttrProvider), string(AttrErrorType)},
-		&server:  {string(AttrHTTPMethod), string(AttrHTTPRoute), string(AttrHTTPStatusCode), string(AttrErrorType)},
+		&codex: {string(AttrCodexOptimizeMultiAgentV2), string(AttrCodexTemplateModels), string(AttrCodexSynthesizedModels),
+			string(AttrCodexSynthesizedMultiAgentV2), string(AttrCodexFallbackTemplate)},
+		&server: {string(AttrHTTPMethod), string(AttrHTTPRoute), string(AttrHTTPStatusCode), string(AttrErrorType)},
 	} {
 		for _, key := range keys {
 			if !slices.Contains(*attrs, key) {
