@@ -3,6 +3,7 @@ package models
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"sort"
 	"strconv"
@@ -10,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/telemetry"
 )
 
 type codexClientModelsPayload struct {
@@ -84,9 +86,16 @@ func BuildResponseForClientWithToolCapabilities(availableModels []map[string]any
 // A nil searchToolProvidersForModel uses providersForModel. A nil
 // toolSearchCapabilityForModel keeps Claude routes from advertising search.
 func BuildResponseForClientWithSearchToolRoutes(availableModels []map[string]any, providersForModel, searchToolProvidersForModel ProvidersForModelFunc, webSearchCapabilityForModel WebSearchCapabilityForModelFunc, applyPatchCapabilityForModel ApplyPatchCapabilityForModelFunc, toolSearchCapabilityForModel ToolSearchCapabilityForModelFunc, optimizeMultiAgentV2 bool, clientVersion string) map[string]any {
-	return map[string]any{
-		"models": buildCodexClientModelsWithToolCapabilities(availableModels, providersForModel, searchToolProvidersForModel, webSearchCapabilityForModel, applyPatchCapabilityForModel, toolSearchCapabilityForModel, optimizeMultiAgentV2, clientVersion),
-	}
+	return BuildResponseForClientWithSearchToolRoutesContext(context.Background(), availableModels, providersForModel, searchToolProvidersForModel, webSearchCapabilityForModel, applyPatchCapabilityForModel, toolSearchCapabilityForModel, optimizeMultiAgentV2, clientVersion)
+}
+
+// BuildResponseForClientWithSearchToolRoutesContext builds the response in a
+// span of ctx's trace that reports how the catalog was assembled.
+func BuildResponseForClientWithSearchToolRoutesContext(ctx context.Context, availableModels []map[string]any, providersForModel, searchToolProvidersForModel ProvidersForModelFunc, webSearchCapabilityForModel WebSearchCapabilityForModelFunc, applyPatchCapabilityForModel ApplyPatchCapabilityForModelFunc, toolSearchCapabilityForModel ToolSearchCapabilityForModelFunc, optimizeMultiAgentV2 bool, clientVersion string) map[string]any {
+	_, span := telemetry.StartCodexClientModels(ctx, optimizeMultiAgentV2)
+	models, report := buildCodexClientModelsReport(availableModels, providersForModel, searchToolProvidersForModel, webSearchCapabilityForModel, applyPatchCapabilityForModel, toolSearchCapabilityForModel, optimizeMultiAgentV2, clientVersion)
+	span.End(report)
+	return map[string]any{"models": models}
 }
 
 // MarshalCompact serializes a Codex client catalog as a single JSON line.
@@ -106,10 +115,17 @@ func buildCodexClientModels(models []map[string]any, providersForModel Providers
 }
 
 func buildCodexClientModelsWithToolCapabilities(models []map[string]any, providersForModel, searchToolProvidersForModel ProvidersForModelFunc, webSearchCapabilityForModel WebSearchCapabilityForModelFunc, applyPatchCapabilityForModel ApplyPatchCapabilityForModelFunc, toolSearchCapabilityForModel ToolSearchCapabilityForModelFunc, optimizeMultiAgentV2 bool, clientVersion string) []map[string]any {
+	result, _ := buildCodexClientModelsReport(models, providersForModel, searchToolProvidersForModel, webSearchCapabilityForModel, applyPatchCapabilityForModel, toolSearchCapabilityForModel, optimizeMultiAgentV2, clientVersion)
+	return result
+}
+
+func buildCodexClientModelsReport(models []map[string]any, providersForModel, searchToolProvidersForModel ProvidersForModelFunc, webSearchCapabilityForModel WebSearchCapabilityForModelFunc, applyPatchCapabilityForModel ApplyPatchCapabilityForModelFunc, toolSearchCapabilityForModel ToolSearchCapabilityForModelFunc, optimizeMultiAgentV2 bool, clientVersion string) ([]map[string]any, telemetry.CodexClientModelsReport) {
+	var report telemetry.CodexClientModelsReport
 	templates, defaultTemplate, errLoadCodexClientModelTemplates := loadCodexClientModelTemplates()
 	if errLoadCodexClientModelTemplates != nil || defaultTemplate == nil {
-		return nil
+		return nil, report
 	}
+	report.FallbackTemplate = stringModelValue(defaultTemplate, "slug")
 	if searchToolProvidersForModel == nil {
 		searchToolProvidersForModel = providersForModel
 	}
@@ -147,6 +163,7 @@ func buildCodexClientModelsWithToolCapabilities(models []map[string]any, provide
 			applyCodexClientDevinDisplayName(entry, id, model, providersForModel)
 			applyCodexClientApplyPatchCapability(entry, id, applyPatchCapabilityForModel)
 			result = append(result, entry)
+			report.TemplateModels++
 			continue
 		}
 
@@ -160,6 +177,10 @@ func buildCodexClientModelsWithToolCapabilities(models []map[string]any, provide
 		applyCodexClientDevinDisplayName(entry, id, model, providersForModel)
 		applyCodexClientApplyPatchCapability(entry, id, applyPatchCapabilityForModel)
 		result = append(result, entry)
+		report.SynthesizedModels++
+		if entry["multi_agent_version"] == "v2" {
+			report.SynthesizedMultiAgentV2++
+		}
 	}
 
 	applyCodexClientNonTemplatePriorities(result, templates)
@@ -168,7 +189,7 @@ func buildCodexClientModelsWithToolCapabilities(models []map[string]any, provide
 		return codexClientModelPriority(result[i]) < codexClientModelPriority(result[j])
 	})
 
-	return result
+	return result, report
 }
 
 func maxCodexClientTemplatePriority(templates map[string]map[string]any) int {
