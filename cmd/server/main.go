@@ -80,7 +80,14 @@ func run() int {
 		_ = providers.Shutdown(ctxShutdown)
 	}()
 	logging.DiscardLocalOutput()
-	telemetry.InstallLogBridge(log.StandardLogger(), providers.Logs, buildinfo.Version)
+	telemetry.InstallLogEvents(log.StandardLogger())
+
+	if plan.telemetryProbe {
+		// The correlation identifier is the command's result; it names the
+		// probe's records at their destination.
+		fmt.Println(telemetry.Probe(context.Background()))
+		return 0
+	}
 
 	redisqueue.SetUsageStatisticsEnabled(cfg.UsageStatisticsEnabled)
 	redisqueue.SetRetentionSeconds(cfg.RedisUsageQueueRetentionSeconds)
@@ -117,11 +124,13 @@ const telemetryShutdownTimeout = 10 * time.Second
 
 // runPlan is what one run does: serve, or run one command and exit.
 type runPlan struct {
-	profile    string
-	cfg        *config.Config
-	telemetry  telemetry.Settings
-	localModel bool
-	command    func(*config.Config)
+	profile   string
+	cfg       *config.Config
+	telemetry telemetry.Settings
+	// telemetryProbe runs the telemetry probe instead of serving.
+	telemetryProbe bool
+	localModel     bool
+	command        func(*config.Config)
 }
 
 func resolveRun(process inputs.Process, files inputs.Files) (*runPlan, error) {
@@ -160,11 +169,21 @@ func resolveRun(process inputs.Process, files inputs.Files) (*runPlan, error) {
 		Logs:           eff.String("OTEL_LOGS_EXPORTER"),
 		Endpoint:       eff.String("OTEL_EXPORTER_OTLP_ENDPOINT"),
 		Headers:        headers,
-		ServiceVersion: buildinfo.Version,
+		ServiceVersion: serviceVersion(),
 		Environment:    eff.String("CLIPROXY_DEPLOYMENT_ENVIRONMENT"),
 		Console:        os.Stdout,
 	}
-	return &runPlan{profile: eff.Profile, cfg: cfg, telemetry: settings, localModel: eff.Bool("local-model"), command: command}, nil
+	return &runPlan{profile: eff.Profile, cfg: cfg, telemetry: settings, telemetryProbe: eff.Bool("telemetry-probe"),
+		localModel: eff.Bool("local-model"), command: command}, nil
+}
+
+// serviceVersion is the build's version with its revision as build metadata,
+// so each build reports a version of its own.
+func serviceVersion() string {
+	if buildinfo.Commit == "" || buildinfo.Commit == "none" {
+		return buildinfo.Version
+	}
+	return buildinfo.Version + "+" + buildinfo.Commit
 }
 
 // selectCommand returns the one command the flags request, or nil to serve.
@@ -206,6 +225,9 @@ func selectCommand(eff *inputs.Effective) (func(*config.Config), error) {
 	if siwcBind := eff.String("siwc-bind"); siwcBind != "" {
 		requested = append(requested, "-siwc-bind")
 		command = func(cfg *config.Config) { cmd.DoSIWCBind(cfg, siwcBind, options) }
+	}
+	if eff.Bool("telemetry-probe") {
+		requested = append(requested, "-telemetry-probe")
 	}
 	if len(requested) > 1 {
 		return nil, fmt.Errorf("choose one command, not %s", strings.Join(requested, ", "))

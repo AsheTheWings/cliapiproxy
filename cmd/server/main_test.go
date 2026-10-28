@@ -127,9 +127,14 @@ func TestCommandsAreExclusive(t *testing.T) {
 	if err != nil || plan.command == nil {
 		t.Fatalf("err = %v; want the login command", err)
 	}
+	plan, err = resolveRun(productionProcess("-telemetry-probe"), testFiles)
+	if err != nil || plan.command != nil || !plan.telemetryProbe {
+		t.Fatalf("plan = %+v, err = %v; want the telemetry probe", plan, err)
+	}
 	for args, want := range map[string][]string{
 		"choose one command, not -codex-login, -xai-login":       {"-codex-login", "-xai-login"},
 		"-vertex-import-prefix applies only with -vertex-import": {"-vertex-import-prefix=p"},
+		"choose one command, not -codex-login, -telemetry-probe": {"-codex-login", "-telemetry-probe"},
 	} {
 		_, err = resolveRun(productionProcess(want...), testFiles)
 		if err == nil || !strings.Contains(err.Error(), args) {

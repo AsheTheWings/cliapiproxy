@@ -1,33 +1,84 @@
 {
-  "version": 1,
-  "spans": [
-    {"name": "{method} {route}", "kind": "server",
-     "description": "One HTTP request, named for its method and route template.",
-     "attributes": ["http.request.method", "http.route", "http.response.status_code", "error.type"]},
-    {"name": "cliapiproxy.execute", "kind": "internal",
-     "description": "One model execution across its credential attempts; a stream's span ends once it opens.",
-     "attributes": ["cliapiproxy.operation", "cliapiproxy.provider", "error.type"]},
-    {"name": "cliapiproxy.codex.client_models", "kind": "internal",
-     "description": "One Codex client catalog build.",
-     "attributes": ["cliapiproxy.codex.optimize_multi_agent_v2", "cliapiproxy.codex.template_models",
-                    "cliapiproxy.codex.synthesized_models", "cliapiproxy.codex.synthesized_multi_agent_v2",
-                    "cliapiproxy.codex.fallback_template"]}
-  ],
-  "metrics": [
-    {"name": "http.server.request.duration", "kind": "histogram", "unit": "s",
-     "description": "Duration of HTTP server requests.",
-     "attributes": ["http.request.method", "http.route", "http.response.status_code", "error.type"]},
-    {"name": "cliapiproxy.execute.duration", "kind": "histogram", "unit": "s",
-     "description": "Duration of model executions across credential attempts.",
-     "attributes": ["cliapiproxy.operation", "cliapiproxy.provider", "error.type"]}
-  ],
-  "attributeValues": {
-    "cliapiproxy.operation": ["execute", "count", "stream"],
-    "error.type": ["canceled", "timeout", "unauthorized", "rate_limited", "client_error", "upstream_error",
-                   "no_credential", "network", "other", "5xx"]
+  "schema_version": "opentelemetry.producer/signal-catalog/v1",
+  "catalog_version": 2,
+  "service_namespace": "cliapiproxy",
+  "service_names": ["cliapiproxy"],
+  "catalog": {
+    "traces": [
+      "cliapiproxy.qualification",
+      "cliapiproxy.execute",
+      "cliapiproxy.codex.client_models"
+    ],
+    "trace_name_patterns": [
+      "^(GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS|CONNECT|TRACE|HTTP)( /[^ ]*)?$"
+    ],
+    "metrics": [
+      "cliapiproxy.qualification",
+      "http.server.request.duration",
+      "cliapiproxy.execute.duration"
+    ],
+    "logs": [
+      "cliapiproxy.qualification",
+      "cliapiproxy.log"
+    ],
+    "correlation_attributes": ["cliapiproxy.correlation.id"]
   },
-  "logs": {
-    "description": "Log records at info level and above, credentials scrubbed; fields become attributes.",
-    "severities": ["INFO", "WARN", "ERROR", "FATAL"]
+  "allowed_attributes": {
+    "traces": [
+      "cliapiproxy.correlation.id",
+      "http.request.method",
+      "http.route",
+      "http.response.status_code",
+      "error.type",
+      "cliapiproxy.operation",
+      "cliapiproxy.provider",
+      "cliapiproxy.codex.optimize_multi_agent_v2",
+      "cliapiproxy.codex.template_models",
+      "cliapiproxy.codex.synthesized_models",
+      "cliapiproxy.codex.synthesized_multi_agent_v2",
+      "cliapiproxy.codex.fallback_template"
+    ],
+    "metrics": [
+      "http.request.method",
+      "http.route",
+      "http.response.status_code",
+      "error.type",
+      "cliapiproxy.operation",
+      "cliapiproxy.provider"
+    ],
+    "logs": [
+      "cliapiproxy.correlation.id",
+      "code.file.path",
+      "code.line.number",
+      "code.function.name",
+      "error.type"
+    ]
+  },
+  "metric_dimensions": {
+    "http.request.method": ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "CONNECT", "TRACE", "_OTHER"],
+    "cliapiproxy.operation": ["execute", "count", "stream"]
+  },
+  "metric_units": {
+    "cliapiproxy.qualification": "{probe}",
+    "http.server.request.duration": "s",
+    "cliapiproxy.execute.duration": "s"
+  },
+  "error_classes": [
+    "canceled",
+    "timeout",
+    "unauthorized",
+    "rate_limited",
+    "client_error",
+    "upstream_error",
+    "no_credential",
+    "network",
+    "other"
+  ],
+  "error_type_patterns": ["^5[0-9][0-9]$"],
+  "qualification": {
+    "trace_name": "cliapiproxy.qualification",
+    "metric_name": "cliapiproxy.qualification",
+    "log_name": "cliapiproxy.qualification",
+    "correlation_attribute": "cliapiproxy.correlation.id"
   }
 }

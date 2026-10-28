@@ -32,7 +32,6 @@ require (
 	github.com/tidwall/gjson v1.18.0
 	github.com/tidwall/sjson v1.2.5
 	github.com/tiktoken-go/tokenizer v0.8.1
-	go.opentelemetry.io/contrib/bridges/otellogrus v0.21.0
 	go.opentelemetry.io/otel v1.47.0
 	go.opentelemetry.io/otel/exporters/otlp/otlplog/otlploghttp v0.23.0
 	go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp v1.47.0

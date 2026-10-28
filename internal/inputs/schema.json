@@ -114,6 +114,9 @@
      "shape": {"type": "string"}, "defaults": {"development": "", "production": ""}},
     {"name": "siwc-bind", "flag": "siwc-bind", "class": "configuration",
      "description": "Bind Sign in with ChatGPT credentials to this Codex credential file and exit.",
-     "shape": {"type": "string"}, "defaults": {"development": "", "production": ""}}
+     "shape": {"type": "string"}, "defaults": {"development": "", "production": ""}},
+    {"name": "telemetry-probe", "flag": "telemetry-probe", "class": "configuration",
+     "description": "Emit the qualification trace, metric, and log record, print their correlation identifier, and exit.",
+     "shape": {"type": "boolean"}, "defaults": {"development": false, "production": false}}
   ]
 }

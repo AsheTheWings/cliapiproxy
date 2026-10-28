@@ -1,16 +1,19 @@
-// Package telemetrytest records a test's spans and metrics in memory and
-// checks them against the signal catalog.
+// Package telemetrytest records a test's spans, metrics, and log records in
+// memory and checks them against the signal catalog.
 package telemetrytest
 
 import (
 	"context"
 	"slices"
+	"sync"
 	"testing"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/telemetry"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/log/global"
 	"go.opentelemetry.io/otel/propagation"
+	sdklog "go.opentelemetry.io/otel/sdk/log"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -21,25 +24,31 @@ import (
 type Recorder struct {
 	spans  *tracetest.SpanRecorder
 	reader *sdkmetric.ManualReader
+	logs   *logRecorder
 }
 
 // Install routes the global providers to memory and the propagator to W3C
 // Trace Context, restoring the previous globals when the test ends.
 func Install(t testing.TB) *Recorder {
 	t.Helper()
-	r := &Recorder{spans: tracetest.NewSpanRecorder(), reader: sdkmetric.NewManualReader()}
+	r := &Recorder{spans: tracetest.NewSpanRecorder(), reader: sdkmetric.NewManualReader(), logs: &logRecorder{}}
 	tp := sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(r.spans))
 	mp := sdkmetric.NewMeterProvider(sdkmetric.WithReader(r.reader))
+	lp := sdklog.NewLoggerProvider(sdklog.WithProcessor(r.logs))
 	previousTracer, previousMeter, previousPropagator := otel.GetTracerProvider(), otel.GetMeterProvider(), otel.GetTextMapPropagator()
+	previousLogger := global.GetLoggerProvider()
 	otel.SetTracerProvider(tp)
 	otel.SetMeterProvider(mp)
 	otel.SetTextMapPropagator(propagation.TraceContext{})
+	global.SetLoggerProvider(lp)
 	t.Cleanup(func() {
 		otel.SetTracerProvider(previousTracer)
 		otel.SetMeterProvider(previousMeter)
 		otel.SetTextMapPropagator(previousPropagator)
+		global.SetLoggerProvider(previousLogger)
 		_ = tp.Shutdown(context.Background())
 		_ = mp.Shutdown(context.Background())
+		_ = lp.Shutdown(context.Background())
 	})
 	return r
 }
@@ -89,45 +98,93 @@ func (r *Recorder) Metrics(t testing.TB) []metricdata.Metrics {
 	return out
 }
 
-// CheckCatalog fails the test for any recorded span, metric, attribute, or
-// bounded attribute value the signal catalog does not list.
+// Logs returns the log records emitted so far.
+func (r *Recorder) Logs() []sdklog.Record {
+	r.logs.mu.Lock()
+	defer r.logs.mu.Unlock()
+	return append([]sdklog.Record(nil), r.logs.records...)
+}
+
+// LogAttrs returns a log record's attributes.
+func LogAttrs(record sdklog.Record) []attribute.KeyValue {
+	var attrs []attribute.KeyValue
+	record.WalkAttributes(func(kv attribute.KeyValue) bool {
+		attrs = append(attrs, kv)
+		return true
+	})
+	return attrs
+}
+
+// CheckCatalog fails the test for any recorded span, metric, log record,
+// attribute, unit, or bounded value the signal catalog does not list.
 func (r *Recorder) CheckCatalog(t testing.TB) {
 	t.Helper()
 	catalog, errCatalog := telemetry.LoadCatalog()
 	if errCatalog != nil {
 		t.Fatal(errCatalog)
 	}
-	checkAttrs := func(signal string, allowed []string, attrs []attribute.KeyValue) {
+	checkAttrs := func(signal, name string, attrs []attribute.KeyValue) {
 		for _, kv := range attrs {
-			if !slices.Contains(allowed, string(kv.Key)) {
-				t.Errorf("%s carries attribute %s, which the catalog does not list", signal, kv.Key)
+			if !catalog.AttributeAllowed(signal, string(kv.Key)) {
+				t.Errorf("%s %q carries attribute %s, which the catalog does not allow", signal, name, kv.Key)
 			}
-			if !catalog.ValueAllowed(string(kv.Key), kv.Value.Emit()) {
-				t.Errorf("%s carries %s=%q, which the catalog does not list", signal, kv.Key, kv.Value.Emit())
+			if !catalog.ValueAllowed(signal, string(kv.Key), kv.Value.Emit()) {
+				t.Errorf("%s %q carries %s=%q, which the catalog does not list", signal, name, kv.Key, kv.Value.Emit())
 			}
 		}
 	}
 	for _, s := range r.spans.Ended() {
-		allowed, listed := catalog.SpanAttributes(s.Name())
-		if !listed {
+		if !catalog.SpanListed(s.Name()) {
 			t.Errorf("span %q is not in the catalog", s.Name())
-			continue
 		}
-		checkAttrs("span "+s.Name(), allowed, s.Attributes())
+		checkAttrs(telemetry.SignalTraces, s.Name(), s.Attributes())
 	}
 	for _, m := range r.Metrics(t) {
-		allowed, unit, listed := catalog.MetricAttributes(m.Name)
-		if !listed {
+		unit, listed := catalog.MetricUnits[m.Name]
+		if !listed || !slices.Contains(catalog.Catalog.Metrics, m.Name) {
 			t.Errorf("metric %q is not in the catalog", m.Name)
 			continue
 		}
 		if m.Unit != unit {
 			t.Errorf("metric %q has unit %q, want %q", m.Name, m.Unit, unit)
 		}
-		if histogram, ok := m.Data.(metricdata.Histogram[float64]); ok {
-			for _, dp := range histogram.DataPoints {
-				checkAttrs("metric "+m.Name, allowed, dp.Attributes.ToSlice())
+		switch data := m.Data.(type) {
+		case metricdata.Histogram[float64]:
+			for _, dp := range data.DataPoints {
+				checkAttrs(telemetry.SignalMetrics, m.Name, dp.Attributes.ToSlice())
 			}
+		case metricdata.Sum[int64]:
+			for _, dp := range data.DataPoints {
+				checkAttrs(telemetry.SignalMetrics, m.Name, dp.Attributes.ToSlice())
+			}
+		default:
+			t.Errorf("metric %q has data of type %T, which CheckCatalog does not inspect", m.Name, m.Data)
 		}
 	}
+	for _, record := range r.Logs() {
+		body := record.Body().Emit()
+		if !slices.Contains(catalog.Catalog.Logs, body) {
+			t.Errorf("log record %q is not in the catalog", body)
+		}
+		checkAttrs(telemetry.SignalLogs, body, LogAttrs(record))
+	}
 }
+
+// logRecorder is a log processor keeping every record it receives.
+type logRecorder struct {
+	mu      sync.Mutex
+	records []sdklog.Record
+}
+
+func (l *logRecorder) Enabled(context.Context, sdklog.EnabledParameters) bool { return true }
+
+func (l *logRecorder) OnEmit(_ context.Context, record *sdklog.Record) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	l.records = append(l.records, record.Clone())
+	return nil
+}
+
+func (l *logRecorder) Shutdown(context.Context) error { return nil }
+
+func (l *logRecorder) ForceFlush(context.Context) error { return nil }
