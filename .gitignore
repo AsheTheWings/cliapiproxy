@@ -4,6 +4,7 @@ cli-proxy-api
 
 # Configuration
 config.yaml
+protected.yaml
 
 # Generated content
 bin/*

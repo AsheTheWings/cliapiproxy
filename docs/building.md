@@ -43,3 +43,5 @@ the default branch to `<registry>/cliapiproxy/default`, other branches to
 `<commit>-<run id>-<run attempt>`. The publishing job fails unless the
 pushed manifest is the qualified one, and logs its digest as
 `SHA-256: <hex>`.
+
+[Container](container.md) describes running the image.

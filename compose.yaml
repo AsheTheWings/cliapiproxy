@@ -1,0 +1,41 @@
+# Reference deployment of the server as one container; docs/container.md
+# describes its inputs. Write protected.yaml before the first start.
+name: cliapiproxy
+
+services:
+  cliapiproxy:
+    build: .
+    image: localhost/cliapiproxy
+    # Host networking reaches a collector on the host's loopback; the server
+    # listens on 127.0.0.1 only.
+    network_mode: host
+    read_only: true
+    restart: unless-stopped
+    environment:
+      CLIPROXY_PROFILE: production
+      CLIPROXY_OVERLAY_FILES: /etc/cliapiproxy/overlay.yaml
+      CLIPROXY_PROTECTED_FILE: /run/secrets/protected
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://127.0.0.1:4318
+      CLIPROXY_DEPLOYMENT_ENVIRONMENT: production
+    configs:
+      - source: overlay
+        target: /etc/cliapiproxy/overlay.yaml
+    secrets:
+      - protected
+    volumes:
+      - auths:/data/auths
+
+configs:
+  overlay:
+    content: |
+      server:
+        port: 8317
+      oauth:
+        auth-dir: /data/auths
+
+secrets:
+  protected:
+    file: ./protected.yaml
+
+volumes:
+  auths: {}
