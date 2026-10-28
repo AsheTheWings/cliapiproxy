@@ -1,5 +1,6 @@
-# Configuration template using the v8 layout.
-# Copy this file to config.yaml and replace the client keys and any enabled examples.
+# Reference of the v8 configuration layout that the config package parses.
+# The server reads only the keys its input schema declares, from overlay and
+# protected files; docs/configuration.md describes them.
 # Optional upstream credentials and request rules remain commented until configured.
 # Existing legacy configuration files and /v0/management requests remain supported.
 # When both spellings of a field are present, the v8 value wins (including false,
