@@ -108,7 +108,6 @@ func TestPatchAuthFileFieldsExcludedModelsRuntime(t *testing.T) {
 }
 
 func TestUploadAuthFileRejectsInvalidExcludedModels(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 	gin.SetMode(gin.TestMode)
 	for _, content := range []string{
 		`{"type":"codex","email":"bad@example.test","excluded_models":123}`,

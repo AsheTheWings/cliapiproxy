@@ -50,8 +50,6 @@ type Handler struct {
 	authManager             *coreauth.Manager
 	tokenStore              coreauth.Store
 	localPassword           string
-	allowRemoteOverride     bool
-	envSecret               string
 	logDir                  string
 	postAuthHook            coreauth.PostAuthHook
 	postAuthPersistHook     coreauth.PostAuthHook
@@ -72,17 +70,12 @@ type configReloadSnapshot struct {
 
 // NewHandler creates a new management handler instance.
 func NewHandler(cfg *config.Config, configFilePath string, manager *coreauth.Manager) *Handler {
-	envSecret, _ := os.LookupEnv("MANAGEMENT_PASSWORD")
-	envSecret = strings.TrimSpace(envSecret)
-
 	h := &Handler{
-		cfg:                 cfg.CloneForRuntime(),
-		configFilePath:      configFilePath,
-		failedAttempts:      make(map[string]*attemptInfo),
-		authManager:         manager,
-		tokenStore:          sdkAuth.GetTokenStore(),
-		allowRemoteOverride: envSecret != "",
-		envSecret:           envSecret,
+		cfg:            cfg.CloneForRuntime(),
+		configFilePath: configFilePath,
+		failedAttempts: make(map[string]*attemptInfo),
+		authManager:    manager,
+		tokenStore:     sdkAuth.GetTokenStore(),
 	}
 	h.startAttemptCleanup()
 	return h
@@ -374,10 +367,6 @@ func (h *Handler) AuthenticateManagementKey(clientIP string, localClient bool, p
 		secretHash = cfg.RemoteManagement.SecretKey
 	}
 	h.mu.Unlock()
-	if h.allowRemoteOverride {
-		allowRemote = true
-	}
-	envSecret := h.envSecret
 
 	now := time.Now()
 	h.attemptsMu.Lock()
@@ -423,7 +412,7 @@ func (h *Handler) AuthenticateManagementKey(clientIP string, localClient bool, p
 		h.attemptsMu.Unlock()
 	}
 
-	if secretHash == "" && envSecret == "" {
+	if secretHash == "" {
 		return false, http.StatusForbidden, "remote management key not set"
 	}
 
@@ -439,11 +428,6 @@ func (h *Handler) AuthenticateManagementKey(clientIP string, localClient bool, p
 				return true, 0, ""
 			}
 		}
-	}
-
-	if envSecret != "" && subtle.ConstantTimeCompare([]byte(provided), []byte(envSecret)) == 1 {
-		reset()
-		return true, 0, ""
 	}
 
 	if secretHash == "" || bcrypt.CompareHashAndPassword([]byte(secretHash), []byte(provided)) != nil {

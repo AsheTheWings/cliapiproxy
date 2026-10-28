@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -590,7 +591,7 @@ func TestInstallPluginFromStoreRejectsUnknownManagedSource(t *testing.T) {
 }
 
 func TestListPluginStoreIncludesDirectMetadataAndAuth(t *testing.T) {
-	t.Setenv("PLUGIN_STORE_TOKEN", "secret-token")
+	t.Cleanup(pluginstore.SetCredentialForTest("PLUGIN_STORE_TOKEN", "secret-token"))
 
 	h := &Handler{
 		cfg: &config.Config{
@@ -638,7 +639,7 @@ func TestListPluginStoreIncludesDirectMetadataAndAuth(t *testing.T) {
 }
 
 func TestListPluginStoreReportsVersionArtifactAuth(t *testing.T) {
-	t.Setenv("PLUGIN_STORE_TOKEN", "secret-token")
+	t.Cleanup(pluginstore.SetCredentialForTest("PLUGIN_STORE_TOKEN", "secret-token"))
 
 	h := &Handler{
 		cfg: &config.Config{
@@ -686,7 +687,7 @@ func TestListPluginStoreReportsVersionArtifactAuth(t *testing.T) {
 }
 
 func TestListPluginStoreReportsGitHubMetadataAuth(t *testing.T) {
-	t.Setenv("PLUGIN_STORE_TOKEN", "secret-token")
+	t.Cleanup(pluginstore.SetCredentialForTest("PLUGIN_STORE_TOKEN", "secret-token"))
 
 	h := &Handler{
 		cfg: &config.Config{
@@ -731,8 +732,6 @@ func TestListPluginStoreReportsGitHubMetadataAuth(t *testing.T) {
 
 func TestInstallPluginFromStoreRejectsUnresolvedPluginsDir(t *testing.T) {
 	workspace := t.TempDir()
-	t.Setenv("HOME", "")
-	t.Setenv("USERPROFILE", "")
 	t.Chdir(workspace)
 
 	h := &Handler{
@@ -769,24 +768,14 @@ func TestInstallPluginFromStoreRejectsUnresolvedPluginsDir(t *testing.T) {
 
 func TestInstallPluginFromStoreWritesFileAndEnablesConfig(t *testing.T) {
 	workspace := t.TempDir()
-	homeDir := filepath.Join(workspace, "home")
-	if errMkdir := os.MkdirAll(homeDir, 0o755); errMkdir != nil {
-		t.Fatalf("MkdirAll(%s) error = %v", homeDir, errMkdir)
-	}
-	t.Setenv("HOME", homeDir)
-	t.Setenv("USERPROFILE", homeDir)
 	t.Chdir(workspace)
+	pluginsDir := filepath.Join(workspace, "plugins")
 
-	cfg, errParse := config.ParseConfigBytes([]byte(`
-plugins:
-  enabled: false
-  dir: "~/.cli-proxy-api/plugins"
-`))
+	cfg, errParse := config.ParseConfigBytes([]byte("plugins:\n  enabled: false\n  dir: " + strconv.Quote(pluginsDir) + "\n"))
 	if errParse != nil {
 		t.Fatalf("ParseConfigBytes() error = %v", errParse)
 	}
 	cfg.Plugins.Configs["sample-provider"] = pluginConfigFromYAML(t, "enabled: false\nmode: fast\n")
-	pluginsDir := filepath.Join(homeDir, ".cli-proxy-api", "plugins")
 	archiveData := makeManagementPluginStoreZip(t, "sample-provider"+managementPluginExtension(runtime.GOOS), "library-data")
 	archiveName := "sample-provider_0.1.0_" + runtime.GOOS + "_" + runtime.GOARCH + ".zip"
 	checksum := sha256.Sum256(archiveData)

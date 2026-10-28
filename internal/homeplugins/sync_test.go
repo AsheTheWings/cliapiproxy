@@ -565,8 +565,6 @@ func TestCompletedSyncReport(t *testing.T) {
 
 func TestDeleteWithReportRejectsUnresolvedPluginsDir(t *testing.T) {
 	workspace := t.TempDir()
-	t.Setenv("HOME", "")
-	t.Setenv("USERPROFILE", "")
 	t.Chdir(workspace)
 
 	literalPluginsDir := filepath.Join(workspace, "~", ".cli-proxy-api", "plugins")

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/githubauth"
 )
 
 type githubAssetTransport func(*http.Request) (*http.Response, error)
@@ -17,9 +18,7 @@ type githubAssetTransport func(*http.Request) (*http.Response, error)
 func (f githubAssetTransport) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
 
 func TestFetchLatestAssetSetsGitHubAuthorization(t *testing.T) {
-	t.Setenv("GITHUB_TOKEN", "asset-token")
-	t.Setenv("GITSTORE_GIT_TOKEN", "")
-	t.Setenv("GITSTORE_GIT_URL", "")
+	t.Cleanup(githubauth.ReplaceTokenForTest("asset-token"))
 
 	var authorization string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -54,10 +53,7 @@ func TestFetchLatestAssetSetsGitHubAuthorization(t *testing.T) {
 }
 
 func TestFetchLatestAssetOmitsAuthorizationWithoutToken(t *testing.T) {
-	t.Setenv("GITHUB_TOKEN", "")
-	t.Setenv("github_token", "")
-	t.Setenv("GITSTORE_GIT_TOKEN", "")
-	t.Setenv("GITSTORE_GIT_URL", "")
+	t.Cleanup(githubauth.ReplaceTokenForTest(""))
 
 	var authorization string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {

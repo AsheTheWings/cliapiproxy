@@ -224,7 +224,6 @@ func readTestRESPPubSubMessage(r *bufio.Reader) (string, []byte, error) {
 }
 
 func TestRedisProtocol_ManagementDisabled_RejectsConnection(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 	redisqueue.SetEnabled(false)
 
 	server := newTestServer(t)
@@ -257,11 +256,10 @@ func TestRedisProtocol_ManagementDisabled_RejectsConnection(t *testing.T) {
 }
 
 func TestRedisProtocol_HomeEnabled_DisablesConnection(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "test-management-password")
 	redisqueue.SetEnabled(false)
 	t.Cleanup(func() { redisqueue.SetEnabled(false) })
 
-	server := newTestServer(t)
+	server := newManagementTestServer(t, "test-management-password")
 	if !server.managementRoutesEnabled.Load() {
 		t.Fatalf("expected managementRoutesEnabled to be true")
 	}
@@ -302,11 +300,10 @@ func TestRedisProtocol_HomeEnabled_DisablesConnection(t *testing.T) {
 func TestRedisProtocol_SUBSCRIBE_UsageSendsSupportRefresh(t *testing.T) {
 	const managementPassword = "test-management-password"
 
-	t.Setenv("MANAGEMENT_PASSWORD", managementPassword)
 	redisqueue.SetEnabled(false)
 	t.Cleanup(func() { redisqueue.SetEnabled(false) })
 
-	server := newTestServer(t)
+	server := newManagementTestServer(t, managementPassword)
 	if !server.managementRoutesEnabled.Load() {
 		t.Fatalf("expected managementRoutesEnabled to be true")
 	}
@@ -364,11 +361,10 @@ func TestRedisProtocol_SUBSCRIBE_UsageSendsSupportRefresh(t *testing.T) {
 func TestRedisProtocol_SUBSCRIBE_ErrorsReceivesErrorEvents(t *testing.T) {
 	const managementPassword = "test-management-password"
 
-	t.Setenv("MANAGEMENT_PASSWORD", managementPassword)
 	redisqueue.SetEnabled(false)
 	t.Cleanup(func() { redisqueue.SetEnabled(false) })
 
-	server := newTestServer(t)
+	server := newManagementTestServer(t, managementPassword)
 	if !server.managementRoutesEnabled.Load() {
 		t.Fatalf("expected managementRoutesEnabled to be true")
 	}
@@ -418,11 +414,10 @@ func TestRedisProtocol_SUBSCRIBE_ErrorsReceivesErrorEvents(t *testing.T) {
 func TestRedisProtocol_AUTH_And_PopContracts(t *testing.T) {
 	const managementPassword = "test-management-password"
 
-	t.Setenv("MANAGEMENT_PASSWORD", managementPassword)
 	redisqueue.SetEnabled(false)
 	t.Cleanup(func() { redisqueue.SetEnabled(false) })
 
-	server := newTestServer(t)
+	server := newManagementTestServer(t, managementPassword)
 	if !server.managementRoutesEnabled.Load() {
 		t.Fatalf("expected managementRoutesEnabled to be true")
 	}
@@ -684,11 +679,10 @@ func TestReadRESPBoundsAndOverflowProtection(t *testing.T) {
 func TestRedisProtocol_MalformedAndOverflowFramesDoNotCrashServer(t *testing.T) {
 	const managementPassword = "test-management-password"
 
-	t.Setenv("MANAGEMENT_PASSWORD", managementPassword)
 	redisqueue.SetEnabled(false)
 	t.Cleanup(func() { redisqueue.SetEnabled(false) })
 
-	server := newTestServer(t)
+	server := newManagementTestServer(t, managementPassword)
 	addr, stop := startRedisMuxListener(t, server)
 	t.Cleanup(stop)
 

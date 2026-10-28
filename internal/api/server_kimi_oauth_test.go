@@ -9,8 +9,7 @@ import (
 )
 
 func TestKimiAndKimiAIOAuthRoutes(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "test-management-key")
-	server := newTestServer(t)
+	server := newManagementTestServer(t, "test-management-key")
 
 	wKimi := httptest.NewRecorder()
 	server.engine.ServeHTTP(wKimi, httptest.NewRequest(http.MethodGet, "/v0/management/kimi-auth-url", nil))

@@ -54,7 +54,6 @@ func requestAuthFilesCooldowns(t *testing.T, h *Handler, query string) authFiles
 }
 
 func TestListAuthFilesCooldownsSnapshot(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 	now := time.Now().UTC()
 	next := now.Add(time.Hour)
 	manager := coreauth.NewManager(nil, nil, nil)
@@ -124,7 +123,6 @@ func TestListAuthFilesCooldownsSnapshot(t *testing.T) {
 }
 
 func TestListAuthFilesCooldownsCredentialKindsAndFilters(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 	cfg := &config.Config{AuthDir: t.TempDir()}
 	manager := coreauth.NewManager(nil, nil, nil)
 	manager.SetConfig(cfg)
@@ -162,7 +160,6 @@ func TestListAuthFilesCooldownsCredentialKindsAndFilters(t *testing.T) {
 }
 
 func TestListAuthFilesCooldownsUnknown(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 	for _, mode := range []string{"disk", "home"} {
 		t.Run(mode, func(t *testing.T) {
 			cfg := &config.Config{AuthDir: t.TempDir()}
@@ -192,7 +189,6 @@ func TestListAuthFilesCooldownsUnknown(t *testing.T) {
 }
 
 func TestListAuthFiles_ExpiredCooldownReconciledToActive(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 	now := time.Now().UTC()
 	expiredDeadline := now.Add(-10 * time.Minute)
 
@@ -267,7 +263,6 @@ func TestListAuthFiles_ExpiredCooldownReconciledToActive(t *testing.T) {
 }
 
 func TestListAuthFiles_ExpiredCooldownWithSubsequentTokenFailure(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 	now := time.Now().UTC()
 	expiredDeadline := now.Add(-10 * time.Minute)
 
@@ -316,7 +311,6 @@ func TestListAuthFiles_ExpiredCooldownWithSubsequentTokenFailure(t *testing.T) {
 }
 
 func TestListAuthFiles_PartialModelCooldownWithAuthFailure(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 	now := time.Now().UTC()
 	activeDeadline := now.Add(10 * time.Minute)
 
@@ -367,7 +361,6 @@ func TestListAuthFiles_PartialModelCooldownWithAuthFailure(t *testing.T) {
 }
 
 func TestListAuthFiles_UnexpiredTokenWithRefresh401_NoCooldown(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 	now := time.Now().UTC()
 	futureExpiry := now.Add(48 * time.Hour).Format(time.RFC3339)
 	retryBackoff := now.Add(5 * time.Minute)
@@ -412,7 +405,6 @@ func TestListAuthFiles_UnexpiredTokenWithRefresh401_NoCooldown(t *testing.T) {
 }
 
 func TestListAuthFiles_UnexpiredTokenWithRefresh401_ExpiredCooldown(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 	now := time.Now().UTC()
 	futureExpiry := now.Add(48 * time.Hour).Format(time.RFC3339)
 	expiredCooldown := now.Add(-10 * time.Minute)
@@ -471,7 +463,6 @@ func TestListAuthFiles_UnexpiredTokenWithRefresh401_ExpiredCooldown(t *testing.T
 }
 
 func TestListAuthFiles_ModelLevel403CooldownExpired(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 	now := time.Now().UTC()
 	expiredDeadline := now.Add(-10 * time.Minute)
 
@@ -526,7 +517,6 @@ func TestListAuthFiles_ModelLevel403CooldownExpired(t *testing.T) {
 }
 
 func TestListAuthFiles_SingleModel403Cooling_OtherModelActive(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 	now := time.Now().UTC()
 	activeDeadline := now.Add(30 * time.Minute)
 
@@ -576,7 +566,6 @@ func TestListAuthFiles_SingleModel403Cooling_OtherModelActive(t *testing.T) {
 }
 
 func TestListAuthFiles_ExpiredCooldown_ExpiredToken_InFlightRefresh(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 	now := time.Now().UTC()
 	expiredDeadline := now.Add(-10 * time.Minute)
 	inFlightRefresh := now.Add(1 * time.Minute)
@@ -631,7 +620,6 @@ func TestListAuthFiles_ExpiredCooldown_ExpiredToken_InFlightRefresh(t *testing.T
 }
 
 func TestListAuthFiles_ActiveAuth_InactiveFutureTimestamp(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 	now := time.Now().UTC()
 	inactiveFutureTimestamp := now.Add(1 * time.Hour)
 
@@ -670,7 +658,6 @@ func TestListAuthFiles_ActiveAuth_InactiveFutureTimestamp(t *testing.T) {
 }
 
 func TestListAuthFiles_ModelCooling_OtherModelPermanentBlocked(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 	now := time.Now().UTC()
 	activeDeadline := now.Add(30 * time.Minute)
 
@@ -720,7 +707,6 @@ func TestListAuthFiles_ModelCooling_OtherModelPermanentBlocked(t *testing.T) {
 }
 
 func TestListAuthFiles_SparseModelState_BlockedModelDoesNotMakeAuthUnavailable(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 	now := time.Now().UTC()
 	activeDeadline := now.Add(30 * time.Minute)
 

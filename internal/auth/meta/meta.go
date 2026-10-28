@@ -15,6 +15,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
@@ -107,6 +108,20 @@ type MetaTokenStorage struct {
 }
 
 // SetMetadata allows the token store to merge status fields before saving.
+var defaultMintURL atomic.Pointer[string]
+
+func init() {
+	url := "https://api.meta.ai/muse-code/key"
+	defaultMintURL.Store(&url)
+}
+
+// ReplaceMintURLForTest points key minting without an explicit URL at url
+// and returns a function restoring the previous URL, for tests.
+func ReplaceMintURLForTest(url string) (restore func()) {
+	previous := defaultMintURL.Swap(&url)
+	return func() { defaultMintURL.Store(previous) }
+}
+
 func (ts *MetaTokenStorage) SetMetadata(meta map[string]any) {
 	ts.Metadata = meta
 }
@@ -438,11 +453,7 @@ func (a *MetaAuth) MintAPIKey(ctx context.Context, dcaToken string) (*MintedKeyR
 
 	mintURL := a.mintURL
 	if mintURL == "" {
-		if envMint := strings.TrimSpace(os.Getenv("META_MINT_URL")); envMint != "" {
-			mintURL = envMint
-		} else {
-			mintURL = "https://api.meta.ai/muse-code/key"
-		}
+		mintURL = *defaultMintURL.Load()
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, mintURL, bytes.NewReader(reqBody))
 	if err != nil {

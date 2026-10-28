@@ -3,7 +3,6 @@ package githubauth
 
 import (
 	"net/url"
-	"os"
 	"strings"
 	"sync/atomic"
 )
@@ -16,21 +15,20 @@ func SetToken(token string) {
 	configuredToken.Store(&token)
 }
 
-// ResolveToken prefers the server configuration, then the legacy environment settings.
+// ReplaceTokenForTest sets the token and returns a function restoring the
+// previous state, for tests.
+func ReplaceTokenForTest(token string) (restore func()) {
+	previous := configuredToken.Load()
+	SetToken(token)
+	return func() { configuredToken.Store(previous) }
+}
+
+// ResolveToken returns the configured token, or empty when none is set.
 func ResolveToken() string {
-	if token := configuredToken.Load(); token != nil && *token != "" {
+	if token := configuredToken.Load(); token != nil {
 		return *token
 	}
-	for _, name := range []string{"GITHUB_TOKEN", "github_token"} {
-		if token := strings.TrimSpace(os.Getenv(name)); token != "" {
-			return token
-		}
-	}
-	gitURL := strings.ToLower(strings.TrimSpace(os.Getenv("GITSTORE_GIT_URL")))
-	if !strings.Contains(gitURL, "github.com") {
-		return ""
-	}
-	return strings.TrimSpace(os.Getenv("GITSTORE_GIT_TOKEN"))
+	return ""
 }
 
 // TokenForURL never exposes the shared credential outside the HTTPS GitHub API.

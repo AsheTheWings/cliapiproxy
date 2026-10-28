@@ -16,9 +16,8 @@ import (
 // a cross-origin management page must be able to read the ETag that the v8
 // config endpoints return, otherwise the GET -> If-Match flow cannot run.
 func TestConfigV8ETagExposedForCORS(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "test-management-key")
 
-	server := newTestServer(t)
+	server := newManagementTestServer(t, "test-management-key")
 	if err := os.WriteFile(server.configFilePath, []byte("config-version: 8\nserver: {port: 8317}\n"), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -26,6 +25,7 @@ func TestConfigV8ETagExposedForCORS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	cfg.RemoteManagement = server.cfg.RemoteManagement
 	server.cfgMu.Lock()
 	server.cfg = cfg
 	server.cfgMu.Unlock()

@@ -25,7 +25,6 @@ type authFilesPaginationPayload struct {
 }
 
 func TestListAuthFilesPaginationFromManager(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 
 	authDir := t.TempDir()
 	manager := coreauth.NewManager(nil, nil, nil)
@@ -47,7 +46,6 @@ func TestListAuthFilesPaginationFromManager(t *testing.T) {
 }
 
 func TestListAuthFilesPaginationFromDisk(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 
 	authDir := t.TempDir()
 	registerPaginatedAuthFiles(t, authDir, nil)
@@ -63,7 +61,6 @@ func TestListAuthFilesPaginationFromDisk(t *testing.T) {
 }
 
 func TestListAuthFilesPaginationAppliesLookupFiltersBeforePaging(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 
 	authDir := t.TempDir()
 	fileName := "shared.json"
@@ -99,7 +96,6 @@ func TestListAuthFilesPaginationAppliesLookupFiltersBeforePaging(t *testing.T) {
 }
 
 func TestListAuthFilesPaginationDefaultsAndCompatibility(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 
 	authDir := t.TempDir()
 	manager := coreauth.NewManager(nil, nil, nil)
@@ -130,7 +126,6 @@ func TestListAuthFilesPaginationDefaultsAndCompatibility(t *testing.T) {
 }
 
 func TestListAuthFilesPaginationRejectsInvalidValues(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 	handler := NewHandlerWithoutConfigFilePath(&config.Config{AuthDir: t.TempDir()}, nil)
 
 	for _, requestPath := range []string{

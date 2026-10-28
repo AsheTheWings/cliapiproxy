@@ -376,7 +376,7 @@ func TestDownloadAssetFallsBackToReleaseAssetAPIURLWhenBrowserDownloadURLEmpty(t
 }
 
 func TestDownloadAssetUsesAPIURLWhenAuthMatchesArtifact(t *testing.T) {
-	t.Setenv("PLUGIN_STORE_TOKEN", "secret-token")
+	t.Cleanup(SetCredentialForTest("PLUGIN_STORE_TOKEN", "secret-token"))
 	apiURL := "https://api.github.com/repos/author-name/cliproxy-sample-provider-plugin/releases/assets/1"
 	client := Client{
 		HTTPClient: authCheckingHTTPDoer{
@@ -435,7 +435,7 @@ func TestDownloadAssetUsesAPIURLWhenResolvedAuthMatchesArtifact(t *testing.T) {
 }
 
 func TestDownloadAssetUsesBrowserDownloadURLWithUnrelatedAuth(t *testing.T) {
-	t.Setenv("PLUGIN_STORE_TOKEN", "secret-token")
+	t.Cleanup(SetCredentialForTest("PLUGIN_STORE_TOKEN", "secret-token"))
 	browserURL := "https://downloads.example/sample-provider.zip"
 	client := Client{
 		HTTPClient: mapHTTPDoer{
@@ -572,7 +572,7 @@ func TestInstallManifestResolvesDirectArtifactsFromSource(t *testing.T) {
 }
 
 func TestInstallDirectDownloadsMatchingArtifactWithBearerAuth(t *testing.T) {
-	t.Setenv("PLUGIN_STORE_TOKEN", "secret-token")
+	t.Cleanup(SetCredentialForTest("PLUGIN_STORE_TOKEN", "secret-token"))
 	root := t.TempDir()
 	archiveData := makeZip(t, map[string]string{"sample-provider.so": "library-data"})
 	checksum := sha256.Sum256(archiveData)

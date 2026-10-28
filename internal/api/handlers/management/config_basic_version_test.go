@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/githubauth"
 )
 
 func TestSetLatestReleaseRequestHeaders(t *testing.T) {
@@ -26,12 +28,7 @@ func TestSetLatestReleaseRequestHeaders(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			t.Setenv("GITHUB_TOKEN", tt.githubToken)
-			if tt.githubToken == "" {
-				t.Setenv("github_token", "")
-			}
-			t.Setenv("GITSTORE_GIT_TOKEN", "")
-			t.Setenv("GITSTORE_GIT_URL", "")
+			t.Cleanup(githubauth.ReplaceTokenForTest(tt.githubToken))
 
 			req := httptest.NewRequest(http.MethodGet, latestReleaseURL, nil)
 			setLatestReleaseRequestHeaders(req)

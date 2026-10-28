@@ -39,7 +39,6 @@ func TestSyncAuthFilePriorityAttributeTracksFileSource(t *testing.T) {
 }
 
 func TestPatchAuthFileFields_MergeHeadersAndDeleteEmptyValues(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 
 	store := &memoryAuthStore{}
 	manager := coreauth.NewManager(store, nil, nil)
@@ -133,7 +132,6 @@ func TestPatchAuthFileFields_MergeHeadersAndDeleteEmptyValues(t *testing.T) {
 }
 
 func TestPatchAuthFileFields_HeadersEmptyMapIsNoop(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 
 	store := &memoryAuthStore{}
 	manager := coreauth.NewManager(store, nil, nil)
@@ -187,7 +185,6 @@ func TestPatchAuthFileFields_HeadersEmptyMapIsNoop(t *testing.T) {
 }
 
 func TestPatchAuthFileFields_WebsocketsFalseIsUpdate(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 
 	store := &memoryAuthStore{}
 	manager := coreauth.NewManager(store, nil, nil)
@@ -235,7 +232,6 @@ func TestPatchAuthFileFields_WebsocketsFalseIsUpdate(t *testing.T) {
 }
 
 func TestPatchAuthFileFields_ArbitraryFieldsPersistToFile(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 
 	authDir := t.TempDir()
 	fileName := "generic.json"
@@ -300,7 +296,6 @@ func TestPatchAuthFileFields_ArbitraryFieldsPersistToFile(t *testing.T) {
 }
 
 func TestPatchAuthFileFields_WeightPersistsAndSyncsRuntime(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 
 	authDir := t.TempDir()
 	fileName := "weighted.json"
@@ -393,7 +388,6 @@ func TestPatchAuthFileFields_RejectsInvalidWeights(t *testing.T) {
 }
 
 func TestPatchAuthFileFields_RequestRetryRoundTrip(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 
 	authDir := t.TempDir()
 	fileName := "request-retry.json"
@@ -622,7 +616,6 @@ func TestSetSourceAuthFileDisabledNormalizesLegacyMetadata(t *testing.T) {
 }
 
 func TestPatchAuthFileFields_SyncsPlanTypeAndInvokesHook(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 
 	authDir := t.TempDir()
 	fileName := "codex-plan-patch.json"
@@ -685,7 +678,6 @@ func TestPatchAuthFileFields_SyncsPlanTypeAndInvokesHook(t *testing.T) {
 }
 
 func TestPatchAuthFileFields_ClearsPlanTypeWhenRemoved(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 
 	authDir := t.TempDir()
 	fileName := "codex-clear-plan.json"
@@ -736,7 +728,6 @@ func TestPatchAuthFileFields_ClearsPlanTypeWhenRemoved(t *testing.T) {
 }
 
 func TestPatchAuthFileFields_IDTokenMissingPlanTypeDefaultsToFree(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 
 	tempDir := t.TempDir()
 	fileName := "codex-test-patch-idtoken.json"
@@ -850,7 +841,6 @@ func (s *blockingPatchAuthStore) savedAuth(id string) *coreauth.Auth {
 }
 
 func TestPatchAuthFileFields_KeepsCommitLandedDuringPatch(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 	gin.SetMode(gin.TestMode)
 
 	t.Run("concurrent_fields_patch", func(t *testing.T) {
@@ -1180,7 +1170,6 @@ func TestPatchAuthFileFields_KeepsCommitLandedDuringPatch(t *testing.T) {
 }
 
 func TestPatchAuthFileStatus_KeepsCommitLandedDuringPatch(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 	gin.SetMode(gin.TestMode)
 
 	t.Run("concurrent_fields_patch", func(t *testing.T) {

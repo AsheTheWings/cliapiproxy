@@ -25,7 +25,7 @@ type Config struct {
 	// Port is the network port on which the API server will listen.
 	Port int `yaml:"port" json:"-"`
 
-	// GitHubToken is the global token for GitHub requests, taking precedence over GITHUB_TOKEN.
+	// GitHubToken is the global token for GitHub requests.
 	GitHubToken string `yaml:"github-token" json:"-"`
 
 	// TrustedProxies lists the IPs or CIDRs allowed to provide forwarded client IP headers.

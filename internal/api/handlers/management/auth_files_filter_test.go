@@ -19,7 +19,6 @@ import (
 )
 
 func TestListAuthFilesFiltersByNameAndAuthIndex(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 
 	authDir := t.TempDir()
 	fileName := "shared-codex.json"
@@ -79,7 +78,6 @@ func TestListAuthFilesFiltersByNameAndAuthIndex(t *testing.T) {
 }
 
 func TestListAuthFilesFromDiskFiltersByNameAndRejectsAuthIndex(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 
 	authDir := t.TempDir()
 	for _, file := range []struct {
@@ -133,7 +131,6 @@ func TestListAuthFilesFromDiskFiltersByNameAndRejectsAuthIndex(t *testing.T) {
 }
 
 func TestPatchAuthFileStatusVerifiesAuthIndex(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 
 	manager := coreauth.NewManager(nil, nil, nil)
 	registerAuthForLookupTest(t, manager, &coreauth.Auth{
@@ -177,7 +174,6 @@ func TestPatchAuthFileStatusVerifiesAuthIndex(t *testing.T) {
 }
 
 func TestPatchAuthFileStatusRejectsMismatchedAuthIndex(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 
 	manager := coreauth.NewManager(nil, nil, nil)
 	registerAuthForLookupTest(t, manager, &coreauth.Auth{
@@ -210,7 +206,6 @@ func TestPatchAuthFileStatusRejectsMismatchedAuthIndex(t *testing.T) {
 }
 
 func TestAuthFileLookupAndEntryBuildConcurrentEnsureIndex(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 
 	authDir := t.TempDir()
 	fileName := "concurrent-codex.json"

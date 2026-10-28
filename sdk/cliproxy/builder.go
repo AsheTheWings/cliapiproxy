@@ -98,7 +98,8 @@ func (b *Builder) WithConfig(cfg *config.Config) *Builder {
 	return b
 }
 
-// WithConfigPath sets the absolute configuration file path used for reload watching.
+// WithConfigPath sets the absolute configuration file path used for reload
+// watching. Without one, the configuration is fixed for the service's life.
 //
 // Parameters:
 //   - path: The absolute path to the configuration file
@@ -199,9 +200,6 @@ func (b *Builder) WithResultPolicy(policy coreauth.ResultPolicy) *Builder {
 func (b *Builder) Build() (*Service, error) {
 	if b.cfg == nil {
 		return nil, fmt.Errorf("cliproxy: configuration is required")
-	}
-	if b.configPath == "" {
-		return nil, fmt.Errorf("cliproxy: configuration path is required")
 	}
 	if errValidate := b.cfg.ValidateCredentialWeights(); errValidate != nil {
 		return nil, fmt.Errorf("cliproxy: validate credential weights: %w", errValidate)

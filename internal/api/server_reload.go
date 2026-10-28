@@ -139,31 +139,22 @@ func (s *Server) UpdateClientsContext(ctx context.Context, cfg *config.Config) b
 		prevSecretEmpty = oldCfg.RemoteManagement.SecretKey == ""
 	}
 	newSecretEmpty := cfg.RemoteManagement.SecretKey == ""
-	if s.envManagementSecret {
+	switch {
+	case prevSecretEmpty && !newSecretEmpty:
 		s.registerManagementRoutes()
 		if s.managementRoutesEnabled.CompareAndSwap(false, true) {
-			log.Info("management routes enabled via MANAGEMENT_PASSWORD")
+			log.Info("management routes enabled after secret key update")
 		} else {
 			s.managementRoutesEnabled.Store(true)
 		}
-	} else {
-		switch {
-		case prevSecretEmpty && !newSecretEmpty:
-			s.registerManagementRoutes()
-			if s.managementRoutesEnabled.CompareAndSwap(false, true) {
-				log.Info("management routes enabled after secret key update")
-			} else {
-				s.managementRoutesEnabled.Store(true)
-			}
-		case !prevSecretEmpty && newSecretEmpty:
-			if s.managementRoutesEnabled.CompareAndSwap(true, false) {
-				log.Info("management routes disabled after secret key removal")
-			} else {
-				s.managementRoutesEnabled.Store(false)
-			}
-		default:
-			s.managementRoutesEnabled.Store(!newSecretEmpty)
+	case !prevSecretEmpty && newSecretEmpty:
+		if s.managementRoutesEnabled.CompareAndSwap(true, false) {
+			log.Info("management routes disabled after secret key removal")
+		} else {
+			s.managementRoutesEnabled.Store(false)
 		}
+	default:
+		s.managementRoutesEnabled.Store(!newSecretEmpty)
 	}
 	redisqueue.SetEnabled(s.managementRoutesEnabled.Load() || (cfg != nil && cfg.Home.Enabled))
 

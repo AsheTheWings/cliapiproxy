@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/githubauth"
@@ -23,6 +23,42 @@ const (
 	AuthTypeHeader      = "header"
 	AuthTypeGitHubToken = "github-token"
 )
+
+// CredentialLookup returns the value of a named plugin store credential, or
+// empty when the name is unknown.
+type CredentialLookup func(name string) string
+
+var credentialLookup atomic.Pointer[CredentialLookup]
+
+// SetCredentialLookup installs the lookup that resolves the credential names
+// auth rules refer to. Without one, every name resolves to empty.
+func SetCredentialLookup(lookup CredentialLookup) {
+	credentialLookup.Store(&lookup)
+}
+
+// SetCredentialForTest resolves name to value on top of the current lookup
+// and returns a function restoring that lookup, for tests.
+func SetCredentialForTest(name, value string) (restore func()) {
+	previous := credentialLookup.Load()
+	lookup := CredentialLookup(func(n string) string {
+		if n == name {
+			return value
+		}
+		if previous != nil && *previous != nil {
+			return (*previous)(n)
+		}
+		return ""
+	})
+	credentialLookup.Store(&lookup)
+	return func() { credentialLookup.Store(previous) }
+}
+
+func credentialValue(name string) string {
+	if lookup := credentialLookup.Load(); lookup != nil && *lookup != nil {
+		return (*lookup)(name)
+	}
+	return ""
+}
 
 type AuthConfig struct {
 	Match          string   `yaml:"match,omitempty" json:"match,omitempty"`
@@ -177,11 +213,11 @@ func AuthConfigured(auth []AuthConfig, requestURL string, kind string) bool {
 	case AuthTypeNone:
 		return false
 	case AuthTypeBearer, AuthTypeGitHubToken:
-		return strings.TrimSpace(os.Getenv(item.TokenEnv)) != ""
+		return strings.TrimSpace(credentialValue(item.TokenEnv)) != ""
 	case AuthTypeBasic:
-		return strings.TrimSpace(os.Getenv(item.UsernameEnv)) != "" && strings.TrimSpace(os.Getenv(item.PasswordEnv)) != ""
+		return strings.TrimSpace(credentialValue(item.UsernameEnv)) != "" && strings.TrimSpace(credentialValue(item.PasswordEnv)) != ""
 	case AuthTypeHeader:
-		return item.HeaderName != "" && strings.TrimSpace(os.Getenv(item.HeaderValueEnv)) != ""
+		return item.HeaderName != "" && strings.TrimSpace(credentialValue(item.HeaderValueEnv)) != ""
 	default:
 		return false
 	}
@@ -469,7 +505,7 @@ func envValueRequired(envName string, field string) (string, error) {
 	if envName == "" {
 		return "", fmt.Errorf("plugin store auth missing %s", field)
 	}
-	value := strings.TrimSpace(os.Getenv(envName))
+	value := strings.TrimSpace(credentialValue(envName))
 	if value == "" {
 		return "", fmt.Errorf("plugin store auth env %s is empty", envName)
 	}

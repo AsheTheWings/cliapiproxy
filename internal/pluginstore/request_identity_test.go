@@ -27,12 +27,12 @@ func TestLatestReleaseCacheKeyNormalizesRepository(t *testing.T) {
 func TestLatestReleaseCacheKeyTracksEnvironmentCredentials(t *testing.T) {
 	plugin := Plugin{Repository: "https://github.com/owner/repo"}
 	client := Client{Auth: []AuthConfig{{Match: "https://api.github.com/", Type: AuthTypeGitHubToken, TokenEnv: "PLUGIN_STORE_CACHE_TEST_TOKEN"}}}
-	t.Setenv("PLUGIN_STORE_CACHE_TEST_TOKEN", "secret-token-one")
+	t.Cleanup(SetCredentialForTest("PLUGIN_STORE_CACHE_TEST_TOKEN", "secret-token-one"))
 	first, errFirst := client.LatestReleaseCacheKey(plugin)
 	if errFirst != nil {
 		t.Fatal(errFirst)
 	}
-	t.Setenv("PLUGIN_STORE_CACHE_TEST_TOKEN", "secret-token-two")
+	t.Cleanup(SetCredentialForTest("PLUGIN_STORE_CACHE_TEST_TOKEN", "secret-token-two"))
 	second, errSecond := client.LatestReleaseCacheKey(plugin)
 	if errSecond != nil || first == second {
 		t.Fatalf("credential rotation did not change key: %v", errSecond)
@@ -57,12 +57,12 @@ func TestPrepareLatestReleaseSnapshotsEnvironmentCredentials(t *testing.T) {
 			return &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"tag_name":"v1.0.0"}`))}, nil
 		}),
 	}
-	t.Setenv("PLUGIN_STORE_SNAPSHOT_TEST_TOKEN", "original-token")
+	t.Cleanup(SetCredentialForTest("PLUGIN_STORE_SNAPSHOT_TEST_TOKEN", "original-token"))
 	prepared, originalKey, errPrepare := client.PrepareLatestRelease(plugin)
 	if errPrepare != nil {
 		t.Fatal(errPrepare)
 	}
-	t.Setenv("PLUGIN_STORE_SNAPSHOT_TEST_TOKEN", "rotated-token")
+	t.Cleanup(SetCredentialForTest("PLUGIN_STORE_SNAPSHOT_TEST_TOKEN", "rotated-token"))
 	rotatedKey, errKey := client.LatestReleaseCacheKey(plugin)
 	if errKey != nil || originalKey == rotatedKey {
 		t.Fatalf("rotation did not change the unprepared identity: %v", errKey)
