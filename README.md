@@ -13,7 +13,7 @@ builds the `CLIProxyAPI` server from `cmd/server` and publishes no release.
 ## Setup
 
 [Building](docs/building.md) describes how to build the binary and the
-container image.
+container image, and [container](docs/container.md) how to run the image.
 
 The server reads its inputs from its environment, its command line, and two
 kinds of YAML file; [configuration](docs/configuration.md) explains them. A
@@ -46,6 +46,7 @@ The Go packages under `sdk/` embed the proxy in other programs:
 ## Development
 
 - [Building](docs/building.md)
+- [Container](docs/container.md)
 - [Configuration](docs/configuration.md)
 - [Observability](docs/observability.md)
 - [Testing](docs/testing.md)
