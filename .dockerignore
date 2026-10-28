@@ -18,6 +18,7 @@ auths
 logs
 conv
 config.yaml
+protected.yaml
 
 # Development/editor
 bin
