@@ -62,6 +62,47 @@ string counts as unset.
 inputs are valid, and otherwise reports the problems and exits 2, so a
 deploy can check a target's inputs before it starts the server.
 
+## Upstream API keys
+
+Each upstream API-key family the schema declares pairs two inputs: an
+`upstream-groups` input in the overlay files, keyed `api-keys.<family>`, and
+the `credential-list` input its `credentials` names in the protected file.
+A group has a `name` of lowercase letters, digits, and hyphens, and may set
+`base-url`, `prefix`, and `models`. An OpenAI-compatible group requires
+`base-url` and at least one model, because the server offers only the models
+such a group lists. A model has a `name` and may set `alias`,
+`display-name`, `max-context-length`, `thinking.levels`, and, for
+OpenAI-compatible groups, `input-modalities`:
+
+```yaml
+api-keys:
+  openai-compatibility:
+    - name: example
+      base-url: https://api.example.com/v1
+      models:
+        - name: vendor/model-1
+          alias: model-1
+          max-context-length: 200000
+          input-modalities: [text, image]
+          thinking: {levels: [low, medium, high]}
+  meta:
+    - name: muse
+      models: [{name: muse-spark-1.3}]
+```
+
+The keys are comma-separated `group=key` items, and a group with several
+keys balances requests across them:
+
+```sh
+CLIPROXY_OPENAI_COMPATIBILITY_KEYS='example=<key>,example=<key>'
+CLIPROXY_META_KEYS='muse=<key>'
+```
+
+A run fails when a group has no key or an overlay group holds a key or a
+field outside this list. A key of a group the overlay does not declare is
+unused, so keys can be delivered before the overlay that declares their
+group.
+
 ## During a run
 
 Once its inputs are resolved, the server clears its environment, so no part of

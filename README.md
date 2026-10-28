@@ -34,11 +34,13 @@ Clients send requests with one of the client API keys as a bearer token.
 The OpenAI compatible API is under `/v1`, the Gemini API under `/v1beta`, and
 the Codex backend API under `/backend-api/codex`.
 
-Credentials are files in the auth directory. A login command runs the
+OAuth credentials are files in the auth directory. A login command runs the
 provider's OAuth flow, writes the credential file, and exits; for example,
 `-codex-device-login` signs in to Codex with a device code and `-xai-login`
 to Grok Build. Adding, replacing, or removing a credential file takes effect
-without a restart.
+without a restart. API-key credentials of OpenAI-compatible providers and
+Meta Muse are inputs; [configuration](docs/configuration.md#upstream-api-keys)
+describes them.
 
 The Go packages under `sdk/` embed the proxy in other programs:
 [usage](docs/sdk-usage.md), [executors and translators](docs/sdk-advanced.md),

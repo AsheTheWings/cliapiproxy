@@ -42,6 +42,12 @@ const (
 	TypeStringList = "string-list"
 	TypePath       = "path"
 	TypePathList   = "path-list"
+	// TypeUpstreamGroups is an overlay list of the upstream groups of one
+	// API-key family, without their keys.
+	TypeUpstreamGroups = "upstream-groups"
+	// TypeCredentialList is comma-separated group=key items in the
+	// protected file, the keys of an upstream-groups input.
+	TypeCredentialList = "credential-list"
 )
 
 // Shape constrains an input's value.
@@ -52,6 +58,8 @@ type Shape struct {
 	MinItems  int      `json:"minItems,omitempty"`
 	Minimum   *int64   `json:"minimum,omitempty"`
 	Maximum   *int64   `json:"maximum,omitempty"`
+	// Family names the API-key family of an upstream-groups input.
+	Family string `json:"family,omitempty"`
 }
 
 // Input declares one process input. Exactly one of Env, Flag, and Key names
@@ -72,6 +80,10 @@ type Input struct {
 	// EntryPointOnly keeps a keyed input out of the configuration document;
 	// the entry point consumes it directly.
 	EntryPointOnly bool `json:"entryPointOnly,omitempty"`
+	// Credentials names the credential-list input holding the keys of an
+	// upstream-groups input. The document renders those keys inside the
+	// groups, never under the credential input's own key.
+	Credentials string `json:"credentials,omitempty"`
 }
 
 // AppliesTo reports whether the input exists in the profile.
@@ -188,7 +200,7 @@ func (s *Schema) check() error {
 			if !slices.Contains(s.Profiles, profile) || !in.AppliesTo(profile) {
 				return fmt.Errorf("input %q has a default for profile %q it does not apply to", in.Name, profile)
 			}
-			if in.Class == Protected && raw != "" {
+			if in.Class == Protected && !emptyDefault(raw) {
 				return fmt.Errorf("protected input %q may default only to empty", in.Name)
 			}
 			v, errValue := in.Shape.fromJSON(raw)
@@ -197,6 +209,9 @@ func (s *Schema) check() error {
 			}
 			s.defaults[in.Name][profile] = v
 		}
+	}
+	if errCredentials := s.checkCredentialInputs(); errCredentials != nil {
+		return errCredentials
 	}
 	for _, in := range s.Inputs {
 		for _, v := range s.defaults[in.Name] {
@@ -218,6 +233,55 @@ func (s *Schema) check() error {
 		}
 	}
 	return nil
+}
+
+func emptyDefault(raw any) bool {
+	if list, ok := raw.([]any); ok {
+		return len(list) == 0
+	}
+	return raw == ""
+}
+
+// checkCredentialInputs pairs each upstream-groups input with exactly one
+// credential-list input that applies to the same profiles.
+func (s *Schema) checkCredentialInputs() error {
+	owners := map[string]string{}
+	for _, in := range s.Inputs {
+		switch in.Shape.Type {
+		case TypeUpstreamGroups:
+			if in.Class != Configuration || in.Key != "api-keys."+in.Shape.Family {
+				return fmt.Errorf("upstream-groups input %q must be configuration keyed api-keys.<family>", in.Name)
+			}
+			target, ok := s.byName[in.Credentials]
+			if !ok || target.Shape.Type != TypeCredentialList || target.Class != Protected || !slices.Equal(target.Profiles, in.Profiles) {
+				return fmt.Errorf("upstream-groups input %q must name a protected credential-list input of its profiles as credentials", in.Name)
+			}
+			if other, dup := owners[in.Credentials]; dup {
+				return fmt.Errorf("inputs %q and %q share the credentials %q", other, in.Name, in.Credentials)
+			}
+			owners[in.Credentials] = in.Name
+		default:
+			if in.Credentials != "" {
+				return fmt.Errorf("input %q: only upstream-groups inputs have credentials", in.Name)
+			}
+		}
+	}
+	for _, in := range s.Inputs {
+		if in.Shape.Type == TypeCredentialList && owners[in.Name] == "" {
+			return fmt.Errorf("credential-list input %q is no upstream-groups input's credentials", in.Name)
+		}
+	}
+	return nil
+}
+
+// credentialOwner reports whether the input is another input's credentials.
+func (s *Schema) credentialOwner(name string) bool {
+	for _, in := range s.Inputs {
+		if in.Credentials == name {
+			return true
+		}
+	}
+	return false
 }
 
 func (in Input) source() (string, error) {
@@ -254,8 +318,16 @@ func (sh Shape) check() error {
 			return fmt.Errorf("minimum exceeds maximum")
 		}
 	case TypeBoolean, TypePath, TypePathList:
+	case TypeUpstreamGroups:
+		if _, known := families[sh.Family]; !known {
+			return fmt.Errorf("unknown upstream family %q", sh.Family)
+		}
+	case TypeCredentialList:
 	default:
 		return fmt.Errorf("unknown shape type %q", sh.Type)
+	}
+	if sh.Family != "" && sh.Type != TypeUpstreamGroups {
+		return fmt.Errorf("family applies only to upstream groups")
 	}
 	if len(sh.Enum) > 0 && sh.Type != TypeString {
 		return fmt.Errorf("enum applies only to strings")
