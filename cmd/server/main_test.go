@@ -3,11 +3,13 @@
 package main
 
 import (
+	"fmt"
 	"io/fs"
 	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/inputs"
 )
 
@@ -28,11 +30,23 @@ routing:
   retry: {request-retry: 5, max-retry-interval: 90}
 client:
   codex: {enable-apply-patch: true, optimize-multi-agent-v2: true}
+api-keys:
+  openai-compatibility:
+    - name: alpha
+      base-url: https://alpha.invalid/v1
+      prefix: alpha
+      models:
+        - {name: org/model-a, alias: model-a, max-context-length: 480000, input-modalities: [text, image], thinking: {levels: [max]}}
+  meta:
+    - name: muse
+      models: [{name: muse-model, max-context-length: 480000}]
 `
 
 const protected = `CLIPROXY_API_KEYS='client-key-a,client-key-b'
 CLIPROXY_PROXY_URL='http://proxy.invalid:3128'
 OTEL_EXPORTER_OTLP_HEADERS='authorization=Basic%20c2VjcmV0'
+CLIPROXY_OPENAI_COMPATIBILITY_KEYS='alpha=upstream-key-a1,alpha=upstream-key-a2'
+CLIPROXY_META_KEYS='muse=upstream-key-m'
 `
 
 func productionProcess(args ...string) inputs.Process {
@@ -65,6 +79,8 @@ func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
 		"routing.retry.max-retry-interval":     cfg.MaxRetryInterval,
 		"client.codex.enable-apply-patch":      cfg.Client.Codex.EnableApplyPatch,
 		"client.codex.optimize-multi-agent-v2": cfg.Client.Codex.OptimizeMultiAgentV2,
+		"api-keys.openai-compatibility":        openAICompatibilitySummary(cfg.OpenAICompatibility),
+		"api-keys.meta":                        metaSummary(cfg.MetaKey),
 	}
 	want := map[string]any{
 		"server.host":                          "0.0.0.0",
@@ -77,13 +93,19 @@ func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
 		"routing.retry.max-retry-interval":     90,
 		"client.codex.enable-apply-patch":      true,
 		"client.codex.optimize-multi-agent-v2": true,
+		"api-keys.openai-compatibility": []string{
+			"alpha https://alpha.invalid/v1 prefix=alpha keys=[upstream-key-a1 upstream-key-a2]",
+			"  org/model-a as model-a context=480000 input=[text image] levels=[max]",
+		},
+		"api-keys.meta": []string{"upstream-key-m prefix= models=[muse-model:480000]"},
 	}
 	schema, errSchema := inputs.Load()
 	if errSchema != nil {
 		t.Fatal(errSchema)
 	}
 	for _, in := range schema.Inputs {
-		if in.Key == "" || in.EntryPointOnly {
+		// A credential-list input reaches the configuration inside its groups.
+		if in.Key == "" || in.EntryPointOnly || in.Shape.Type == inputs.TypeCredentialList {
 			continue
 		}
 		if _, covered := want[in.Key]; !covered {
@@ -97,6 +119,37 @@ func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
 	if cfg.RemoteManagement.SecretKey != "" {
 		t.Fatal("the management API must stay disabled")
 	}
+}
+
+func openAICompatibilitySummary(groups []config.OpenAICompatibility) []string {
+	var out []string
+	for _, g := range groups {
+		var keys []string
+		for _, k := range g.APIKeyEntries {
+			keys = append(keys, k.APIKey)
+		}
+		out = append(out, fmt.Sprintf("%s %s prefix=%s keys=%v", g.Name, g.BaseURL, g.Prefix, keys))
+		for _, m := range g.Models {
+			var levels []string
+			if m.Thinking != nil {
+				levels = m.Thinking.Levels
+			}
+			out = append(out, fmt.Sprintf("  %s as %s context=%d input=%v levels=%v", m.Name, m.Alias, m.MaxContextLength, m.InputModalities, levels))
+		}
+	}
+	return out
+}
+
+func metaSummary(keys []config.MetaKey) []string {
+	var out []string
+	for _, k := range keys {
+		var models []string
+		for _, m := range k.Models {
+			models = append(models, fmt.Sprintf("%s:%d", m.Name, m.MaxContextLength))
+		}
+		out = append(out, fmt.Sprintf("%s prefix=%s models=%v", k.APIKey, k.Prefix, models))
+	}
+	return out
 }
 
 func TestTelemetryInputsReachTheSettings(t *testing.T) {

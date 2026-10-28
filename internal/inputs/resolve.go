@@ -153,11 +153,30 @@ func Resolve(s *Schema, p Process, files Files) (*Effective, error) {
 			r.resolve(in.Name)
 		}
 	}
+	r.checkCredentials()
 	if len(r.problems) > 0 {
 		sort.Strings(r.problems)
 		return nil, &Error{Problems: slices.Compact(r.problems)}
 	}
 	return &Effective{Profile: r.profile, schema: s, values: r.resolved}, nil
+}
+
+// checkCredentials pairs each upstream group with its keys once both inputs
+// resolved.
+func (r *resolver) checkCredentials() {
+	for _, in := range r.schema.Inputs {
+		if in.Credentials == "" {
+			continue
+		}
+		groups, okGroups := r.resolved[in.Name]
+		credentials, okCredentials := r.resolved[in.Credentials]
+		if !okGroups || !okCredentials {
+			continue
+		}
+		for _, p := range checkCredentials(groups.v.([]UpstreamGroup), credentials.v.([]Credential)) {
+			r.problem("%s: %s", in.Credentials, p)
+		}
+	}
 }
 
 // readProcess takes the declared environment variables and flags. Other
