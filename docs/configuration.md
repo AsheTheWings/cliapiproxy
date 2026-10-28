@@ -58,6 +58,10 @@ run fails when:
 An absent file is an absent layer. An environment variable set to the empty
 string counts as unset.
 
+`-validate` stops there: it prints `valid` and exits 0 when the effective
+inputs are valid, and otherwise reports the problems and exits 2, so a
+deploy can check a target's inputs before it starts the server.
+
 ## During a run
 
 Once its inputs are resolved, the server clears its environment, so no part of
