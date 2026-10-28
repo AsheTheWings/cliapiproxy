@@ -43,7 +43,8 @@ func mustSchema(t *testing.T) *Schema {
 }
 
 func production(env ...string) []string {
-	return append([]string{"CLIPROXY_PROFILE=production", "CLIPROXY_PROTECTED_FILE=" + protectedPath}, env...)
+	return append([]string{"CLIPROXY_PROFILE=production", "CLIPROXY_PROTECTED_FILE=" + protectedPath,
+		"OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318", "CLIPROXY_DEPLOYMENT_ENVIRONMENT=prod"}, env...)
 }
 
 func validProtected() memFile {
@@ -85,7 +86,8 @@ func TestProfileIsRequired(t *testing.T) {
 
 func TestProductionRequiresWhatItOwns(t *testing.T) {
 	_, err := Resolve(mustSchema(t), Process{Environ: []string{"CLIPROXY_PROFILE=production"}}, memFiles{})
-	for _, name := range []string{"CLIPROXY_PROTECTED_FILE: required", "server.port: required", "oauth.auth-dir: required", "access.api-keys: required"} {
+	for _, name := range []string{"CLIPROXY_PROTECTED_FILE: required", "server.port: required", "oauth.auth-dir: required", "access.api-keys: required",
+		"OTEL_EXPORTER_OTLP_ENDPOINT: required", "CLIPROXY_DEPLOYMENT_ENVIRONMENT: required"} {
 		wantProblem(t, err, name)
 	}
 }
@@ -271,5 +273,8 @@ func TestConfigDocumentNestsKeysUnderTheV8Layout(t *testing.T) {
 		if !strings.Contains(string(doc), want) {
 			t.Fatalf("document lacks %q:\n%s", want, doc)
 		}
+	}
+	if strings.Contains(string(doc), "telemetry") {
+		t.Fatalf("document carries an entry-point-only key:\n%s", doc)
 	}
 }

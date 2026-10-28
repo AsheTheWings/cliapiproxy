@@ -67,6 +67,9 @@ type Input struct {
 	Shape       Shape          `json:"shape"`
 	Profiles    []string       `json:"profiles,omitempty"`
 	Defaults    map[string]any `json:"defaults"`
+	// EntryPointOnly keeps a keyed input out of the configuration document;
+	// the entry point consumes it directly.
+	EntryPointOnly bool `json:"entryPointOnly,omitempty"`
 }
 
 // AppliesTo reports whether the input exists in the profile.
@@ -151,6 +154,9 @@ func (s *Schema) check() error {
 		}
 		if in.Class != Configuration && in.Class != Protected {
 			return fmt.Errorf("input %q has unknown class %q", in.Name, in.Class)
+		}
+		if in.EntryPointOnly && in.Key == "" {
+			return fmt.Errorf("input %q: entryPointOnly applies only to keyed inputs", in.Name)
 		}
 		if in.Class == Protected && in.Key == "" {
 			return fmt.Errorf("protected input %q must come from the protected file", in.Name)

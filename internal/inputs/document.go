@@ -11,13 +11,14 @@ const ConfigVersion = 8
 
 // ConfigDocument renders the effective keyed inputs as a configuration
 // document in the v8 layout, for the configuration parser to read in memory.
-// Keys the schema does not declare keep the parser's defaults.
+// Keys the schema does not declare keep the parser's defaults; entry-point-only
+// keys stay out.
 func (e *Effective) ConfigDocument() ([]byte, error) {
 	root := &yaml.Node{Kind: yaml.MappingNode}
 	appendScalar(root, "config-version", ConfigVersion)
 	for _, in := range e.schema.Inputs {
 		v, ok := e.values[in.Name]
-		if in.Key == "" || !ok {
+		if in.Key == "" || in.EntryPointOnly || !ok {
 			continue
 		}
 		parts := strings.Split(in.Key, ".")

@@ -25,6 +25,7 @@ var (
 	ginInfoWriter  *io.PipeWriter
 	ginErrorWriter *io.PipeWriter
 	consoleWriter  io.Writer = os.Stderr
+	hooksOnly      bool
 )
 
 func init() {
@@ -202,6 +203,20 @@ func ResolveLogDirectory(cfg *config.Config) string {
 	return logDir
 }
 
+// DiscardLocalOutput stops the global logger writing anywhere itself, so its
+// records reach only its hooks; ConfigureLogOutput then changes nothing.
+func DiscardLocalOutput() {
+	SetupBaseLogger()
+	writerMu.Lock()
+	defer writerMu.Unlock()
+	hooksOnly = true
+	if logWriter != nil {
+		_ = logWriter.Close()
+		logWriter = nil
+	}
+	log.SetOutput(io.Discard)
+}
+
 // ConfigureLogOutput switches the global log destination between rotating files and stdout.
 // When logsMaxTotalSizeMB > 0, a background cleaner removes the oldest log files in the logs directory
 // until the total size is within the limit.
@@ -210,6 +225,9 @@ func ConfigureLogOutput(cfg *config.Config) error {
 
 	writerMu.Lock()
 	defer writerMu.Unlock()
+	if hooksOnly {
+		return nil
+	}
 
 	logDir := ResolveLogDirectory(cfg)
 

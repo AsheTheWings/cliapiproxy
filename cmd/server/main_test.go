@@ -28,12 +28,11 @@ routing:
   retry: {request-retry: 5, max-retry-interval: 90}
 client:
   codex: {enable-apply-patch: true, optimize-multi-agent-v2: true}
-observability:
-  logs: {debug: true}
 `
 
 const protected = `access: {api-keys: [client-key-a, client-key-b]}
 requests: {proxy-url: "http://proxy.invalid:3128"}
+telemetry: {otlp-headers: "authorization=Basic%20c2VjcmV0"}
 `
 
 func productionProcess(args ...string) inputs.Process {
@@ -41,6 +40,8 @@ func productionProcess(args ...string) inputs.Process {
 		"CLIPROXY_PROFILE=production",
 		"CLIPROXY_OVERLAY_FILES=/etc/cliapiproxy/overlay.yaml",
 		"CLIPROXY_PROTECTED_FILE=/run/cliapiproxy/protected.yaml",
+		"OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318",
+		"CLIPROXY_DEPLOYMENT_ENVIRONMENT=prod",
 	}}
 }
 
@@ -64,7 +65,6 @@ func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
 		"routing.retry.max-retry-interval":     cfg.MaxRetryInterval,
 		"client.codex.enable-apply-patch":      cfg.Client.Codex.EnableApplyPatch,
 		"client.codex.optimize-multi-agent-v2": cfg.Client.Codex.OptimizeMultiAgentV2,
-		"observability.logs.debug":             cfg.Debug,
 	}
 	want := map[string]any{
 		"server.host":                          "0.0.0.0",
@@ -77,14 +77,13 @@ func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
 		"routing.retry.max-retry-interval":     90,
 		"client.codex.enable-apply-patch":      true,
 		"client.codex.optimize-multi-agent-v2": true,
-		"observability.logs.debug":             true,
 	}
 	schema, errSchema := inputs.Load()
 	if errSchema != nil {
 		t.Fatal(errSchema)
 	}
 	for _, in := range schema.Inputs {
-		if in.Key == "" {
+		if in.Key == "" || in.EntryPointOnly {
 			continue
 		}
 		if _, covered := want[in.Key]; !covered {
@@ -97,6 +96,25 @@ func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
 	}
 	if cfg.RemoteManagement.SecretKey != "" {
 		t.Fatal("the management API must stay disabled")
+	}
+}
+
+func TestTelemetryInputsReachTheSettings(t *testing.T) {
+	plan, err := resolveRun(productionProcess(), testFiles)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := plan.telemetry
+	if s.Traces != "otlp" || s.Metrics != "otlp" || s.Logs != "otlp" {
+		t.Fatalf("exporters = %s/%s/%s, want otlp by default", s.Traces, s.Metrics, s.Logs)
+	}
+	if s.Endpoint != "http://127.0.0.1:4318" || s.Environment != "prod" || s.Headers["authorization"] != "Basic c2VjcmV0" {
+		t.Fatalf("settings = %+v", s)
+	}
+	files := memFiles{"/etc/cliapiproxy/overlay.yaml": overlay, "/run/cliapiproxy/protected.yaml": strings.Replace(protected, "authorization=Basic%20c2VjcmV0", "novalue", 1)}
+	_, err = resolveRun(productionProcess(), files)
+	if err == nil || strings.Contains(err.Error(), "novalue") || !strings.Contains(err.Error(), "telemetry.otlp-headers") {
+		t.Fatalf("error = %v, want a header problem without the value", err)
 	}
 }
 
