@@ -29,3 +29,17 @@ ORAS=<oras> scripts/image.sh push build-layout "$(git rev-parse HEAD)" "$created
 The push prints the manifest digest; the same build layout and arguments
 always produce the same one. [Testing](testing.md) describes the test
 classes, the fast gate, and the qualification of the image layout.
+
+## Continuous integration
+
+The `Image` workflow runs on GitHub-hosted runners. Every run checks out the
+commit, runs the fast gate and the integration class, builds the image,
+annotates it into a layout, and qualifies that layout. Pull request runs stop
+there and hold no token. Push runs on any branch, and manual runs, then push
+the qualified image to the registry the repository variable
+`ARTIFACT_REGISTRY` names, authenticating with the job's OIDC token: runs on
+the default branch to `<registry>/cliapiproxy/default`, other branches to
+`<registry>/cliapiproxy/branches`, tagged
+`<commit>-<run id>-<run attempt>`. The publishing job fails unless the
+pushed manifest is the qualified one, and logs its digest as
+`SHA-256: <hex>`.
