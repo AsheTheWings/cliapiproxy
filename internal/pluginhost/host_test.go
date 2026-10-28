@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"path/filepath"
 	"slices"
 	"strings"
 	"sync"
@@ -75,8 +74,6 @@ func TestHostApplyConfig_DisabledGlobalDoesNotResolvePluginsDir(t *testing.T) {
 		t.Fatal("PluginRegistered(alpha) = false, want true before disable")
 	}
 
-	t.Setenv("HOME", "")
-	t.Setenv("USERPROFILE", "")
 	disabledCfg, errParseConfig := config.ParseConfigBytes([]byte(`
 plugins:
   enabled: false
@@ -179,36 +176,6 @@ func TestHostApplyConfigStopsDisabledPluginAndKeepsSibling(t *testing.T) {
 	}
 	if bravoLookup.shutdownCalls != 0 || bravoPlugin.registerCalls != 1 {
 		t.Fatalf("bravo changed during alpha re-enable: shutdown=%d register=%d", bravoLookup.shutdownCalls, bravoPlugin.registerCalls)
-	}
-}
-
-func TestHostApplyConfig_ExpandsPluginsDirLeadingTilde(t *testing.T) {
-	loader := newTestSymbolLoader()
-	plugin := &testPlugin{
-		registerResult:    validTestPlugin("alpha"),
-		reconfigureResult: validTestPlugin("alpha"),
-	}
-	loader.lookups["alpha"] = newTestSymbolLookup(plugin)
-	h := NewForTest(loader)
-	t.Cleanup(h.ShutdownAll)
-
-	pluginsDir := makePluginDir(t, "alpha")
-	homeDir := filepath.Dir(pluginsDir)
-	t.Setenv("HOME", homeDir)
-	t.Setenv("USERPROFILE", homeDir)
-	h.ApplyConfig(context.Background(), &config.Config{
-		Plugins: config.PluginsConfig{
-			Enabled: true,
-			Dir:     "~/" + filepath.ToSlash(filepath.Base(pluginsDir)),
-			Configs: enabledPluginConfigs("alpha"),
-		},
-	})
-
-	if loader.openCalls != 1 {
-		t.Fatalf("Open calls = %d, want 1", loader.openCalls)
-	}
-	if !h.PluginRegistered("alpha") {
-		t.Fatal("PluginRegistered(alpha) = false, want true")
 	}
 }
 

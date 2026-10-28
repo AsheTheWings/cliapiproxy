@@ -8,7 +8,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strings"
 	"time"
@@ -1207,7 +1206,7 @@ func applyKimiHeaders(r *http.Request, token string, stream bool) {
 	r.Header.Set("X-Msh-Version", buildinfo.Version)
 	r.Header.Set("X-Msh-Device-Name", getKimiHostname())
 	r.Header.Set("X-Msh-Device-Model", getKimiDeviceModel())
-	r.Header.Set("X-Msh-Device-Id", getKimiDeviceID())
+	r.Header.Set("X-Msh-Device-Id", kimiDeviceID)
 	if stream {
 		r.Header.Set("Accept", "text/event-stream")
 		return
@@ -1276,32 +1275,8 @@ func getKimiDeviceModel() string {
 	return fmt.Sprintf("%s %s", runtime.GOOS, runtime.GOARCH)
 }
 
-// getKimiDeviceID returns a stable device ID, matching kimi-cli storage location.
-func getKimiDeviceID() string {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return "cli-proxy-api-device"
-	}
-	// Check kimi-cli's device_id location first (platform-specific)
-	var kimiShareDir string
-	switch runtime.GOOS {
-	case "darwin":
-		kimiShareDir = filepath.Join(homeDir, "Library", "Application Support", "kimi")
-	case "windows":
-		appData := os.Getenv("APPDATA")
-		if appData == "" {
-			appData = filepath.Join(homeDir, "AppData", "Roaming")
-		}
-		kimiShareDir = filepath.Join(appData, "kimi")
-	default: // linux and other unix-like
-		kimiShareDir = filepath.Join(homeDir, ".local", "share", "kimi")
-	}
-	deviceIDPath := filepath.Join(kimiShareDir, "device_id")
-	if data, err := os.ReadFile(deviceIDPath); err == nil {
-		return strings.TrimSpace(string(data))
-	}
-	return "cli-proxy-api-device"
-}
+// kimiDeviceID is the device ID the proxy reports to Kimi.
+const kimiDeviceID = "cli-proxy-api-device"
 
 // kimiCreds extracts the access token from auth.
 func kimiCreds(a *cliproxyauth.Auth) (token string) {

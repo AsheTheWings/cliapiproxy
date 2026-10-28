@@ -55,13 +55,14 @@ type certificatePaths struct {
 	CACert     string
 }
 
-// ConfigFromJWT prepares a Home config from the JWT and ensures local mTLS files exist.
-func ConfigFromJWT(ctx context.Context, rawJWT string) (config.HomeConfig, error) {
+// ConfigFromJWT prepares a Home config from the JWT and ensures the mTLS
+// files exist in certificateDir.
+func ConfigFromJWT(ctx context.Context, rawJWT string, certificateDir string) (config.HomeConfig, error) {
 	claims, errClaims := parseHomeJWTClaims(rawJWT)
 	if errClaims != nil {
 		return config.HomeConfig{}, errClaims
 	}
-	paths, errPaths := defaultCertificatePaths()
+	paths, errPaths := certificatePathsIn(certificateDir)
 	if errPaths != nil {
 		return config.HomeConfig{}, errPaths
 	}
@@ -121,12 +122,10 @@ func decodeJWTPart(part string) ([]byte, error) {
 	return base64.URLEncoding.DecodeString(part)
 }
 
-func defaultCertificatePaths() (certificatePaths, error) {
-	homeDir, errHome := os.UserHomeDir()
-	if errHome != nil {
-		return certificatePaths{}, errHome
+func certificatePathsIn(dir string) (certificatePaths, error) {
+	if strings.TrimSpace(dir) == "" {
+		return certificatePaths{}, fmt.Errorf("home: certificate directory is not set")
 	}
-	dir := filepath.Join(homeDir, ".cli-proxy-api")
 	return certificatePaths{
 		Dir:        dir,
 		ClientCert: filepath.Join(dir, "client-crt.pem"),

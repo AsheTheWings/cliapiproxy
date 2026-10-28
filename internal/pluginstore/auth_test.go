@@ -18,7 +18,7 @@ import (
 )
 
 func TestPluginStoreAuthMatchesURLHostAndPathBoundaries(t *testing.T) {
-	t.Setenv("PLUGIN_STORE_TOKEN", "secret-token")
+	t.Cleanup(SetCredentialForTest("PLUGIN_STORE_TOKEN", "secret-token"))
 	auth := []AuthConfig{{
 		Match:    "https://downloads.example/private",
 		ApplyTo:  []string{RequestKindArtifact},
@@ -52,7 +52,7 @@ func TestPluginStoreAuthMatchesURLHostAndPathBoundaries(t *testing.T) {
 }
 
 func TestPluginStoreGitHubTokenUsesExplicitTokenEnv(t *testing.T) {
-	t.Setenv("PLUGIN_STORE_TOKEN", "secret-token")
+	t.Cleanup(SetCredentialForTest("PLUGIN_STORE_TOKEN", "secret-token"))
 	headers := http.Header{}
 	auth := []AuthConfig{{
 		Match:    "https://api.github.com/repos/author-name/sample-provider/releases/",
@@ -70,7 +70,7 @@ func TestPluginStoreGitHubTokenUsesExplicitTokenEnv(t *testing.T) {
 }
 
 func TestPluginAuthConfiguredCoversInstallRequestKinds(t *testing.T) {
-	t.Setenv("PLUGIN_STORE_TOKEN", "secret-token")
+	t.Cleanup(SetCredentialForTest("PLUGIN_STORE_TOKEN", "secret-token"))
 
 	source := Source{URL: "https://registry.example/registry.json"}
 	directPlugin := Plugin{
@@ -137,7 +137,7 @@ func TestPluginAuthConfiguredCoversInstallRequestKinds(t *testing.T) {
 }
 
 func TestPluginStoreAuthHeaderIsReevaluatedAcrossRedirect(t *testing.T) {
-	t.Setenv("PLUGIN_STORE_HEADER", "secret-token")
+	t.Cleanup(SetCredentialForTest("PLUGIN_STORE_HEADER", "secret-token"))
 
 	var initialHeader string
 	var redirectedHeader string
@@ -194,7 +194,7 @@ func TestPluginStoreAuthHeaderIsReevaluatedAcrossRedirect(t *testing.T) {
 }
 
 func TestPluginStoreAuthHeaderIsAppliedToMatchingRedirect(t *testing.T) {
-	t.Setenv("PLUGIN_STORE_HEADER", "secret-token")
+	t.Cleanup(SetCredentialForTest("PLUGIN_STORE_HEADER", "secret-token"))
 
 	var redirectedHeader string
 	artifactData := []byte("artifact-data")
@@ -234,7 +234,7 @@ func TestPluginStoreAuthHeaderIsAppliedToMatchingRedirect(t *testing.T) {
 }
 
 func TestResolvedPluginStoreAuthTakesPriorityOverEnvironmentAuth(t *testing.T) {
-	t.Setenv("PLUGIN_STORE_TOKEN", "environment-token")
+	t.Cleanup(SetCredentialForTest("PLUGIN_STORE_TOKEN", "environment-token"))
 	headers := http.Header{}
 	resolved := []ResolvedAuthConfig{{
 		Match:   "https://downloads.example/private/",
@@ -259,7 +259,7 @@ func TestResolvedPluginStoreAuthTakesPriorityOverEnvironmentAuth(t *testing.T) {
 }
 
 func TestResolvedNoAuthRuleBlocksEnvironmentFallback(t *testing.T) {
-	t.Setenv("PLUGIN_STORE_TOKEN", "environment-token")
+	t.Cleanup(SetCredentialForTest("PLUGIN_STORE_TOKEN", "environment-token"))
 	headers := http.Header{}
 	resolved := []ResolvedAuthConfig{{
 		Match: "https://downloads.example/private/", ApplyTo: []string{RequestKindArtifact}, Type: AuthTypeNone,

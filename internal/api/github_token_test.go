@@ -11,8 +11,7 @@ import (
 )
 
 func TestServerGitHubTokenReload(t *testing.T) {
-	t.Setenv("GITHUB_TOKEN", "environment-token")
-	t.Cleanup(func() { githubauth.SetToken("") })
+	t.Cleanup(githubauth.ReplaceTokenForTest(""))
 	cfg := &config.Config{GitHubToken: "initial-token"}
 	server := newTestServerWithConfig(t, cfg)
 	if util.ResolveGitHubToken() != "initial-token" {
@@ -27,7 +26,7 @@ func TestServerGitHubTokenReload(t *testing.T) {
 	cleared := updated.CloneForRuntime()
 	cleared.GitHubToken = ""
 	server.UpdateClients(cleared)
-	if util.ResolveGitHubToken() != "environment-token" {
+	if util.ResolveGitHubToken() != "" {
 		t.Fatal("reload did not clear global token")
 	}
 }

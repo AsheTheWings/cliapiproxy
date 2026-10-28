@@ -2,7 +2,6 @@ package config
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 )
@@ -10,24 +9,14 @@ import (
 const defaultPluginsDir = "plugins"
 
 // ResolvePluginsDir normalizes the plugin directory for consistent use throughout the app.
-// It expands a leading tilde (~) to the user's home directory and defaults empty values to plugins.
+// It defaults empty values to plugins; a path needing home expansion is an error.
 func ResolvePluginsDir(pluginsDir string) (string, error) {
 	pluginsDir = strings.TrimSpace(pluginsDir)
 	if pluginsDir == "" {
 		pluginsDir = defaultPluginsDir
 	}
 	if strings.HasPrefix(pluginsDir, "~") {
-		homeDir, errUserHomeDir := os.UserHomeDir()
-		if errUserHomeDir != nil {
-			return "", fmt.Errorf("resolve plugins directory: %w", errUserHomeDir)
-		}
-		remainder := strings.TrimPrefix(pluginsDir, "~")
-		remainder = strings.TrimLeft(remainder, "/\\")
-		if remainder == "" {
-			return filepath.Clean(homeDir), nil
-		}
-		normalized := strings.ReplaceAll(remainder, "\\", "/")
-		return filepath.Clean(filepath.Join(homeDir, filepath.FromSlash(normalized))), nil
+		return "", fmt.Errorf("resolve plugins directory: %q needs home expansion, which is not supported", pluginsDir)
 	}
 	return filepath.Clean(pluginsDir), nil
 }

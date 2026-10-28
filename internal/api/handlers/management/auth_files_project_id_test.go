@@ -17,7 +17,6 @@ import (
 )
 
 func TestListAuthFiles_IncludesProjectIDFromManager(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 
 	authDir := t.TempDir()
 	fileName := "antigravity-user@example.com-project-a.json"
@@ -55,7 +54,6 @@ func TestListAuthFiles_IncludesProjectIDFromManager(t *testing.T) {
 }
 
 func TestListAuthFilesFromDisk_IncludesProjectID(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 
 	authDir := t.TempDir()
 	filePath := filepath.Join(authDir, "antigravity-user@example.com-project-a.json")
@@ -72,7 +70,6 @@ func TestListAuthFilesFromDisk_IncludesProjectID(t *testing.T) {
 }
 
 func TestListAuthFiles_IncludesWebsocketsFromManager(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 
 	authDir := t.TempDir()
 	fileName := "codex-user@example.com-pro.json"
@@ -109,7 +106,6 @@ func TestListAuthFiles_IncludesWebsocketsFromManager(t *testing.T) {
 }
 
 func TestListAuthFilesFromDisk_IncludesWebsockets(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 
 	authDir := t.TempDir()
 	filePath := filepath.Join(authDir, "codex-user@example.com-pro.json")

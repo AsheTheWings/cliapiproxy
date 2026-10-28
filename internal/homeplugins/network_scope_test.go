@@ -31,7 +31,7 @@ func TestPluginStoreClientsShareProxyCooldown(t *testing.T) {
 	defer proxy.Close()
 
 	const tokenEnv = "HOME_PLUGIN_NETWORK_SCOPE_TEST_TOKEN"
-	t.Setenv(tokenEnv, t.Name())
+	t.Cleanup(internalpluginstore.SetCredentialForTest(tokenEnv, t.Name()))
 	auth := []sdkpluginstore.ResolvedAuthConfig{{
 		Match: "https://api.github.com/", Type: sdkpluginstore.AuthTypeGitHubToken,
 		Token: sdkpluginstore.Secret(t.Name()),

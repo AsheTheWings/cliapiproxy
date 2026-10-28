@@ -6,7 +6,6 @@ package util
 import (
 	"context"
 	"fmt"
-	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -71,25 +70,14 @@ func SetLogLevel(cfg *config.Config) {
 	}
 }
 
-// ResolveAuthDir normalizes the auth directory path for consistent reuse throughout the app.
-// It expands a leading tilde (~) to the user's home directory and returns a cleaned path.
-// If authDir is empty, it defaults to ~/.cli-proxy-api.
+// ResolveAuthDir returns the cleaned auth directory path. The directory is an
+// input, so an empty path or one that would need home expansion is an error.
 func ResolveAuthDir(authDir string) (string, error) {
-	if authDir == "" {
-		authDir = config.DefaultAuthDir
+	if strings.TrimSpace(authDir) == "" {
+		return "", fmt.Errorf("resolve auth dir: auth-dir is not set")
 	}
 	if strings.HasPrefix(authDir, "~") {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return "", fmt.Errorf("resolve auth dir: %w", err)
-		}
-		remainder := strings.TrimPrefix(authDir, "~")
-		remainder = strings.TrimLeft(remainder, "/\\")
-		if remainder == "" {
-			return filepath.Clean(home), nil
-		}
-		normalized := strings.ReplaceAll(remainder, "\\", "/")
-		return filepath.Clean(filepath.Join(home, filepath.FromSlash(normalized))), nil
+		return "", fmt.Errorf("resolve auth dir: %q needs home expansion, which is not supported", authDir)
 	}
 	return filepath.Clean(authDir), nil
 }
@@ -111,18 +99,4 @@ func CountAuthFiles[T any](ctx context.Context, store interface {
 		return 0
 	}
 	return len(entries)
-}
-
-// WritablePath returns the cleaned WRITABLE_PATH environment variable when it is set.
-// It accepts both uppercase and lowercase variants for compatibility with existing conventions.
-func WritablePath() string {
-	for _, key := range []string{"WRITABLE_PATH", "writable_path"} {
-		if value, ok := os.LookupEnv(key); ok {
-			trimmed := strings.TrimSpace(value)
-			if trimmed != "" {
-				return filepath.Clean(trimmed)
-			}
-		}
-	}
-	return ""
 }

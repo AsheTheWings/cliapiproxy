@@ -6,7 +6,6 @@ import "testing"
 
 func TestGlobalToken(t *testing.T) {
 	t.Cleanup(func() { SetToken("") })
-	t.Setenv("GITHUB_TOKEN", "env-token")
 	SetToken(" config-token ")
 	if ResolveToken() != "config-token" {
 		t.Fatal("configuration must take precedence")
@@ -26,7 +25,7 @@ func TestGlobalToken(t *testing.T) {
 		t.Fatal("reload did not replace token")
 	}
 	SetToken("")
-	if ResolveToken() != "env-token" {
-		t.Fatal("clearing configuration must restore environment fallback")
+	if ResolveToken() != "" {
+		t.Fatal("clearing configuration must clear the token")
 	}
 }

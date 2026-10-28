@@ -11,13 +11,25 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/pluginhost"
+	"golang.org/x/crypto/bcrypt"
 )
+
+// secretKeyConfig returns a configuration whose management key is secret.
+func secretKeyConfig(t *testing.T, secret string) *config.Config {
+	t.Helper()
+	hash, errHash := bcrypt.GenerateFromPassword([]byte(secret), bcrypt.MinCost)
+	if errHash != nil {
+		t.Fatal(errHash)
+	}
+	cfg := &config.Config{}
+	cfg.RemoteManagement.SecretKey = string(hash)
+	return cfg
+}
 
 func TestAuthenticateManagementKey_LocalhostIPBan_BlocksCorrectKeyDuringBan(t *testing.T) {
 	h := &Handler{
-		cfg:            &config.Config{},
+		cfg:            secretKeyConfig(t, "test-secret"),
 		failedAttempts: make(map[string]*attemptInfo),
-		envSecret:      "test-secret",
 	}
 
 	for i := 0; i < 5; i++ {
@@ -45,9 +57,8 @@ func TestAuthenticateManagementKey_LocalhostIPBan_BlocksCorrectKeyDuringBan(t *t
 func TestMiddlewareSetsSupportPluginHeader(t *testing.T) {
 
 	h := &Handler{
-		cfg:            &config.Config{},
+		cfg:            secretKeyConfig(t, "test-secret"),
 		failedAttempts: make(map[string]*attemptInfo),
-		envSecret:      "test-secret",
 	}
 	middleware := h.Middleware()
 

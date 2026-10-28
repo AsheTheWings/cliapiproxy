@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/meta"
 	xaiauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/xai"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor"
@@ -423,7 +424,7 @@ func TestAPICallResolvesMetaToken(t *testing.T) {
 	}))
 	defer server.Close()
 
-	t.Setenv("META_MINT_URL", server.URL+"/key")
+	t.Cleanup(meta.ReplaceMintURLForTest(server.URL + "/key"))
 
 	manager := coreauth.NewManager(nil, nil, nil)
 	metaAuth := &coreauth.Auth{
@@ -477,7 +478,7 @@ func TestResolveMetaTokenUpdatesManagerAndStore(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]string{"api_key": "LLM|minted", "base_url": " https://regional.meta.example/v1 "})
 	}))
 	defer server.Close()
-	t.Setenv("META_MINT_URL", server.URL)
+	t.Cleanup(meta.ReplaceMintURLForTest(server.URL))
 	store := &memoryAuthStore{}
 	manager := coreauth.NewManager(store, nil, nil)
 	auth, err := manager.Register(coreauth.WithSkipPersist(context.Background()), &coreauth.Auth{ID: "meta-management", Provider: "meta", Metadata: map[string]any{"dca_token": "dca:test", "base_url": "https://previous.meta.example/v1"}, Attributes: map[string]string{"base_url": "https://previous.meta.example/v1"}})
@@ -527,7 +528,7 @@ func TestResolveMetaTokenPropagatesStoreFailure(t *testing.T) {
 		_, _ = w.Write([]byte(`{"api_key":"LLM|minted"}`))
 	}))
 	defer server.Close()
-	t.Setenv("META_MINT_URL", server.URL)
+	t.Cleanup(meta.ReplaceMintURLForTest(server.URL))
 	saveErr := errors.New("test store unavailable")
 	store := &failingMetaTokenStore{err: saveErr}
 	manager := coreauth.NewManager(store, nil, nil)
@@ -565,7 +566,7 @@ func TestResolveMetaToken_ConcurrentSingleflight(t *testing.T) {
 	}))
 	defer server.Close()
 
-	t.Setenv("META_MINT_URL", server.URL)
+	t.Cleanup(meta.ReplaceMintURLForTest(server.URL))
 	store := &memoryAuthStore{}
 	manager := coreauth.NewManager(store, nil, nil)
 	auth, err := manager.Register(coreauth.WithSkipPersist(context.Background()), &coreauth.Auth{
@@ -640,7 +641,7 @@ func TestResolveMetaTokenUsesRequestProxyWithoutSavingOverride(t *testing.T) {
 		_, _ = w.Write([]byte(`{"api_key":"LLM|proxied"}`))
 	}))
 	defer proxy.Close()
-	t.Setenv("META_MINT_URL", "http://meta.invalid/key")
+	t.Cleanup(meta.ReplaceMintURLForTest("http://meta.invalid/key"))
 	store := &memoryAuthStore{}
 	manager := coreauth.NewManager(store, nil, nil)
 	auth, err := manager.Register(coreauth.WithSkipPersist(context.Background()), &coreauth.Auth{

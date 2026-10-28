@@ -15,8 +15,7 @@ import (
 )
 
 func TestDevinOAuthRoutes(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "test-management-key")
-	server := newTestServer(t)
+	server := newManagementTestServer(t, "test-management-key")
 
 	w := httptest.NewRecorder()
 	server.engine.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/v0/management/devin-auth-url", nil))

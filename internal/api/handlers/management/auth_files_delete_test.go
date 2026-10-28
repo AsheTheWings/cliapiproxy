@@ -18,7 +18,6 @@ import (
 )
 
 func TestDeleteAuthFile_UsesAuthPathFromManager(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 
 	tempDir := t.TempDir()
 	authDir := filepath.Join(tempDir, "auth")
@@ -101,7 +100,6 @@ func TestDeleteAuthFile_UsesAuthPathFromManager(t *testing.T) {
 }
 
 func TestDeleteAuthFile_FallbackToAuthDirPath(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 
 	authDir := t.TempDir()
 	fileName := "fallback-user.json"
@@ -129,7 +127,6 @@ func TestDeleteAuthFile_FallbackToAuthDirPath(t *testing.T) {
 }
 
 func TestDeleteAuthFile_RemovesRuntimeAuth(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 
 	authDir := t.TempDir()
 	fileName := "runtime-remove-user.json"

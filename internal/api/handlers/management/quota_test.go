@@ -17,7 +17,6 @@ import (
 )
 
 func TestResetQuota_UsesAuthIndex(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 
 	manager := coreauth.NewManager(nil, nil, nil)
 	next := time.Now().Add(time.Hour)
@@ -89,7 +88,6 @@ func TestResetQuota_UsesAuthIndex(t *testing.T) {
 }
 
 func TestResetQuota_DoesNotAcceptAuthIDOrFileName(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 
 	manager := coreauth.NewManager(nil, nil, nil)
 	auth := &coreauth.Auth{

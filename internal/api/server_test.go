@@ -31,6 +31,7 @@ import (
 	proxyconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
 	internallogging "github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/managementasset"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/pluginhost"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/redisqueue"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
@@ -46,6 +47,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	logtest "github.com/sirupsen/logrus/hooks/test"
 	"github.com/tidwall/gjson"
+	"golang.org/x/crypto/bcrypt"
 	"gopkg.in/yaml.v3"
 )
 
@@ -612,6 +614,20 @@ func TestHomeCodexAlphaSearchEndsSelectionAcrossDirectHTTPPaths(t *testing.T) {
 func newTestServer(t *testing.T) *Server {
 	t.Helper()
 	return newTestServerWithOptions(t)
+}
+
+// newManagementTestServer returns a test server whose management key is key,
+// reachable from the test requests' non-loopback addresses.
+func newManagementTestServer(t *testing.T, key string, opts ...ServerOption) *Server {
+	t.Helper()
+	hash, errHash := bcrypt.GenerateFromPassword([]byte(key), bcrypt.MinCost)
+	if errHash != nil {
+		t.Fatal(errHash)
+	}
+	cfg := &proxyconfig.Config{SDKConfig: sdkconfig.SDKConfig{APIKeys: []string{"test-key"}}}
+	cfg.RemoteManagement.SecretKey = string(hash)
+	cfg.RemoteManagement.AllowRemote = true
+	return newTestServerWithConfig(t, cfg, opts...)
 }
 
 func newTestServerWithOptions(t *testing.T, opts ...ServerOption) *Server {
@@ -1577,9 +1593,8 @@ func TestCodexAlphaSearchRecordsRequestLog(t *testing.T) {
 }
 
 func TestManagementResponseExposesPluginSupportHeaderForCORS(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "test-management-key")
 
-	server := newTestServer(t)
+	server := newManagementTestServer(t, "test-management-key")
 	req := httptest.NewRequest(http.MethodGet, "/v0/management/config", nil)
 	req.Header.Set("Origin", "http://127.0.0.1:5173")
 	rr := httptest.NewRecorder()
@@ -1608,9 +1623,8 @@ func TestManagementResponseExposesPluginSupportHeaderForCORS(t *testing.T) {
 
 func TestOAuthCallbackRouteSkipsManagementKeyMiddleware(t *testing.T) {
 	t.Cleanup(managementHandlers.ReplaceOAuthSessionsForTest())
-	t.Setenv("MANAGEMENT_PASSWORD", "test-management-key")
 
-	server := newTestServer(t)
+	server := newManagementTestServer(t, "test-management-key")
 	state := "server-plugin-oauth-state"
 	if errRegister := managementHandlers.RegisterPluginOAuthSession(state, "gemini-cli", nil); errRegister != nil {
 		t.Fatalf("register plugin oauth session: %v", errRegister)
@@ -1656,7 +1670,6 @@ func TestNewServerWithoutPluginHostLeavesHandlerInterceptorsDisabled(t *testing.
 }
 
 func TestManagementUsageRequiresManagementAuthAndPopsArray(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "test-management-key")
 
 	prevQueueEnabled := redisqueue.Enabled()
 	redisqueue.SetEnabled(false)
@@ -1665,7 +1678,7 @@ func TestManagementUsageRequiresManagementAuthAndPopsArray(t *testing.T) {
 		redisqueue.SetEnabled(prevQueueEnabled)
 	})
 
-	server := newTestServer(t)
+	server := newManagementTestServer(t, "test-management-key")
 
 	redisqueue.Enqueue([]byte(`{"id":1}`))
 	redisqueue.Enqueue([]byte(`{"id":2}`))
@@ -1718,9 +1731,8 @@ func TestManagementUsageRequiresManagementAuthAndPopsArray(t *testing.T) {
 }
 
 func TestManagementPluginsRouteRegistered(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "test-management-key")
 
-	server := newTestServer(t)
+	server := newManagementTestServer(t, "test-management-key")
 	enabled := true
 	server.cfg.Plugins.Configs = map[string]proxyconfig.PluginInstanceConfig{
 		"sample": {Enabled: &enabled, Priority: 4},
@@ -1817,9 +1829,8 @@ func TestVideosRoutesKeepXAINativeAndExposeOpenAIPrefix(t *testing.T) {
 }
 
 func TestHomeEnabledHidesManagementEndpointsAndControlPanel(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "test-management-key")
 
-	server := newTestServer(t)
+	server := newManagementTestServer(t, "test-management-key")
 	server.cfg.Home.Enabled = true
 
 	t.Run("management endpoints return 404", func(t *testing.T) {
@@ -1843,14 +1854,14 @@ func TestHomeEnabledHidesManagementEndpointsAndControlPanel(t *testing.T) {
 }
 
 func TestExampleAPIKeySafeModeShowsWarningAndKeepsManagement(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "test-management-key")
-	staticDir := t.TempDir()
-	t.Setenv("MANAGEMENT_STATIC_PATH", staticDir)
+	server := newManagementTestServer(t, "test-management-key", WithExampleAPIKeySafeMode())
+	staticDir := managementasset.StaticDir(server.configFilePath)
+	if err := os.MkdirAll(staticDir, 0o700); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.WriteFile(filepath.Join(staticDir, "management.html"), []byte("<html>management app</html>"), 0o600); err != nil {
 		t.Fatalf("failed to write management asset: %v", err)
 	}
-
-	server := newTestServerWithOptions(t, WithExampleAPIKeySafeMode())
 	cfg := *server.cfg
 	cfg.APIKeys = []string{"your-api-key-1"}
 	server.UpdateClients(&cfg)
@@ -1985,7 +1996,7 @@ func TestModelsDispatchByAnthropicVersionHeader(t *testing.T) {
 		modelRegistry.UnregisterClient(clientID)
 	})
 
-	server := newTestServer(t)
+	server := newManagementTestServer(t, "test-management-key")
 
 	// Anthropic API request (Anthropic-Version header, non-claude-cli User-Agent) -> Claude format.
 	t.Run("anthropic version header routes to claude format", func(t *testing.T) {
@@ -2611,8 +2622,6 @@ func assertCodexSupportedReasoningLevels(t *testing.T, model map[string]any, wan
 }
 
 func TestDefaultRequestLoggerFactory_UsesResolvedLogDirectory(t *testing.T) {
-	t.Setenv("WRITABLE_PATH", "")
-	t.Setenv("writable_path", "")
 
 	originalWD, errGetwd := os.Getwd()
 	if errGetwd != nil {

@@ -13,7 +13,6 @@ import (
 )
 
 func TestGetOpenAICompatIncludesDisableCooling(t *testing.T) {
-	t.Setenv("MANAGEMENT_PASSWORD", "")
 
 	requestRetry := 0
 	disableCooling := true

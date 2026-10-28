@@ -94,9 +94,6 @@ type Server struct {
 	// managementRoutesEnabled controls whether management endpoints serve real handlers.
 	managementRoutesEnabled atomic.Bool
 
-	// envManagementSecret indicates whether MANAGEMENT_PASSWORD is configured.
-	envManagementSecret bool
-
 	localPassword string
 
 	keepAliveEnabled   bool
@@ -151,10 +148,6 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
 		wd = configFilePath
 	}
 
-	envAdminPassword, envAdminPasswordSet := os.LookupEnv("MANAGEMENT_PASSWORD")
-	envAdminPassword = strings.TrimSpace(envAdminPassword)
-	envManagementSecret := envAdminPasswordSet && envAdminPassword != ""
-
 	// Create server instance
 	s := &Server{
 		engine:                       engine,
@@ -163,7 +156,6 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
 		accessManager:                accessManager,
 		configFilePath:               configFilePath,
 		currentPath:                  wd,
-		envManagementSecret:          envManagementSecret,
 		wsRoutes:                     make(map[string]struct{}),
 		pluginHost:                   optionState.pluginHost,
 		exampleAPIKeySafeModeEnabled: optionState.exampleAPIKeySafeMode,
@@ -250,7 +242,7 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
 
 	// Register management routes when configuration or environment secrets are available,
 	// or when a local management password is provided (e.g. TUI mode).
-	hasManagementSecret := cfg.RemoteManagement.SecretKey != "" || envManagementSecret || s.localPassword != ""
+	hasManagementSecret := cfg.RemoteManagement.SecretKey != "" || s.localPassword != ""
 	s.managementRoutesEnabled.Store(hasManagementSecret)
 	redisqueue.SetEnabled(hasManagementSecret || (cfg != nil && cfg.Home.Enabled))
 	if hasManagementSecret {

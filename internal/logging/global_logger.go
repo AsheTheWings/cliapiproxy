@@ -187,9 +187,6 @@ func isDirWritable(dir string) bool {
 // ResolveLogDirectory determines the directory used for application logs.
 func ResolveLogDirectory(cfg *config.Config) string {
 	logDir := "logs"
-	if base := util.WritablePath(); base != "" {
-		return filepath.Join(base, "logs")
-	}
 	if cfg == nil {
 		return logDir
 	}

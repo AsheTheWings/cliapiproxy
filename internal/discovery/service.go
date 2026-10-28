@@ -3,29 +3,21 @@ package discovery
 import (
 	"fmt"
 	"net"
-	"os"
 	"path/filepath"
 	"strings"
 	"unicode/utf8"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	log "github.com/sirupsen/logrus"
 )
 
-// ResolveDiscoveryStateDir returns an absolute state directory for discovery metadata,
-// avoiding writing relative paths into the current working directory.
-func ResolveDiscoveryStateDir() string {
-	if writable := util.WritablePath(); writable != "" {
-		return filepath.Join(writable, "discovery")
+// ResolveDiscoveryStateDir returns the state directory for discovery metadata:
+// the discovery subdirectory of the auth directory, or empty without one.
+func ResolveDiscoveryStateDir(authDir string) string {
+	if authDir = strings.TrimSpace(authDir); authDir == "" {
+		return ""
 	}
-	if configDir, err := os.UserConfigDir(); err == nil && configDir != "" {
-		return filepath.Join(configDir, "cpa", "discovery")
-	}
-	if homeDir, err := os.UserHomeDir(); err == nil && homeDir != "" {
-		return filepath.Join(homeDir, ".config", "cpa", "discovery")
-	}
-	return ""
+	return filepath.Join(authDir, "discovery")
 }
 
 // validateServiceType checks whether st conforms to RFC 6763 / RFC 6335 service type format.
@@ -199,7 +191,7 @@ func BuildServiceSpec(cfg *config.Config, port int, tlsEnabled bool) (ServiceSpe
 	discCfg := cfg.Discovery
 
 	// 1. Resolve State Dir for persistent instance ID
-	stateDir := ResolveDiscoveryStateDir()
+	stateDir := ResolveDiscoveryStateDir(cfg.AuthDir)
 	instanceID := GetOrGenerateInstanceID(stateDir)
 
 	// 2. Format instance name (CPA-<ShortID> or <custom>-<ShortID>) within DNS label limits
