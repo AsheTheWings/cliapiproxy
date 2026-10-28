@@ -227,6 +227,9 @@ func TestImageServesAuthenticatedRequestsAndExportsTelemetry(t *testing.T) {
 		return append(append(args, image), extra...)
 	}
 
+	if output := p.run(append([]string{"run", "--rm"}, containerArgs("-validate")...)...); output != "valid" {
+		t.Fatalf("-validate printed %q, want valid", output)
+	}
 	p.run(append([]string{"run", "--detach", "--name", name}, containerArgs()...)...)
 	base := fmt.Sprintf("http://127.0.0.1:%d", port)
 	client := &http.Client{Timeout: 5 * time.Second}

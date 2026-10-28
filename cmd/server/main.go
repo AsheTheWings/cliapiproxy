@@ -67,6 +67,10 @@ func run() int {
 		fmt.Fprintln(os.Stderr, errResolve)
 		return 2
 	}
+	if plan.validate {
+		fmt.Println("valid")
+		return 0
+	}
 	cfg := plan.cfg
 
 	providers, errTelemetry := telemetry.Setup(context.Background(), plan.telemetry)
@@ -129,8 +133,10 @@ type runPlan struct {
 	telemetry telemetry.Settings
 	// telemetryProbe runs the telemetry probe instead of serving.
 	telemetryProbe bool
-	localModel     bool
-	command        func(*config.Config)
+	// validate stops once the inputs are valid, before any other work.
+	validate   bool
+	localModel bool
+	command    func(*config.Config)
 }
 
 func resolveRun(process inputs.Process, files inputs.Files) (*runPlan, error) {
@@ -174,7 +180,7 @@ func resolveRun(process inputs.Process, files inputs.Files) (*runPlan, error) {
 		Console:        os.Stdout,
 	}
 	return &runPlan{profile: eff.Profile, cfg: cfg, telemetry: settings, telemetryProbe: eff.Bool("telemetry-probe"),
-		localModel: eff.Bool("local-model"), command: command}, nil
+		validate: eff.Bool("validate"), localModel: eff.Bool("local-model"), command: command}, nil
 }
 
 // serviceVersion is the build's version with its revision as build metadata,
@@ -228,6 +234,9 @@ func selectCommand(eff *inputs.Effective) (func(*config.Config), error) {
 	}
 	if eff.Bool("telemetry-probe") {
 		requested = append(requested, "-telemetry-probe")
+	}
+	if eff.Bool("validate") {
+		requested = append(requested, "-validate")
 	}
 	if len(requested) > 1 {
 		return nil, fmt.Errorf("choose one command, not %s", strings.Join(requested, ", "))
