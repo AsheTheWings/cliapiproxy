@@ -13,7 +13,6 @@ import (
 )
 
 func TestCodexClientModelsResponseMultiAgentV2FollowsConfig(t *testing.T) {
-	t.Skip("known defect: non-template models inherit the first catalog template's multi_agent_version, so a disabled optimize-multi-agent-v2 leaves v2 set")
 	modelID := "codex-client-multi-agent-v2-test"
 	clientID := "codex-client-multi-agent-v2-test-client"
 	modelRegistry := registry.GetGlobalRegistry()
