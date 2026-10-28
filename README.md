@@ -15,15 +15,16 @@ builds the `CLIProxyAPI` server from `cmd/server` and publishes no release.
 [Building](docs/building.md) describes how to build the binary and the
 container image, and [container](docs/container.md) how to run the image.
 
-The server reads its inputs from its environment, its command line, and two
-kinds of YAML file; [configuration](docs/configuration.md) explains them. A
+The server reads its inputs from its environment, its command line, YAML
+overlay files, and a protected file; [configuration](docs/configuration.md)
+explains them. A
 development run needs only the client API keys in its protected file:
 
 ```sh
 mkdir -p "$XDG_RUNTIME_DIR/cliapiproxy"
-install -m 600 /dev/null "$XDG_RUNTIME_DIR/cliapiproxy/protected.yaml"
-printf 'access:\n  api-keys: [%s]\n' "$(openssl rand -hex 24)" \
-  > "$XDG_RUNTIME_DIR/cliapiproxy/protected.yaml"
+install -m 600 /dev/null "$XDG_RUNTIME_DIR/cliapiproxy/protected.env"
+printf "CLIPROXY_API_KEYS='%s'\n" "$(openssl rand -hex 24)" \
+  > "$XDG_RUNTIME_DIR/cliapiproxy/protected.env"
 CLIPROXY_PROFILE=development ./CLIProxyAPI
 ```
 

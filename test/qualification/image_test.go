@@ -210,8 +210,8 @@ func TestImageServesAuthenticatedRequestsAndExportsTelemetry(t *testing.T) {
 	port := freePort(t)
 	inputs := filepath.Join(root, "inputs")
 	writeFile(t, filepath.Join(inputs, "overlay.yaml"), fmt.Sprintf("server: {port: %d}\noauth: {auth-dir: /data/auths}\n", port), 0o600)
-	writeFile(t, filepath.Join(inputs, "protected.yaml"), fmt.Sprintf(
-		"access: {api-keys: [%s]}\ntelemetry: {otlp-headers: \"authorization=%s\"}\n",
+	writeFile(t, filepath.Join(inputs, "protected.env"), fmt.Sprintf(
+		"CLIPROXY_API_KEYS='%s'\nOTEL_EXPORTER_OTLP_HEADERS='Authorization=%s'\n",
 		clientKey, strings.ReplaceAll(collectorAuthorization, " ", "%20")), 0o600)
 	containerArgs := func(extra ...string) []string {
 		args := []string{
@@ -219,7 +219,7 @@ func TestImageServesAuthenticatedRequestsAndExportsTelemetry(t *testing.T) {
 			"--volume", inputs + ":/etc/cliapiproxy:ro", "--volume", filepath.Join(root, "auths") + ":/data/auths",
 			"--env", "CLIPROXY_PROFILE=production",
 			"--env", "CLIPROXY_OVERLAY_FILES=/etc/cliapiproxy/overlay.yaml",
-			"--env", "CLIPROXY_PROTECTED_FILE=/etc/cliapiproxy/protected.yaml",
+			"--env", "CLIPROXY_PROTECTED_FILE=/etc/cliapiproxy/protected.env",
 			"--env", "OTEL_EXPORTER_OTLP_ENDPOINT=" + otlp.URL,
 			"--env", "CLIPROXY_DEPLOYMENT_ENVIRONMENT=qualification",
 		}

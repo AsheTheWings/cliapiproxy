@@ -1,5 +1,5 @@
 # Reference deployment of the server as one container; docs/container.md
-# describes its inputs. Write protected.yaml before the first start.
+# describes its inputs. Write protected.env before the first start.
 name: cliapiproxy
 
 services:
@@ -35,7 +35,7 @@ configs:
 
 secrets:
   protected:
-    file: ./protected.yaml
+    file: ./protected.env
 
 volumes:
   auths: {}

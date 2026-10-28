@@ -30,22 +30,22 @@ client:
   codex: {enable-apply-patch: true, optimize-multi-agent-v2: true}
 `
 
-const protected = `access: {api-keys: [client-key-a, client-key-b]}
-requests: {proxy-url: "http://proxy.invalid:3128"}
-telemetry: {otlp-headers: "authorization=Basic%20c2VjcmV0"}
+const protected = `CLIPROXY_API_KEYS='client-key-a,client-key-b'
+CLIPROXY_PROXY_URL='http://proxy.invalid:3128'
+OTEL_EXPORTER_OTLP_HEADERS='authorization=Basic%20c2VjcmV0'
 `
 
 func productionProcess(args ...string) inputs.Process {
 	return inputs.Process{Args: args, Environ: []string{
 		"CLIPROXY_PROFILE=production",
 		"CLIPROXY_OVERLAY_FILES=/etc/cliapiproxy/overlay.yaml",
-		"CLIPROXY_PROTECTED_FILE=/run/cliapiproxy/protected.yaml",
+		"CLIPROXY_PROTECTED_FILE=/run/cliapiproxy/protected.env",
 		"OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318",
 		"CLIPROXY_DEPLOYMENT_ENVIRONMENT=prod",
 	}}
 }
 
-var testFiles = memFiles{"/etc/cliapiproxy/overlay.yaml": overlay, "/run/cliapiproxy/protected.yaml": protected}
+var testFiles = memFiles{"/etc/cliapiproxy/overlay.yaml": overlay, "/run/cliapiproxy/protected.env": protected}
 
 // Every keyed input must reach the configuration the server runs with.
 func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
@@ -111,7 +111,7 @@ func TestTelemetryInputsReachTheSettings(t *testing.T) {
 	if s.Endpoint != "http://127.0.0.1:4318" || s.Environment != "prod" || s.Headers["authorization"] != "Basic c2VjcmV0" {
 		t.Fatalf("settings = %+v", s)
 	}
-	files := memFiles{"/etc/cliapiproxy/overlay.yaml": overlay, "/run/cliapiproxy/protected.yaml": strings.Replace(protected, "authorization=Basic%20c2VjcmV0", "novalue", 1)}
+	files := memFiles{"/etc/cliapiproxy/overlay.yaml": overlay, "/run/cliapiproxy/protected.env": strings.Replace(protected, "authorization=Basic%20c2VjcmV0", "novalue", 1)}
 	_, err = resolveRun(productionProcess(), files)
 	if err == nil || strings.Contains(err.Error(), "novalue") || !strings.Contains(err.Error(), "telemetry.otlp-headers") {
 		t.Fatalf("error = %v, want a header problem without the value", err)

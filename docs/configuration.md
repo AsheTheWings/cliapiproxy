@@ -13,8 +13,8 @@ development defaults; it is for reading, and nothing loads it.
 Each input has one source:
 
 - an environment variable or a command-line flag, the process inputs;
-- a key of the YAML files: configuration keys come from the overlay files,
-  protected keys from the protected file.
+- a key: a configuration key comes from the YAML overlay files, and a
+  protected key from the protected file's line of its secret name.
 
 Values resolve in layers, lowest first: the schema default for the profile,
 the overlay files, the protected file, and the process inputs. Every layer is
@@ -25,12 +25,20 @@ development auth directory derives from `XDG_STATE_HOME`; production defaults
 leave paths and ports to the target.
 
 `CLIPROXY_OVERLAY_FILES` names the overlay files, colon-separated; a later file
-overrides an earlier one. `CLIPROXY_PROTECTED_FILE` names the protected file.
-Both files nest the keys by their dotted path:
+overrides an earlier one. They nest the keys by their dotted path:
 
 ```yaml
 server:
   port: 8317
+```
+
+`CLIPROXY_PROTECTED_FILE` names the protected file. It holds one
+`NAME='value'` line per protected input, named by the input's `secret` in the
+schema, with blank lines and `#` comments allowed. A value holds no quote or
+line break, and a list is comma-separated:
+
+```sh
+CLIPROXY_API_KEYS='<key>,<key>'
 ```
 
 ## Validation
@@ -40,8 +48,10 @@ reports every problem at once, naming inputs and files but never values. A
 run fails when:
 
 - a required input has no value, or a value does not have its input's shape;
-- a file holds a key the schema does not declare, a key that does not apply to
-  the profile, or a key of the other class;
+- an overlay file holds a key the schema does not declare, a key that does not
+  apply to the profile, or a protected key;
+- the protected file holds a name that is not a protected input's, a name
+  twice, or a line of another form;
 - an overlay or protected file is present but unreadable or malformed;
 - the protected file is accessible by anyone but its owner.
 

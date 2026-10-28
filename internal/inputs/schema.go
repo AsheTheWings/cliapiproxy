@@ -55,13 +55,15 @@ type Shape struct {
 }
 
 // Input declares one process input. Exactly one of Env, Flag, and Key names
-// its source: an environment variable, a command-line flag, or a key of the
-// overlay and protected files.
+// its source: an environment variable, a command-line flag, or a key, which
+// a configuration input takes from the overlay files. A protected input
+// takes its key's value from the protected file's line named Secret.
 type Input struct {
 	Name        string         `json:"name"`
 	Env         string         `json:"env,omitempty"`
 	Flag        string         `json:"flag,omitempty"`
 	Key         string         `json:"key,omitempty"`
+	Secret      string         `json:"secret,omitempty"`
 	Description string         `json:"description"`
 	Class       Class          `json:"class"`
 	Shape       Shape          `json:"shape"`
@@ -149,6 +151,12 @@ func (s *Schema) check() error {
 			return fmt.Errorf("inputs %q and %q share the source %s", other, in.Name, source)
 		}
 		sources[source] = in.Name
+		if in.Secret != "" {
+			if other, dup := sources["secret "+in.Secret]; dup {
+				return fmt.Errorf("inputs %q and %q share the secret name %s", other, in.Name, in.Secret)
+			}
+			sources["secret "+in.Secret] = in.Name
+		}
 		if strings.TrimSpace(in.Description) == "" {
 			return fmt.Errorf("input %q has no description", in.Name)
 		}
@@ -158,8 +166,11 @@ func (s *Schema) check() error {
 		if in.EntryPointOnly && in.Key == "" {
 			return fmt.Errorf("input %q: entryPointOnly applies only to keyed inputs", in.Name)
 		}
-		if in.Class == Protected && in.Key == "" {
-			return fmt.Errorf("protected input %q must come from the protected file", in.Name)
+		if in.Class == Protected && (in.Key == "" || !envNamePattern.MatchString(in.Secret)) {
+			return fmt.Errorf("protected input %q must come from the protected file: declare its key and secret name", in.Name)
+		}
+		if in.Class != Protected && in.Secret != "" {
+			return fmt.Errorf("input %q: only protected inputs have a secret name", in.Name)
 		}
 		if errShape := in.Shape.check(); errShape != nil {
 			return fmt.Errorf("input %q: %w", in.Name, errShape)

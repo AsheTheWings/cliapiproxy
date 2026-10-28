@@ -11,13 +11,12 @@ The server takes its inputs as [configuration](configuration.md) describes:
 - The environment sets the profile, the files, and the telemetry endpoint and
   environment.
 - The overlay, a Compose config, sets the port and the auth directory.
-- The protected file, `protected.yaml` beside `compose.yaml`, is a Compose
+- The protected file, `protected.env` beside `compose.yaml`, is a Compose
   secret at `/run/secrets/protected`. It holds the client API keys and any
   OTLP headers, and must be readable by the server's UID 65532 alone:
 
-  ```yaml
-  access:
-    api-keys: [<client key>]
+  ```sh
+  CLIPROXY_API_KEYS='<client key>'
   ```
 
 - The `auths` volume at `/data/auths` holds the credential files, which are
