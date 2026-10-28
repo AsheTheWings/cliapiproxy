@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "spans": [
+    {"name": "{method} {route}", "kind": "server",
+     "description": "One HTTP request, named for its method and route template.",
+     "attributes": ["http.request.method", "http.route", "http.response.status_code", "error.type"]},
+    {"name": "cliapiproxy.execute", "kind": "internal",
+     "description": "One model execution across its credential attempts; a stream's span ends once it opens.",
+     "attributes": ["cliapiproxy.operation", "cliapiproxy.provider", "error.type"]}
+  ],
+  "metrics": [
+    {"name": "http.server.request.duration", "kind": "histogram", "unit": "s",
+     "description": "Duration of HTTP server requests.",
+     "attributes": ["http.request.method", "http.route", "http.response.status_code", "error.type"]},
+    {"name": "cliapiproxy.execute.duration", "kind": "histogram", "unit": "s",
+     "description": "Duration of model executions across credential attempts.",
+     "attributes": ["cliapiproxy.operation", "cliapiproxy.provider", "error.type"]}
+  ],
+  "attributeValues": {
+    "cliapiproxy.operation": ["execute", "count", "stream"],
+    "error.type": ["canceled", "timeout", "unauthorized", "rate_limited", "client_error", "upstream_error",
+                   "no_credential", "network", "other", "5xx"]
+  },
+  "logs": {
+    "description": "Log records at info level and above, credentials scrubbed; fields become attributes.",
+    "severities": ["INFO", "WARN", "ERROR", "FATAL"]
+  }
+}

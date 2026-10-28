@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	configaccess "github.com/router-for-me/CLIProxyAPI/v8/internal/access/config_access"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/api"
@@ -24,6 +25,7 @@ import (
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/redisqueue"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/safemode"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/telemetry"
 	_ "github.com/router-for-me/CLIProxyAPI/v8/internal/translator"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	sdkAuth "github.com/router-for-me/CLIProxyAPI/v8/sdk/auth"
@@ -67,14 +69,23 @@ func run() int {
 	}
 	cfg := plan.cfg
 
+	providers, errTelemetry := telemetry.Setup(context.Background(), plan.telemetry)
+	if errTelemetry != nil {
+		fmt.Fprintf(os.Stderr, "failed to set up telemetry: %v\n", errTelemetry)
+		return 1
+	}
+	defer func() {
+		ctxShutdown, cancel := context.WithTimeout(context.Background(), telemetryShutdownTimeout)
+		defer cancel()
+		_ = providers.Shutdown(ctxShutdown)
+	}()
+	logging.DiscardLocalOutput()
+	telemetry.InstallLogBridge(log.StandardLogger(), providers.Logs, buildinfo.Version)
+
 	redisqueue.SetUsageStatisticsEnabled(cfg.UsageStatisticsEnabled)
 	redisqueue.SetRetentionSeconds(cfg.RedisUsageQueueRetentionSeconds)
 	coreauth.SetQuotaCooldownDisabled(cfg.DisableCooling)
 	coreauth.SetTransientErrorCooldownSeconds(cfg.TransientErrorCooldownSeconds)
-	if errLogOutput := logging.ConfigureLogOutput(cfg); errLogOutput != nil {
-		fmt.Fprintf(os.Stderr, "failed to configure log output: %v\n", errLogOutput)
-		return 1
-	}
 	log.Infof("CLIProxyAPI Version: %s, Commit: %s, BuiltAt: %s, Profile: %s", buildinfo.Version, buildinfo.Commit, buildinfo.BuildDate, plan.profile)
 	util.SetLogLevel(cfg)
 	githubauth.SetToken(cfg.GitHubToken)
@@ -85,7 +96,8 @@ func run() int {
 		plan.command(cfg)
 		return 0
 	}
-	var serverOptions []api.ServerOption
+	// Request and error-request files would be a second diagnostics sink.
+	serverOptions := []api.ServerOption{api.WithRequestLoggerFactory(func(*config.Config, string) logging.RequestLogger { return nil })}
 	if safemode.HasExampleAPIKeys(cfg.APIKeys) {
 		matches := safemode.ExampleAPIKeys(cfg.APIKeys)
 		log.WithField("api_keys", strings.Join(matches, ",")).Error("unsafe example API key configured; proxy API endpoints disabled until api-keys is updated")
@@ -100,10 +112,14 @@ func run() int {
 	return 0
 }
 
+// telemetryShutdownTimeout bounds the final flush of every signal.
+const telemetryShutdownTimeout = 10 * time.Second
+
 // runPlan is what one run does: serve, or run one command and exit.
 type runPlan struct {
 	profile    string
 	cfg        *config.Config
+	telemetry  telemetry.Settings
 	localModel bool
 	command    func(*config.Config)
 }
@@ -134,7 +150,21 @@ func resolveRun(process inputs.Process, files inputs.Files) (*runPlan, error) {
 	if errCommand != nil {
 		return nil, errCommand
 	}
-	return &runPlan{profile: eff.Profile, cfg: cfg, localModel: eff.Bool("local-model"), command: command}, nil
+	headers, errHeaders := telemetry.ParseHeaders(eff.String("telemetry.otlp-headers"))
+	if errHeaders != nil {
+		return nil, fmt.Errorf("telemetry.otlp-headers: %w", errHeaders)
+	}
+	settings := telemetry.Settings{
+		Traces:         eff.String("OTEL_TRACES_EXPORTER"),
+		Metrics:        eff.String("OTEL_METRICS_EXPORTER"),
+		Logs:           eff.String("OTEL_LOGS_EXPORTER"),
+		Endpoint:       eff.String("OTEL_EXPORTER_OTLP_ENDPOINT"),
+		Headers:        headers,
+		ServiceVersion: buildinfo.Version,
+		Environment:    eff.String("CLIPROXY_DEPLOYMENT_ENVIRONMENT"),
+		Console:        os.Stdout,
+	}
+	return &runPlan{profile: eff.Profile, cfg: cfg, telemetry: settings, localModel: eff.Bool("local-model"), command: command}, nil
 }
 
 // selectCommand returns the one command the flags request, or nil to serve.

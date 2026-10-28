@@ -54,7 +54,8 @@ Once its inputs are resolved, the server clears its environment, so no part of
 it reads an environment variable the schema has not validated; upstream
 requests use a proxy only through `requests.proxy-url`. The configuration is
 fixed for the run, so applying a change takes a restart, and the management
-API is disabled. Credential files are state, not configuration: the server
+API is disabled. [Observability](observability.md) describes the telemetry
+inputs. Credential files are state, not configuration: the server
 watches the auth directory, and changes to it take effect immediately.
 
 ## Changing an input
