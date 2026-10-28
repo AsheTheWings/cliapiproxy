@@ -22,8 +22,7 @@ import (
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutlog"
 	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
 	"go.opentelemetry.io/otel/exporters/stdout/stdouttrace"
-	"go.opentelemetry.io/otel/log"
-	"go.opentelemetry.io/otel/log/noop"
+	"go.opentelemetry.io/otel/log/global"
 	"go.opentelemetry.io/otel/propagation"
 	sdklog "go.opentelemetry.io/otel/sdk/log"
 	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
@@ -73,9 +72,6 @@ type Settings struct {
 
 // Providers are the SDK providers Setup installed.
 type Providers struct {
-	// Logs is the logger provider the log bridge emits to.
-	Logs log.LoggerProvider
-
 	shutdown []func(context.Context) error
 }
 
@@ -124,7 +120,7 @@ func Setup(ctx context.Context, s Settings) (*Providers, error) {
 		attribute.String("service.instance.id", uuid.NewString()),
 		attribute.String("deployment.environment.name", s.Environment),
 	)
-	p := &Providers{Logs: noop.NewLoggerProvider()}
+	p := &Providers{}
 	base := strings.TrimRight(s.Endpoint, "/")
 
 	switch s.Traces {
@@ -196,7 +192,7 @@ func Setup(ctx context.Context, s Settings) (*Providers, error) {
 			sdklog.WithProcessor(sdklog.NewBatchProcessor(exporter, sdklog.WithMaxQueueSize(maxQueueSize),
 				sdklog.WithExportInterval(batchInterval), sdklog.WithExportTimeout(exportTimeout))),
 		)
-		p.Logs = lp
+		global.SetLoggerProvider(lp)
 		p.shutdown = append(p.shutdown, lp.Shutdown)
 	case ExporterNone:
 	default:

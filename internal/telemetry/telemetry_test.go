@@ -7,69 +7,13 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"slices"
 	"strings"
 	"testing"
 
 	"github.com/sirupsen/logrus"
 )
-
-func TestScrubRemovesCredentials(t *testing.T) {
-	for _, secret := range []string{
-		"Authorization: Bearer abcdefgh12345678",
-		"token eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.c2lnbmF0dXJl",
-		"key sk-proj-ABCDEFGHIJKLMNOPQRSTUV",
-		"Get https://generativelanguage.googleapis.com/v1/models?alt=sse&key=AIzaSyA-1234567890abcdefghijklmnopqrstu",
-		"proxy http://user:hunter2@proxy.invalid:3128",
-		`{"access_token":"ya29.a0AfH6SMB","refresh_token":"1//0gabc"}`,
-		"refresh failed: client_secret=GOCSPX-abcdef&grant_type=refresh",
-		"gh token ghp_abcdefghijklmnopqrstuvwxyz0123",
-	} {
-		scrubbed := Scrub(secret)
-		for _, fragment := range []string{"abcdefgh12345678", "c2lnbmF0dXJl", "ABCDEFGHIJKLMNOPQRSTUV", "AIzaSyA", "hunter2", "ya29", "1//0gabc", "GOCSPX", "ghp_"} {
-			if strings.Contains(scrubbed, fragment) {
-				t.Errorf("Scrub(%q) = %q, keeps %q", secret, scrubbed, fragment)
-			}
-		}
-	}
-	if got := Scrub("upstream returned 429 for model gpt-6.1-sol"); got != "upstream returned 429 for model gpt-6.1-sol" {
-		t.Fatalf("Scrub changed a message without credentials: %q", got)
-	}
-}
-
-type captureHook struct{ entries []*logrus.Entry }
-
-func (h *captureHook) Levels() []logrus.Level { return logrus.AllLevels }
-
-func (h *captureHook) Fire(e *logrus.Entry) error {
-	h.entries = append(h.entries, e)
-	return nil
-}
-
-func TestScrubbingHookScrubsMessageAndFields(t *testing.T) {
-	inner := &captureHook{}
-	original := &logrus.Entry{Message: "using Bearer abcdefgh12345678", Data: logrus.Fields{
-		"error": errors.New("POST https://x.invalid/?access_token=s3cr3t: EOF"),
-		"url":   "https://u:p4ss@h.invalid/",
-		"count": 3,
-	}}
-	if errFire := (scrubbingHook{inner: inner}).Fire(original); errFire != nil {
-		t.Fatal(errFire)
-	}
-	got := inner.entries[0]
-	rendered := got.Message + fmt.Sprint(got.Data)
-	for _, secret := range []string{"abcdefgh12345678", "s3cr3t", "p4ss"} {
-		if strings.Contains(rendered, secret) {
-			t.Fatalf("exported entry %q keeps %q", rendered, secret)
-		}
-	}
-	if got.Data["count"] != 3 || !strings.Contains(original.Message, "abcdefgh12345678") {
-		t.Fatal("the hook must keep plain values and leave the original entry untouched")
-	}
-	if slices.Contains(ExportedLogLevels, logrus.DebugLevel) || slices.Contains(ExportedLogLevels, logrus.TraceLevel) {
-		t.Fatal("debug and trace records must not be exported")
-	}
-}
 
 type statusError int
 
@@ -101,7 +45,7 @@ func TestErrorClassIsStableAndCataloged(t *testing.T) {
 		if got != want {
 			t.Errorf("ErrorClass(%v) = %q, want %q", err, got, want)
 		}
-		if !catalog.ValueAllowed(string(AttrErrorType), got) {
+		if !catalog.ValueAllowed(SignalTraces, string(AttrErrorType), got) {
 			t.Errorf("error class %q is not in the catalog", got)
 		}
 	}
@@ -123,27 +67,73 @@ func TestParseHeadersKeepsValuesOutOfErrors(t *testing.T) {
 	}
 }
 
-func TestCatalogListsEverySignalAttribute(t *testing.T) {
+func TestDebugAndInfoRecordsProduceNoLogEvents(t *testing.T) {
+	for _, level := range []logrus.Level{logrus.InfoLevel, logrus.DebugLevel, logrus.TraceLevel} {
+		if slices.Contains(ExportedLogLevels, level) {
+			t.Fatalf("%s records must not produce log events", level)
+		}
+	}
+}
+
+// Collectors derive their registrations from the catalog, so it must satisfy
+// the producer signal catalog format and agree with the instrumentation.
+func TestCatalogFollowsTheProducerCatalogFormat(t *testing.T) {
 	catalog, errCatalog := LoadCatalog()
 	if errCatalog != nil {
 		t.Fatal(errCatalog)
 	}
-	if catalog.Version < 1 {
-		t.Fatal("the catalog must carry a version")
+	if catalog.SchemaVersion != CatalogSchema || catalog.CatalogVersion < 1 {
+		t.Fatalf("schema %q, version %d", catalog.SchemaVersion, catalog.CatalogVersion)
 	}
-	execute, _ := catalog.SpanAttributes("cliapiproxy.execute")
-	codex, _ := catalog.SpanAttributes("cliapiproxy.codex.client_models")
-	server, _ := catalog.SpanAttributes("GET /v1/models")
-	for attrs, keys := range map[*[]string][]string{
-		&execute: {string(AttrOperation), string(AttrProvider), string(AttrErrorType)},
-		&codex: {string(AttrCodexOptimizeMultiAgentV2), string(AttrCodexTemplateModels), string(AttrCodexSynthesizedModels),
-			string(AttrCodexSynthesizedMultiAgentV2), string(AttrCodexFallbackTemplate)},
-		&server: {string(AttrHTTPMethod), string(AttrHTTPRoute), string(AttrHTTPStatusCode), string(AttrErrorType)},
-	} {
-		for _, key := range keys {
-			if !slices.Contains(*attrs, key) {
-				t.Errorf("catalog lacks attribute %s", key)
+	if catalog.ServiceNamespace != ServiceNamespace || !slices.Equal(catalog.ServiceNames, []string{ServiceName}) {
+		t.Fatalf("identity %q %v differs from the resource", catalog.ServiceNamespace, catalog.ServiceNames)
+	}
+	name := regexp.MustCompile(`^[a-z0-9](?:[a-z0-9_.-]{0,254}[a-z0-9])?$`)
+	for _, names := range [][]string{catalog.Catalog.Traces, catalog.Catalog.Metrics, catalog.Catalog.Logs} {
+		for _, n := range names {
+			if !name.MatchString(n) {
+				t.Errorf("signal name %q is not a catalog name", n)
 			}
+		}
+	}
+	for _, pattern := range catalog.Catalog.TraceNamePatterns {
+		if !strings.HasPrefix(pattern, "^") || !strings.HasSuffix(pattern, "$") || len(pattern) > 256 {
+			t.Errorf("trace name pattern %q must be anchored and at most 256 characters", pattern)
+		}
+	}
+	for _, server := range []string{"GET /v1/models", "POST /v1/chat/completions", "GET", "HTTP /v1/models/:id"} {
+		if !catalog.SpanListed(server) {
+			t.Errorf("server span %q is not listed", server)
+		}
+	}
+	q := catalog.Qualification
+	if q.TraceName != QualificationName || q.MetricName != QualificationName || q.LogName != QualificationName ||
+		q.CorrelationAttribute != string(AttrCorrelationID) {
+		t.Fatalf("qualification %+v differs from the probe", q)
+	}
+	if !slices.Contains(catalog.Catalog.Traces, q.TraceName) || !slices.Contains(catalog.Catalog.Metrics, q.MetricName) ||
+		!slices.Contains(catalog.Catalog.Logs, q.LogName) {
+		t.Fatal("qualification names must be cataloged")
+	}
+	if !slices.Contains(catalog.Catalog.CorrelationAttributes, q.CorrelationAttribute) ||
+		!catalog.AttributeAllowed(SignalTraces, q.CorrelationAttribute) || !catalog.AttributeAllowed(SignalLogs, q.CorrelationAttribute) ||
+		catalog.AttributeAllowed(SignalMetrics, q.CorrelationAttribute) {
+		t.Fatal("the correlation attribute must be allowed on traces and logs and never on metrics")
+	}
+	for key := range catalog.MetricDimensions {
+		if !catalog.AttributeAllowed(SignalMetrics, key) {
+			t.Errorf("metric dimension %s is not an allowed metric attribute", key)
+		}
+	}
+	for _, metricName := range catalog.Catalog.Metrics {
+		if _, ok := catalog.MetricUnits[metricName]; !ok {
+			t.Errorf("metric %s has no unit", metricName)
+		}
+	}
+	for _, class := range []string{ErrorCanceled, ErrorTimeout, ErrorUnauthorized, ErrorRateLimited, ErrorClient,
+		ErrorUpstream, ErrorNoCredential, ErrorNetwork, ErrorOther} {
+		if !slices.Contains(catalog.ErrorClasses, class) {
+			t.Errorf("error class %s is not cataloged", class)
 		}
 	}
 }

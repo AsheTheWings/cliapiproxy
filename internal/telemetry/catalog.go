@@ -10,21 +10,42 @@ import (
 //go:embed catalog.json
 var catalogJSON []byte
 
-// Catalog is the versioned list of the signals the server emits.
+// CatalogSchema is the producer signal catalog format catalog.json follows.
+const CatalogSchema = "opentelemetry.producer/signal-catalog/v1"
+
+// Signals a catalog lists, by their catalog keys.
+const (
+	SignalTraces  = "traces"
+	SignalMetrics = "metrics"
+	SignalLogs    = "logs"
+)
+
+// Catalog is the versioned list of the signals the server emits, in the
+// producer signal catalog format collectors derive their registrations from.
 type Catalog struct {
-	Version int `json:"version"`
-	Spans   []struct {
-		Name       string   `json:"name"`
-		Kind       string   `json:"kind"`
-		Attributes []string `json:"attributes"`
-	} `json:"spans"`
-	Metrics []struct {
-		Name       string   `json:"name"`
-		Kind       string   `json:"kind"`
-		Unit       string   `json:"unit"`
-		Attributes []string `json:"attributes"`
-	} `json:"metrics"`
-	AttributeValues map[string][]string `json:"attributeValues"`
+	SchemaVersion    string   `json:"schema_version"`
+	CatalogVersion   int      `json:"catalog_version"`
+	ServiceNamespace string   `json:"service_namespace"`
+	ServiceNames     []string `json:"service_names"`
+	Catalog          struct {
+		Traces                []string `json:"traces"`
+		TraceNamePatterns     []string `json:"trace_name_patterns"`
+		Metrics               []string `json:"metrics"`
+		Logs                  []string `json:"logs"`
+		CorrelationAttributes []string `json:"correlation_attributes"`
+	} `json:"catalog"`
+	AllowedAttributes map[string][]string `json:"allowed_attributes"`
+	MetricDimensions  map[string][]string `json:"metric_dimensions"`
+	MetricUnits       map[string]string   `json:"metric_units"`
+	ErrorClasses      []string            `json:"error_classes"`
+	// ErrorTypePatterns match the error.type values that are HTTP status codes.
+	ErrorTypePatterns []string `json:"error_type_patterns"`
+	Qualification     struct {
+		TraceName            string `json:"trace_name"`
+		MetricName           string `json:"metric_name"`
+		LogName              string `json:"log_name"`
+		CorrelationAttribute string `json:"correlation_attribute"`
+	} `json:"qualification"`
 }
 
 // LoadCatalog parses the embedded signal catalog.
@@ -36,37 +57,40 @@ func LoadCatalog() (*Catalog, error) {
 	return &c, nil
 }
 
-var (
-	serverSpanName = regexp.MustCompile(`^(GET|HEAD|POST|PUT|PATCH|DELETE|CONNECT|OPTIONS|TRACE|HTTP)( /\S*)?$`)
-	serverError    = regexp.MustCompile(`^5[0-9][0-9]$`)
-)
-
-// SpanAttributes returns the attributes a span of the name may carry, and
-// whether the catalog lists the span.
-func (c *Catalog) SpanAttributes(name string) ([]string, bool) {
-	for _, s := range c.Spans {
-		if s.Name == name || (s.Kind == "server" && serverSpanName.MatchString(name)) {
-			return s.Attributes, true
-		}
-	}
-	return nil, false
-}
-
-// MetricAttributes returns the dimensions and unit of a metric, and whether the catalog lists it.
-func (c *Catalog) MetricAttributes(name string) ([]string, string, bool) {
-	for _, m := range c.Metrics {
-		if m.Name == name {
-			return m.Attributes, m.Unit, true
-		}
-	}
-	return nil, "", false
-}
-
-// ValueAllowed reports whether value is a cataloged value of a bounded attribute.
-func (c *Catalog) ValueAllowed(key, value string) bool {
-	allowed, bounded := c.AttributeValues[key]
-	if !bounded {
+// SpanListed reports whether the catalog lists a span name, by name or pattern.
+func (c *Catalog) SpanListed(name string) bool {
+	if slices.Contains(c.Catalog.Traces, name) {
 		return true
 	}
-	return slices.Contains(allowed, value) || (key == string(AttrErrorType) && slices.Contains(allowed, "5xx") && serverError.MatchString(value))
+	for _, pattern := range c.Catalog.TraceNamePatterns {
+		if matched, _ := regexp.MatchString(pattern, name); matched {
+			return true
+		}
+	}
+	return false
+}
+
+// AttributeAllowed reports whether a signal may carry the attribute.
+func (c *Catalog) AttributeAllowed(signal, key string) bool {
+	return slices.Contains(c.AllowedAttributes[signal], key)
+}
+
+// ValueAllowed reports whether a value of a bounded attribute is cataloged:
+// a metric dimension's listed values, or an error class or status code.
+func (c *Catalog) ValueAllowed(signal, key, value string) bool {
+	if key == string(AttrErrorType) {
+		if slices.Contains(c.ErrorClasses, value) {
+			return true
+		}
+		for _, pattern := range c.ErrorTypePatterns {
+			if matched, _ := regexp.MatchString(pattern, value); matched {
+				return true
+			}
+		}
+		return false
+	}
+	if values, bounded := c.MetricDimensions[key]; bounded && signal == SignalMetrics {
+		return slices.Contains(values, value)
+	}
+	return true
 }

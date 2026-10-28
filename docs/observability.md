@@ -3,8 +3,10 @@
 The server emits traces, metrics, and logs through OpenTelemetry and writes
 no diagnostics of its own: log records reach no console or file, and request
 logging is off. [`internal/telemetry/catalog.json`](../internal/telemetry/catalog.json)
-is the versioned catalog of every span, metric, attribute, and error class;
-tests fail on a signal it does not list.
+is the versioned catalog of every span, metric, log record, attribute, unit,
+and error class, in the `opentelemetry.producer/signal-catalog/v1` format a
+collector derives its registration from; tests fail on a signal it does not
+list.
 
 ## Exporters
 
@@ -17,8 +19,9 @@ export is dropped, never written elsewhere. [Configuration](configuration.md)
 explains where these inputs come from.
 
 Every signal carries `service.namespace` and `service.name` (`cliapiproxy`),
-the build's `service.version`, a `service.instance.id` new for each process,
-and `deployment.environment.name` from `CLIPROXY_DEPLOYMENT_ENVIRONMENT`.
+the build's `service.version` with its commit as build metadata, a
+`service.instance.id` new for each process, and `deployment.environment.name`
+from `CLIPROXY_DEPLOYMENT_ENVIRONMENT`.
 
 ## Signals
 
@@ -30,10 +33,20 @@ and `deployment.environment.name` from `CLIPROXY_DEPLOYMENT_ENVIRONMENT`.
 - Each Codex client catalog build is a span that reports how many models came
   from their own template, how many were synthesized from the fallback
   template, and which template that was.
-- Log records at info level and above become LogRecords. Debug records are
-  never exported, since they can carry payloads, and every exported message
-  and field is scrubbed of authorization values, tokens, API keys, and
-  credentials in URLs.
+- Each warning or error the server logs becomes a `cliapiproxy.log` record
+  that names the log statement by `code.file.path`, `code.line.number`, and
+  `code.function.name`, with the error class of its error. Its message and
+  other fields are never exported, since they are unbounded and can hold
+  credentials or payloads; the statement at the reported revision says what
+  happened. Info and debug statements produce no records.
+
+## Probe
+
+`-telemetry-probe` emits one `cliapiproxy.qualification` span, metric point,
+and log record, flushes them, and prints the correlation identifier that the
+span and the record carry as `cliapiproxy.correlation.id`. Finding that
+identifier at the destination proves delivery; the command's own success
+proves only that the signals were emitted.
 
 ## Changing a signal
 
