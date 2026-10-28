@@ -168,6 +168,9 @@ func buildCodexClientModelsReport(models []map[string]any, providersForModel, se
 		}
 
 		entry := cloneCodexClientModelMap(defaultTemplate)
+		// The fallback template's own multi-agent version describes that
+		// template's model, not the models synthesized from it.
+		entry["multi_agent_version"] = nil
 		applyCodexClientModelMetadata(entry, id, model, optimizeMultiAgentV2, clientVersion)
 		applyCodexClientMaxTokens(entry, model)
 		applyCodexClientSearchToolSupport(entry, id, false, searchToolProvidersForModel, toolSearchCapabilityForModel)
