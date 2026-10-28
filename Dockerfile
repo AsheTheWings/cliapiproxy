@@ -1,35 +1,28 @@
-FROM golang:1.26-bookworm AS builder
+# Base images are pinned by digest; change a pin only together with its tag.
+FROM docker.io/library/golang:1.26.10-bookworm@sha256:632dff7351799a5a9954a48dc06670ade72ee44e8c351cdc0e5a57af2fea21af AS builder
 
-WORKDIR /app
-
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential git && rm -rf /var/lib/apt/lists/*
+WORKDIR /src
 
 COPY go.mod go.sum ./
-
 RUN go mod download
 
 COPY . .
 
-ARG VERSION=dev
+ARG VERSION=0.0.0
 ARG COMMIT=none
 ARG BUILD_DATE=unknown
 
-RUN CGO_ENABLED=1 GOOS=linux go build -buildvcs=false -ldflags="-s -w -X 'main.Version=${VERSION}' -X 'main.Commit=${COMMIT}' -X 'main.BuildDate=${BUILD_DATE}'" -o ./CLIProxyAPI ./cmd/server/
+RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -buildvcs=false \
+    -ldflags="-s -w -X 'main.Version=${VERSION}' -X 'main.Commit=${COMMIT}' -X 'main.BuildDate=${BUILD_DATE}'" \
+    -o /out/cliapiproxy ./cmd/server/ \
+    && mkdir -p /out/data/auths
 
-FROM debian:bookworm
+FROM gcr.io/distroless/static-debian12:nonroot@sha256:afa5c872c891853ca7fcf1f12c3edb23f7eeef36189728842dd51042ff57f7ab
 
-RUN apt-get update && apt-get install -y --no-install-recommends tzdata ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /out/cliapiproxy /usr/local/bin/cliapiproxy
+# A volume mounted here starts owned by the server's user.
+COPY --from=builder --chown=65532:65532 /out/data /data
 
-RUN mkdir /CLIProxyAPI
-
-COPY --from=builder ./app/CLIProxyAPI /CLIProxyAPI/CLIProxyAPI
-
-WORKDIR /CLIProxyAPI
-
+USER nonroot:nonroot
 EXPOSE 8317
-
-ENV TZ=Asia/Shanghai
-
-RUN cp /usr/share/zoneinfo/${TZ} /etc/localtime && echo "${TZ}" > /etc/timezone
-
-CMD ["./CLIProxyAPI"]
+ENTRYPOINT ["/usr/local/bin/cliapiproxy"]

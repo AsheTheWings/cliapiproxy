@@ -36,17 +36,18 @@ type Class string
 
 // The test classes, from narrowest to widest boundary; Conformance stands apart.
 const (
-	Unit        Class = "unit"
-	Component   Class = "component"
-	Integration Class = "integration"
-	Conformance Class = "conformance"
+	Unit          Class = "unit"
+	Component     Class = "component"
+	Integration   Class = "integration"
+	Qualification Class = "qualification"
+	Conformance   Class = "conformance"
 )
 
 // Classes lists every class a build constraint may name.
-var Classes = []Class{Unit, Component, Conformance, Integration}
+var Classes = []Class{Unit, Component, Conformance, Integration, Qualification}
 
 // rank orders the widening classes; Conformance has no rank.
-var rank = map[Class]int{Unit: 0, Component: 1, Integration: 2}
+var rank = map[Class]int{Unit: 0, Component: 1, Integration: 2, Qualification: 3}
 
 // Covers reports whether a file declaring c may hold tests that require r.
 func (c Class) Covers(r Class) bool {
