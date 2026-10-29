@@ -2,9 +2,9 @@
 
 CLI Proxy API is a proxy server that serves OpenAI (Chat Completions and
 Responses), Gemini, Claude, and Codex compatible APIs backed by the accounts
-of CLI tools: Codex, Claude Code, Grok Build, Antigravity, Kimi, Devin, and
-Meta Muse Code. Clients and SDKs built for those APIs use the accounts through
-it, with requests balanced across several accounts per provider.
+of CLI tools: Codex, Claude Code, Grok Build, Antigravity, Kimi, Devin, Meta
+Muse Code, and Kiro. Clients and SDKs built for those APIs use the accounts
+through it, with requests balanced across several accounts per provider.
 
 This repository is a fork of
 [router-for-me/CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI). It
@@ -37,9 +37,10 @@ the Codex backend API under `/backend-api/codex`.
 OAuth credentials are files in the auth directory. A login command runs the
 provider's OAuth flow, writes the credential file, and exits; for example,
 `-codex-device-login` signs in to Codex with a device code and `-xai-login`
-to Grok Build. Adding, replacing, or removing a credential file takes effect
-without a restart. API-key credentials of OpenAI-compatible providers and
-Meta Muse are inputs; [configuration](docs/configuration.md#upstream-api-keys)
+to Grok Build; [Kiro](docs/kiro.md) signs in with `-kiro-login` or imports a
+refresh token with `-kiro-import`. Adding, replacing, or removing a credential
+file takes effect without a restart. API-key credentials of OpenAI-compatible
+providers and Meta Muse are inputs; [configuration](docs/configuration.md#upstream-api-keys)
 describes them.
 
 The Go packages under `sdk/` embed the proxy in other programs:
