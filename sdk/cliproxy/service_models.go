@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	kiroauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/kiro"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/constant"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/modelconfig"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
@@ -209,6 +210,13 @@ func (s *Service) registerModelsForAuthWithConfigAndCache(ctx context.Context, c
 			if authKind == "apikey" {
 				excluded = entry.ExcludedModels
 			}
+		}
+		models = applyExcludedModels(models, excluded)
+	case "kiro":
+		// Every account's catalog differs by plan, so a credential publishes
+		// the catalog its own metadata holds.
+		if catalog, ok := kiroauth.CatalogFromMetadata(a.Metadata); ok {
+			models = catalog.ModelInfos()
 		}
 		models = applyExcludedModels(models, excluded)
 	default:
