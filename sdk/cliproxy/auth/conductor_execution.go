@@ -438,7 +438,7 @@ func requestToFormat(provider string, executor ProviderExecutor, req cliproxyexe
 		return sdktranslator.FormatGemini
 	case "kimi", "kimi-ai", "kimi.ai", "kimi.com":
 		return sdktranslator.FormatOpenAI
-	case "meta":
+	case "meta", "kiro":
 		return sdktranslator.FormatCodex
 	case "antigravity":
 		return sdktranslator.FormatAntigravity
