@@ -18,7 +18,7 @@ without a restart:
 | Route | Does |
 | --- | --- |
 | `GET /config`, `GET /config/<path>` | The effective configuration in the v8 layout, or one subtree of it. Client and upstream API keys show only their last four characters, or none when shorter than 16; the management key, the proxy URL, and relay credentials are left out. Each configured API key carries the `auth_index` of its credential. |
-| `PUT /config/access/api-keys` | Replace the client API keys. The body is the whole list as `GET /config/access/api-keys` shows it; an empty list refuses every proxy request. |
+| `PUT /config/access/api-keys` | Replace the client API keys and their names. The body is the whole list in order, each item a key, which has no name, or `{"api-key": "<key>", "name": "<name>"}`; `GET /config/access` shows the keys under `api-keys` and their names under `api-key-names`. Replacing an item in place changes a key and keeps its position. An empty list refuses every proxy request. |
 | `PUT /config/api-keys/<family>` | Replace a family's groups: `openai-compatibility`, `meta`, `commandcode`, or `kiro`. The body is the family's whole list as `GET /config/api-keys/<family>` shows it. |
 | `GET /credentials`, `POST /credentials`, `DELETE /credentials` | List, upload, and delete credential files. |
 | `GET /credentials/models`, `GET /credentials/download` | A credential's models, and a credential file's content. |

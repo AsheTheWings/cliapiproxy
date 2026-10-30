@@ -64,6 +64,14 @@ func (s *Store) ClientKeys() []string {
 	return slices.Clone(s.state.ClientKeys)
 }
 
+// ClientKeyNames returns the name of each client key, empty for an unnamed
+// key, or nil when no key has a name.
+func (s *Store) ClientKeyNames() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Clone(s.state.ClientKeyNames)
+}
+
 // ReplaceGroups makes groups a family's groups, writes the state file, and
 // returns the configuration built from it. A change the rules reject wraps
 // ErrInvalid and leaves the state as it was.
@@ -74,11 +82,11 @@ func (s *Store) ReplaceGroups(family string, groups []upstream.Group) (*config.C
 	return s.replace(func(st State) State { return st.WithGroups(family, groups) })
 }
 
-// ReplaceClientKeys makes keys the client API keys, writes the state file,
-// and returns the configuration built from it. No keys refuses every
-// request to the proxy API.
-func (s *Store) ReplaceClientKeys(keys []string) (*config.Config, error) {
-	return s.replace(func(st State) State { return st.WithClientKeys(keys) })
+// ReplaceClientKeys makes keys the client API keys, named by names at the
+// same positions, writes the state file, and returns the configuration built
+// from it. No keys refuses every request to the proxy API.
+func (s *Store) ReplaceClientKeys(keys, names []string) (*config.Config, error) {
+	return s.replace(func(st State) State { return st.WithClientKeys(keys, names) })
 }
 
 func (s *Store) replace(change func(State) State) (*config.Config, error) {

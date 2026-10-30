@@ -63,17 +63,19 @@ func (h *Handler) PutProviderGroups(c *gin.Context) {
 	})
 }
 
-// PutClientKeys replaces the client API keys. The body is the whole list as
-// GET /config/access/api-keys shows it; a key sent back masked keeps the
-// stored key it masks. An empty list refuses every proxy request.
+// PutClientKeys replaces the client API keys and their names. The body is
+// the whole list, each item a key or an object of api-key and name, with the
+// keys as GET /config/access/api-keys shows them; a key sent back masked
+// keeps the stored key it masks. A key given as a string has no name. An
+// empty list refuses every proxy request.
 func (h *Handler) PutClientKeys(c *gin.Context) {
 	body, ok := readBody(c)
 	if !ok {
 		return
 	}
-	var incoming []string
-	if err := json.Unmarshal(body, &incoming); err != nil || incoming == nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_keys", "message": "want a JSON list of keys"})
+	incoming, names, err := decodeClientKeys(body)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_keys", "message": err.Error()})
 		return
 	}
 	h.replaceKeyState(c, func(store *keystate.Store) (*config.Config, error) {
@@ -81,8 +83,39 @@ func (h *Handler) PutClientKeys(c *gin.Context) {
 		if err != nil {
 			return nil, fmt.Errorf("%w: %v", errMasked, err)
 		}
-		return store.ReplaceClientKeys(keys)
+		return store.ReplaceClientKeys(keys, names)
 	})
+}
+
+// clientKeyItem is a client key with its name, as PUT takes it.
+type clientKeyItem struct {
+	APIKey string `json:"api-key"`
+	Name   string `json:"name"`
+}
+
+// decodeClientKeys reads a JSON list whose items are keys or objects of
+// api-key and name, returning the keys and their names in order.
+func decodeClientKeys(body []byte) ([]string, []string, error) {
+	errShape := errors.New("want a JSON list of keys, or of objects of api-key and name")
+	var items []json.RawMessage
+	if err := json.Unmarshal(body, &items); err != nil || items == nil {
+		return nil, nil, errShape
+	}
+	keys := make([]string, len(items))
+	names := make([]string, len(items))
+	for i, raw := range items {
+		if err := json.Unmarshal(raw, &keys[i]); err == nil {
+			continue
+		}
+		decoder := json.NewDecoder(bytes.NewReader(raw))
+		decoder.DisallowUnknownFields()
+		var item clientKeyItem
+		if err := decoder.Decode(&item); err != nil {
+			return nil, nil, errShape
+		}
+		keys[i], names[i] = item.APIKey, item.Name
+	}
+	return keys, names, nil
 }
 
 // errMasked marks a masked key that matches no stored key.

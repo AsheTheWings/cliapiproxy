@@ -64,7 +64,7 @@ func TestManagementKeepsKeysAsState(t *testing.T) {
 	if got := putKeys(s, "api-keys/kiro", `[{"name":"kiro","prefix":"k","keys":[{"api-key":"state-key-0123456789"}]}]`); got.Code != http.StatusOK {
 		t.Fatalf("PUT kiro: status %d, body %s", got.Code, got.Body)
 	}
-	if got := putKeys(s, "access/api-keys", `["client-key-0123456789"]`); got.Code != http.StatusOK {
+	if got := putKeys(s, "access/api-keys", `[{"api-key":"client-key-0123456789","name":"Alice's laptop"}]`); got.Code != http.StatusOK {
 		t.Fatalf("PUT client keys: status %d, body %s", got.Code, got.Body)
 	}
 	var cfg *config.Config
@@ -81,20 +81,25 @@ func TestManagementKeepsKeysAsState(t *testing.T) {
 	}
 	var doc struct {
 		Access struct {
-			APIKeys []string `json:"api-keys"`
+			APIKeys     []string `json:"api-keys"`
+			APIKeyNames []string `json:"api-key-names"`
 		} `json:"access"`
 		APIKeys map[string][]map[string]any `json:"api-keys"`
 	}
 	if err := json.Unmarshal(view.Body.Bytes(), &doc); err != nil {
 		t.Fatal(err)
 	}
-	if len(doc.APIKeys["kiro"]) != 1 || doc.APIKeys["kiro"][0]["name"] != "kiro" || len(doc.Access.APIKeys) != 1 {
+	if len(doc.APIKeys["kiro"]) != 1 || doc.APIKeys["kiro"][0]["name"] != "kiro" || len(doc.Access.APIKeys) != 1 || len(doc.Access.APIKeyNames) != 1 || doc.Access.APIKeyNames[0] != "Alice's laptop" {
 		t.Fatalf("view = %s", view.Body)
 	}
 
-	// The view sent back unchanged keeps the stored keys it masks.
+	// The view sent back unchanged keeps the stored keys it masks, and a key
+	// replaced in place keeps its position and takes its new name.
 	kiro, _ := json.Marshal(doc.APIKeys["kiro"])
-	clients, _ := json.Marshal(append(doc.Access.APIKeys, "client-key-second"))
+	clients, _ := json.Marshal([]map[string]string{
+		{"api-key": "client-key-replaced", "name": "Alice's desktop"},
+		{"api-key": doc.Access.APIKeys[0]},
+	})
 	for route, body := range map[string]string{"api-keys/kiro": string(kiro), "access/api-keys": string(clients)} {
 		if got := putKeys(s, route, body); got.Code != http.StatusOK {
 			t.Fatalf("PUT masked %s: status %d, body %s", route, got.Code, got.Body)
@@ -104,7 +109,7 @@ func TestManagementKeepsKeysAsState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, key := range []string{"state-key-0123456789", "client-key-0123456789", "client-key-second"} {
+	for _, key := range []string{"state-key-0123456789", "client-key-replaced", "Alice's desktop", "client-key-0123456789"} {
 		if !strings.Contains(string(saved), key) {
 			t.Fatalf("state file lacks %s:\n%s", key, saved)
 		}
@@ -123,6 +128,8 @@ func TestManagementRefusesChangesItCannotKeep(t *testing.T) {
 		{"unknown field", "api-keys/kiro", `[{"name":"kiro","region":"eu","keys":[{"api-key":"k"}]}]`, http.StatusBadRequest},
 		{"repeated client key", "access/api-keys", `["k","k"]`, http.StatusBadRequest},
 		{"client keys not a list", "access/api-keys", `{"k":1}`, http.StatusBadRequest},
+		{"client key with an unknown field", "access/api-keys", `[{"api-key":"k","note":"x"}]`, http.StatusBadRequest},
+		{"client key name too long", "access/api-keys", `[{"api-key":"k","name":"` + strings.Repeat("n", 65) + `"}]`, http.StatusBadRequest},
 		{"unknown family", "api-keys/gemini", `[]`, http.StatusNotFound},
 	} {
 		if got := putKeys(s, tc.route, tc.body); got.Code != tc.want {

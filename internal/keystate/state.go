@@ -8,22 +8,33 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/AsheTheWings/cliapiproxy/internal/upstream"
 	"gopkg.in/yaml.v3"
 )
 
 // State is the keys the server keeps: the client API keys that reach the
-// proxy and each API-key family's upstream groups with their keys. The
-// state file holds it in the configuration's v8 layout, under access.api-keys
-// and api-keys.
+// proxy, with the name an operator gives each, and each API-key family's
+// upstream groups with their keys. The state file holds it in the
+// configuration's v8 layout, under access.api-keys and api-keys, with the
+// names under access.api-key-names.
 type State struct {
-	ClientKeys []string                    `yaml:"-"`
-	Upstream   map[string][]upstream.Group `yaml:"-"`
+	ClientKeys []string `yaml:"-"`
+	// ClientKeyNames holds the name of the client key at the same position,
+	// empty for an unnamed key; nil names none.
+	ClientKeyNames []string                    `yaml:"-"`
+	Upstream       map[string][]upstream.Group `yaml:"-"`
 }
 
+// MaxClientKeyNameLength bounds a client key's name, in characters.
+const MaxClientKeyNameLength = 64
+
 type stateAccess struct {
-	APIKeys []string `yaml:"api-keys,omitempty"`
+	APIKeys     []string `yaml:"api-keys,omitempty"`
+	APIKeyNames []string `yaml:"api-key-names,omitempty"`
 }
 
 type stateDocument struct {
@@ -41,21 +52,31 @@ func Parse(data []byte) (State, error) {
 	decoder.KnownFields(true)
 	var doc stateDocument
 	if err := decoder.Decode(&doc); err != nil && !errors.Is(err, io.EOF) {
-		return State{}, fmt.Errorf("want access.api-keys and api-keys with groups of name, base-url, prefix, models, and keys")
+		return State{}, fmt.Errorf("want access.api-keys, access.api-key-names, and api-keys with groups of name, base-url, prefix, models, and keys")
 	}
 	s := State{Upstream: doc.APIKeys}
 	if doc.Access != nil {
 		s.ClientKeys = doc.Access.APIKeys
+		s.ClientKeyNames = doc.Access.APIKeyNames
 	}
 	return s, s.Validate()
 }
 
 // Validate checks the client keys and each family's groups: no key is empty
-// or repeated, and every group follows its family's rules with at least one
+// or repeated, each name is one line of at most MaxClientKeyNameLength
+// characters, and every group follows its family's rules with at least one
 // key.
 func (s State) Validate() error {
 	if err := distinctKeys(s.ClientKeys); err != nil {
 		return fmt.Errorf("access.api-keys: %w", err)
+	}
+	if s.ClientKeyNames != nil && len(s.ClientKeyNames) != len(s.ClientKeys) {
+		return fmt.Errorf("access.api-key-names: %d names for %d keys", len(s.ClientKeyNames), len(s.ClientKeys))
+	}
+	for i, name := range s.ClientKeyNames {
+		if err := validName(name); err != nil {
+			return fmt.Errorf("access.api-key-names: name %d %w", i+1, err)
+		}
 	}
 	for _, familyName := range s.families() {
 		groups := s.Upstream[familyName]
@@ -96,6 +117,19 @@ func distinctKeys(keys []string) error {
 	return nil
 }
 
+func validName(name string) error {
+	if name != strings.TrimSpace(name) {
+		return errors.New("has surrounding spaces")
+	}
+	if utf8.RuneCountInString(name) > MaxClientKeyNameLength {
+		return fmt.Errorf("is longer than %d characters", MaxClientKeyNameLength)
+	}
+	if strings.IndexFunc(name, unicode.IsControl) >= 0 {
+		return errors.New("holds a control character")
+	}
+	return nil
+}
+
 // families lists the state's families in a fixed order.
 func (s State) families() []string {
 	out := make([]string, 0, len(s.Upstream))
@@ -109,7 +143,7 @@ func (s State) families() []string {
 // WithGroups returns a copy of the state whose family holds groups; no
 // groups leaves the family out.
 func (s State) WithGroups(familyName string, groups []upstream.Group) State {
-	out := State{ClientKeys: s.ClientKeys, Upstream: make(map[string][]upstream.Group, len(s.Upstream)+1)}
+	out := State{ClientKeys: s.ClientKeys, ClientKeyNames: s.ClientKeyNames, Upstream: make(map[string][]upstream.Group, len(s.Upstream)+1)}
 	for name, g := range s.Upstream {
 		out.Upstream[name] = g
 	}
@@ -120,15 +154,19 @@ func (s State) WithGroups(familyName string, groups []upstream.Group) State {
 	return out
 }
 
-// WithClientKeys returns a copy of the state holding keys as its client keys.
-func (s State) WithClientKeys(keys []string) State {
-	return State{ClientKeys: slices.Clone(keys), Upstream: s.Upstream}
+// WithClientKeys returns a copy of the state holding keys as its client keys
+// and names as their names; names without a non-empty name become nil.
+func (s State) WithClientKeys(keys, names []string) State {
+	if !slices.ContainsFunc(names, func(name string) bool { return name != "" }) {
+		names = nil
+	}
+	return State{ClientKeys: slices.Clone(keys), ClientKeyNames: slices.Clone(names), Upstream: s.Upstream}
 }
 
 func (s State) document() stateDocument {
 	doc := stateDocument{APIKeys: s.Upstream}
 	if len(s.ClientKeys) > 0 {
-		doc.Access = &stateAccess{APIKeys: s.ClientKeys}
+		doc.Access = &stateAccess{APIKeys: s.ClientKeys, APIKeyNames: s.ClientKeyNames}
 	}
 	if len(doc.APIKeys) == 0 {
 		doc.APIKeys = nil
@@ -198,8 +236,13 @@ func Merge(document []byte, s State) ([]byte, error) {
 	if access := child(top, "access"); access != nil && child(access, "api-keys") != nil {
 		return nil, errors.New("the configuration document declares access.api-keys, which only the key state holds")
 	}
+	// Names label keys for operators; the configuration has no field for them.
+	doc := s.document()
+	if doc.Access != nil {
+		doc.Access = &stateAccess{APIKeys: doc.Access.APIKeys}
+	}
 	var state yaml.Node
-	if err := state.Encode(s.document()); err != nil {
+	if err := state.Encode(doc); err != nil {
 		return nil, err
 	}
 	for i := 0; i+1 < len(state.Content); i += 2 {

@@ -10,8 +10,9 @@ import (
 )
 
 // ConfigV8Effective serves the configuration the server runs with, in the v8
-// layout. The key state's client keys and upstream groups change through
-// their own routes; the server's inputs own every other value. Each protected value is redacted: client and upstream API keys
+// layout. The key state's client keys, their names under
+// access.api-key-names, and upstream groups change through their own routes;
+// the server's inputs own every other value. Each protected value is redacted: client and upstream API keys
 // keep only a short suffix, and the management key, the proxy URL, and relay
 // credentials are left out.
 func (h *Handler) ConfigV8Effective(c *gin.Context) {
@@ -44,6 +45,19 @@ func (h *Handler) ConfigV8Effective(c *gin.Context) {
 		deleteConfigV8Path(root, []string{"api-keys"})
 		if len(groups.Content) > 0 {
 			root.Content = append(root.Content, &yaml.Node{Kind: yaml.ScalarNode, Value: "api-keys"}, groups)
+		}
+	}
+	// Client key names live only in the key state, beside the keys they name.
+	if store := h.keyStore; store != nil {
+		if names := store.ClientKeyNames(); names != nil {
+			if access := configV8Node(root, []string{"access"}); access != nil && access.Kind == yaml.MappingNode {
+				var list yaml.Node
+				if errNames := list.Encode(names); errNames != nil {
+					c.JSON(http.StatusInternalServerError, gin.H{"error": "render_failed"})
+					return
+				}
+				access.Content = append(access.Content, &yaml.Node{Kind: yaml.ScalarNode, Value: "api-key-names"}, &list)
+			}
 		}
 	}
 	// Auth indexes derive from the keys, so they are added before redaction.

@@ -75,6 +75,7 @@ keys, and a server without client keys refuses every proxy request.
 ```yaml
 access:
   api-keys: [<client key>, <client key>]
+  api-key-names: [Alice's laptop, ""]
 api-keys:
   openai-compatibility:
     - name: example
@@ -96,7 +97,11 @@ api-keys:
       keys: [{api-key: <key>}]
 ```
 
-`access.api-keys` lists the keys clients present to use the proxy API. Under
+`access.api-keys` lists the keys clients present to use the proxy API, and
+`access.api-key-names`, when present, names the key at the same position, an
+empty name leaving it unnamed. A name is one line of at most 64 characters
+without surrounding spaces; it labels the key for operators and has no effect
+on requests. Under
 `api-keys`, each upstream family holds groups, and a group with several keys
 balances requests across them. A group has a `name` of lowercase letters,
 digits, and hyphens, at least one key, and may set `base-url`, `prefix`, and
@@ -116,7 +121,8 @@ the upstream with only an effort the catalog lists for the model.
 
 The server refuses to start, naming groups and positions but never keys, when
 the file holds a field outside this list, a group breaks its family's rules
-or has no key, or a key is empty or repeated within its list.
+or has no key, a key is empty or repeated within its list, or the names do
+not match the client keys one for one.
 
 ## OAuth models
 

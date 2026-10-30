@@ -23,7 +23,7 @@ func TestReplaceWritesTheStateAndBuildsItsConfiguration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = store.ReplaceClientKeys([]string{"client-key"}); err != nil {
+	if _, err = store.ReplaceClientKeys([]string{"client-key"}, nil); err != nil {
 		t.Fatal(err)
 	}
 	cfg, err := store.ReplaceGroups(upstream.FamilyKiro, []upstream.Group{kiroGroup("kiro", "state-key")})
@@ -60,7 +60,7 @@ func TestReplaceRejectsAndKeepsTheState(t *testing.T) {
 			t.Errorf("%s: err = %v, want ErrInvalid", name, err)
 		}
 	}
-	if _, err = store.ReplaceClientKeys([]string{"k", "k"}); !errors.Is(err, ErrInvalid) {
+	if _, err = store.ReplaceClientKeys([]string{"k", "k"}, nil); !errors.Is(err, ErrInvalid) {
 		t.Errorf("repeated client key: err = %v, want ErrInvalid", err)
 	}
 	if _, err = os.Stat(path); !errors.Is(err, os.ErrNotExist) {

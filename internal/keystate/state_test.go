@@ -12,7 +12,8 @@ import (
 
 func TestParseRoundTripsItsEncoding(t *testing.T) {
 	state := State{
-		ClientKeys: []string{"client-1", "client-2"},
+		ClientKeys:     []string{"client-1", "client-2"},
+		ClientKeyNames: []string{"Alice's laptop", ""},
 		Upstream: map[string][]upstream.Group{
 			upstream.FamilyOpenAICompatibility: {{Spec: upstream.Spec{Name: "alpha", BaseURL: "https://alpha.invalid/v1", Models: []upstream.Model{{Name: "m"}}}, Keys: []upstream.Key{{APIKey: "k1"}, {APIKey: "k2"}}}},
 			upstream.FamilyKiro:                {{Spec: upstream.Spec{Name: "kiro", Prefix: "k"}, Keys: []upstream.Key{{APIKey: "k3"}}}},
@@ -48,6 +49,10 @@ func TestParseRejectsBrokenKeysWithoutNamingThem(t *testing.T) {
 		"twice":               "api-keys: {kiro: [{name: k, keys: [{api-key: secret-x}]}, {name: k, keys: [{api-key: secret-y}]}]}",
 		"empty client key":    "access: {api-keys: ['']}",
 		"repeated client key": "access: {api-keys: [secret-c, secret-c]}",
+		"names miscounted":    "access: {api-keys: [secret-c], api-key-names: [a, b]}",
+		"name too long":       "access: {api-keys: [secret-c], api-key-names: [" + strings.Repeat("n", MaxClientKeyNameLength+1) + "]}",
+		"name with a newline": "access: {api-keys: [secret-c], api-key-names: [\"a\\nb\"]}",
+		"name padded":         "access: {api-keys: [secret-c], api-key-names: [' a']}",
 	} {
 		_, err := Parse([]byte(data))
 		if err == nil {
@@ -63,8 +68,9 @@ func TestParseRejectsBrokenKeysWithoutNamingThem(t *testing.T) {
 func TestMergeAddsTheStateAsTheOnlySourceOfKeys(t *testing.T) {
 	document := []byte("config-version: 8\nrouting: {strategy: fill-first}\n")
 	state := State{
-		ClientKeys: []string{"client-1"},
-		Upstream:   map[string][]upstream.Group{upstream.FamilyKiro: {{Spec: upstream.Spec{Name: "k"}, Keys: []upstream.Key{{APIKey: "k1"}}}}},
+		ClientKeys:     []string{"client-1"},
+		ClientKeyNames: []string{"ci runner"},
+		Upstream:       map[string][]upstream.Group{upstream.FamilyKiro: {{Spec: upstream.Spec{Name: "k"}, Keys: []upstream.Key{{APIKey: "k1"}}}}},
 	}
 	merged, err := Merge(document, state)
 	if err != nil {
@@ -86,6 +92,9 @@ func TestMergeAddsTheStateAsTheOnlySourceOfKeys(t *testing.T) {
 	if root.Version != 8 || root.Routing.Strategy != "fill-first" || len(root.Access.APIKeys) != 1 || root.Access.APIKeys[0] != "client-1" || root.APIKeys["kiro"][0].Keys[0].APIKey != "k1" {
 		t.Fatalf("merged document = %s", merged)
 	}
+	if strings.Contains(string(merged), "ci runner") {
+		t.Fatalf("merged document holds a key name: %s", merged)
+	}
 	for _, declared := range []string{"api-keys: {kiro: []}\n", "access: {api-keys: [k]}\n"} {
 		if _, err = Merge([]byte(declared), state); err == nil {
 			t.Errorf("a document declaring %q merged", declared)
@@ -99,8 +108,11 @@ func TestWithReplacesOnePart(t *testing.T) {
 	if _, kept := next.Upstream[upstream.FamilyKiro]; kept || len(next.Upstream[upstream.FamilyMeta]) != 1 || len(state.Upstream[upstream.FamilyKiro]) != 1 || next.ClientKeys[0] != "c" {
 		t.Fatalf("WithGroups = %v from %v", next, state)
 	}
-	keys := state.WithClientKeys(nil)
+	keys := state.WithClientKeys(nil, nil)
 	if len(keys.ClientKeys) != 0 || len(keys.Upstream) != 2 || len(state.ClientKeys) != 1 {
 		t.Fatalf("WithClientKeys = %v from %v", keys, state)
+	}
+	if unnamed := state.WithClientKeys([]string{"a", "b"}, []string{"", ""}); unnamed.ClientKeyNames != nil {
+		t.Fatalf("WithClientKeys kept empty names: %q", unnamed.ClientKeyNames)
 	}
 }
