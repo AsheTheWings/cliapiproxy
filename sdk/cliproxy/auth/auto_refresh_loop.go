@@ -432,7 +432,7 @@ func nextRefreshCheckAt(now time.Time, auth *Auth, interval time.Duration) (time
 		return minDue, true
 	}
 
-	if auth.AuthKind() == AuthKindAPIKey {
+	if auth.AuthKind() == AuthKindAPIKey && !IsAccountCatalogAuth(auth) {
 		return time.Time{}, false
 	}
 
