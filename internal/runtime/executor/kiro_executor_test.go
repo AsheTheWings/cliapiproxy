@@ -43,13 +43,15 @@ func kiroTestAuth(t *testing.T) *cliproxyauth.Auth {
 		t.Fatal(err)
 	}
 	return &cliproxyauth.Auth{
-		ID:       "kiro-test.json",
+		ID:       "kiro-test",
 		Provider: "kiro",
+		Attributes: map[string]string{
+			cliproxyauth.AttributeSource:         "config:kiro[test]",
+			cliproxyauth.AttributeAPIKey:         "ksk_test",
+			cliproxyauth.AttributeAccountCatalog: "true",
+		},
 		Metadata: map[string]any{
 			"type":                      "kiro",
-			"access_token":              "access-1",
-			"refresh_token":             "refresh-1",
-			"profile_arn":               "arn:aws:codewhisperer:us-east-1:111:profile/TEST",
 			kiroauth.CatalogMetadataKey: stored,
 		},
 	}
@@ -151,11 +153,11 @@ func TestKiroExecutorSendsTheAgentRequest(t *testing.T) {
 
 	got := server.last(t)
 	wantHeaders := map[string]string{
-		"Authorization":               "Bearer access-1",
+		"Authorization":               "Bearer ksk_test",
+		"Tokentype":                   "API_KEY",
 		"Content-Type":                "application/json",
 		"X-Amzn-Kiro-Origin":          "AI_EDITOR",
 		"X-Amzn-Codewhisperer-Optout": "true",
-		"X-Amzn-Kiro-Profile":         "arn:aws:codewhisperer:us-east-1:111:profile/TEST",
 		"User-Agent":                  kiroauth.InferenceUserAgent,
 		"X-Kiro-Attempt":              "1;max=3",
 	}
@@ -164,8 +166,11 @@ func TestKiroExecutorSendsTheAgentRequest(t *testing.T) {
 			t.Errorf("header %s = %q, want %q", name, have, want)
 		}
 	}
+	if profile := got.header.Get("X-Amzn-Kiro-Profile"); profile != "" {
+		t.Errorf("a key request named the profile %q", profile)
+	}
 	body := gjson.Parse(got.body)
-	if body.Get("model").String() != "claude-haiku-5.5" || !body.Get("stream").Bool() {
+	if body.Get("model").String() != "claude-haiku-5.5" || !body.Get("stream").Bool() || body.Get("profileArn").Exists() {
 		t.Errorf("body = %s", got.body)
 	}
 	for _, field := range []string{"temperature", "max_tokens", "max_output_tokens", "tool_choice", "instructions", "store", "include"} {
@@ -298,12 +303,12 @@ func TestKiroExecutorPassesOtherFailuresThrough(t *testing.T) {
 	}
 }
 
-func TestKiroExecutorRefusesACredentialWithoutAProfile(t *testing.T) {
+func TestKiroExecutorRefusesACredentialWithoutAKey(t *testing.T) {
 	_, executor := newKiroTestServer(t, func(w http.ResponseWriter, r *http.Request) {
-		t.Error("a request left without a profile")
+		t.Error("a request left without a key")
 	})
 	auth := kiroTestAuth(t)
-	delete(auth.Metadata, "profile_arn")
+	delete(auth.Attributes, cliproxyauth.AttributeAPIKey)
 	_, err := executor.Execute(context.Background(), auth, cliproxyexecutor.Request{
 		Model: "kiro/claude-haiku-5.5", Payload: []byte(kiroChatRequest),
 	}, kiroChatOptions())
@@ -348,34 +353,20 @@ func TestKiroModelsApplyThinkingLevels(t *testing.T) {
 	}
 }
 
-func TestKiroExecutorRefreshStoresTheTokenAndCatalog(t *testing.T) {
-	var mu sync.Mutex
-	var paths []string
+func TestKiroExecutorRefreshReloadsTheCatalogWithTheKey(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		mu.Lock()
-		paths = append(paths, r.URL.Path)
-		mu.Unlock()
-		switch r.URL.Path {
-		case "/refreshToken":
-			_, _ = w.Write([]byte(`{"accessToken":"access-2","expiresIn":3600,"profileArn":"arn:aws:codewhisperer:us-east-1:111:profile/TEST","refreshToken":"refresh-1"}`))
-		default:
-			if r.Header.Get("Authorization") != "Bearer access-2" {
-				t.Errorf("catalog requested with %q", r.Header.Get("Authorization"))
-			}
-			_, _ = w.Write([]byte(`{"models":[{"modelId":"deepseek-3.2","tokenLimits":{"maxInputTokens":164000}}]}`))
+		if r.Header.Get("Authorization") != "Bearer ksk_test" || r.Header.Get("TokenType") != "API_KEY" {
+			t.Errorf("catalog requested with %q, TokenType %q", r.Header.Get("Authorization"), r.Header.Get("TokenType"))
 		}
+		_, _ = w.Write([]byte(`{"models":[{"modelId":"deepseek-3.2","tokenLimits":{"maxInputTokens":164000}}]}`))
 	}))
 	defer server.Close()
 
 	executor := NewKiroExecutor(&config.Config{})
-	executor.authURL, executor.managementURL = server.URL, server.URL
-	auth := kiroTestAuth(t)
-	refreshed, err := executor.Refresh(context.Background(), auth)
+	executor.managementURL = server.URL
+	refreshed, err := executor.Refresh(context.Background(), kiroTestAuth(t))
 	if err != nil {
 		t.Fatalf("Refresh: %v", err)
-	}
-	if refreshed.Metadata["access_token"] != "access-2" || refreshed.Metadata["refresh_token"] != "refresh-1" {
-		t.Errorf("tokens = %v", refreshed.Metadata)
 	}
 	expired, err := time.Parse(time.RFC3339, refreshed.Metadata["expired"].(string))
 	if err != nil || time.Until(expired) < 59*time.Minute {
@@ -388,10 +379,6 @@ func TestKiroExecutorRefreshStoresTheTokenAndCatalog(t *testing.T) {
 
 	// A catalog that cannot be loaded keeps the previous one.
 	server.Config.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/refreshToken" {
-			_, _ = w.Write([]byte(`{"accessToken":"access-3","expiresIn":3600,"profileArn":"arn:p","refreshToken":"refresh-1"}`))
-			return
-		}
 		w.WriteHeader(http.StatusInternalServerError)
 	})
 	again, err := executor.Refresh(context.Background(), refreshed)
@@ -401,19 +388,22 @@ func TestKiroExecutorRefreshStoresTheTokenAndCatalog(t *testing.T) {
 	if catalog, ok = kiroauth.CatalogFromMetadata(again.Metadata); !ok || catalog.Models[0].ModelID != "deepseek-3.2" {
 		t.Errorf("catalog after a failed load = %+v", catalog)
 	}
-	if again.Metadata["access_token"] != "access-3" {
-		t.Errorf("access token = %v", again.Metadata["access_token"])
+
+	// Without a previous catalog the refresh fails, so it is retried.
+	delete(again.Metadata, kiroauth.CatalogMetadataKey)
+	if _, err = executor.Refresh(context.Background(), again); err == nil {
+		t.Error("a first catalog load that failed counted as a refresh")
 	}
 }
 
-func TestKiroExecutorRefreshReportsABadRefreshToken(t *testing.T) {
+func TestKiroExecutorRefreshReportsARejectedKey(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusUnauthorized)
-		_, _ = w.Write([]byte(`{"message":"Bad credentials"}`))
+		w.WriteHeader(http.StatusForbidden)
+		_, _ = w.Write([]byte(`{"error":{"message":"The bearer token included in the request is invalid.","type":"access_denied","code":"access_denied"}}`))
 	}))
 	defer server.Close()
 	executor := NewKiroExecutor(&config.Config{})
-	executor.authURL, executor.managementURL = server.URL, server.URL
+	executor.managementURL = server.URL
 	_, err := executor.Refresh(context.Background(), kiroTestAuth(t))
 	var status interface{ StatusCode() int }
 	if !errors.As(err, &status) || status.StatusCode() != http.StatusUnauthorized {

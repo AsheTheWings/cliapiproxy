@@ -211,7 +211,6 @@ func selectCommand(eff *inputs.Effective) (func(*config.Config), error) {
 		{"xai-login", cmd.DoXAILogin},
 		{"devin-login", cmd.DoDevinLogin},
 		{"meta-login", cmd.DoMetaLogin},
-		{"kiro-login", cmd.DoKiroLogin},
 	}
 	var requested []string
 	var command func(*config.Config)
@@ -228,10 +227,6 @@ func selectCommand(eff *inputs.Effective) (func(*config.Config), error) {
 		command = func(cfg *config.Config) { cmd.DoVertexImport(cfg, vertexImport, vertexPrefix) }
 	} else if vertexPrefix != "" {
 		return nil, fmt.Errorf("-vertex-import-prefix applies only with -vertex-import")
-	}
-	if kiroImport := eff.String("kiro-import"); kiroImport != "" {
-		requested = append(requested, "-kiro-import")
-		command = func(cfg *config.Config) { cmd.DoKiroImport(cfg, kiroImport) }
 	}
 	if siwcBind := eff.String("siwc-bind"); siwcBind != "" {
 		requested = append(requested, "-siwc-bind")

@@ -27,7 +27,6 @@ type KiroExecutor struct {
 	cfg *config.Config
 	// The hosts the executor calls; tests replace them.
 	inferenceURL  string
-	authURL       string
 	managementURL string
 }
 
@@ -36,7 +35,6 @@ func NewKiroExecutor(cfg *config.Config) *KiroExecutor {
 	return &KiroExecutor{
 		cfg:           cfg,
 		inferenceURL:  kiroInferenceURL,
-		authURL:       kiroauth.DefaultAuthURL,
 		managementURL: kiroauth.DefaultManagementURL,
 	}
 }
@@ -52,12 +50,14 @@ func (e *KiroExecutor) PrepareRequest(req *http.Request, auth *cliproxyauth.Auth
 	if req == nil {
 		return nil
 	}
-	token, _ := kiroCreds(auth)
+	token := kiroAPIKey(auth)
 	if token == "" {
 		req.Header.Del("Authorization")
+		req.Header.Del("TokenType")
 		return nil
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("TokenType", kiroauth.TokenType)
 	return nil
 }
 
@@ -76,8 +76,11 @@ func (e *KiroExecutor) HttpRequest(ctx context.Context, auth *cliproxyauth.Auth,
 	return helps.NewProxyAwareHTTPClient(ctx, e.cfg, auth, 0).Do(httpReq)
 }
 
-// Refresh exchanges the refresh token for a new access token and reloads the
-// model catalog of the account. A failed catalog load keeps the last catalog.
+// Refresh reloads the model catalog of the key's account. An API key has no
+// expiry, so the reload also shows that the service still accepts the key; a
+// rejected key fails the reload with 401. Any other failed catalog load keeps
+// the previous catalog; without one, the refresh fails, so it is retried after
+// the refresh backoff.
 func (e *KiroExecutor) Refresh(ctx context.Context, auth *cliproxyauth.Auth) (*cliproxyauth.Auth, error) {
 	if refreshed, handled, err := helps.RefreshAuthViaHome(ctx, e.cfg, auth); handled {
 		return refreshed, err
@@ -85,41 +88,25 @@ func (e *KiroExecutor) Refresh(ctx context.Context, auth *cliproxyauth.Auth) (*c
 	if auth == nil {
 		return nil, statusErr{code: http.StatusInternalServerError, msg: "kiro executor: auth is nil"}
 	}
-	refreshToken, _ := auth.Metadata["refresh_token"].(string)
-	if strings.TrimSpace(refreshToken) == "" {
-		return nil, statusErr{code: http.StatusUnauthorized, msg: "kiro executor: the credential has no refresh token"}
+	apiKey := kiroAPIKey(auth)
+	if apiKey == "" {
+		return nil, statusErr{code: http.StatusUnauthorized, msg: "kiro executor: the credential has no API key"}
 	}
 
 	httpClient := helps.NewProxyAwareHTTPClient(ctx, e.cfg, auth, 30*time.Second)
 	if httpClient == nil {
 		httpClient = &http.Client{Timeout: 30 * time.Second}
 	}
-	client := kiroauth.NewClientForHosts(httpClient, e.authURL, e.managementURL)
-	tokens, err := client.Refresh(ctx, refreshToken)
-	if err != nil {
-		var apiErr *kiroauth.APIError
-		if errors.As(err, &apiErr) {
-			return nil, statusErr{code: apiErr.Status, msg: apiErr.Error()}
-		}
-		return nil, err
+	client := kiroauth.NewClientForHost(httpClient, e.managementURL)
+	catalog, errCatalog := client.ListAvailableModels(ctx, apiKey)
+	var apiErr *kiroauth.APIError
+	if errors.As(errCatalog, &apiErr) && (apiErr.IsInvalidToken() || apiErr.Status == http.StatusUnauthorized) {
+		return nil, statusErr{code: http.StatusUnauthorized, msg: apiErr.Error()}
 	}
+	now := time.Now().UTC()
 	if auth.Metadata == nil {
 		auth.Metadata = make(map[string]any)
 	}
-	now := time.Now().UTC()
-	auth.Metadata["type"] = kiroauth.Provider
-	auth.Metadata["access_token"] = tokens.AccessToken
-	auth.Metadata["refresh_token"] = tokens.RefreshToken
-	if !tokens.ExpiresAt.IsZero() {
-		auth.Metadata["expired"] = tokens.ExpiresAt.UTC().Format(time.RFC3339)
-	}
-	if tokens.ProfileARN != "" {
-		auth.Metadata["profile_arn"] = tokens.ProfileARN
-	}
-	auth.Metadata["last_refresh"] = now.Format(time.RFC3339)
-
-	_, profileARN := kiroCreds(auth)
-	catalog, errCatalog := client.ListAvailableModels(ctx, tokens.AccessToken, profileARN)
 	if errCatalog == nil {
 		var stored map[string]any
 		if stored, errCatalog = catalog.Metadata(now); errCatalog == nil {
@@ -127,24 +114,24 @@ func (e *KiroExecutor) Refresh(ctx context.Context, auth *cliproxyauth.Auth) (*c
 		}
 	}
 	if errCatalog != nil {
+		if _, hasCatalog := kiroauth.CatalogFromMetadata(auth.Metadata); !hasCatalog {
+			return nil, fmt.Errorf("kiro executor: load the first model catalog: %w", errCatalog)
+		}
 		log.Warnf("kiro executor: keeping the previous model catalog: %v", errCatalog)
 	}
+	auth.Metadata["type"] = kiroauth.Provider
+	auth.Metadata["last_refresh"] = now.Format(time.RFC3339)
+	auth.Metadata["expired"] = now.Add(kiroauth.RefreshInterval).Format(time.RFC3339)
 	auth.LastRefreshedAt = now
 	return auth, nil
 }
 
-// kiroCreds returns the access token and profile ARN of a credential.
-func kiroCreds(auth *cliproxyauth.Auth) (token, profileARN string) {
-	if auth == nil {
-		return "", ""
+// kiroAPIKey returns the API key of a credential.
+func kiroAPIKey(auth *cliproxyauth.Auth) string {
+	if auth == nil || auth.Attributes == nil {
+		return ""
 	}
-	if value, ok := auth.Metadata["access_token"].(string); ok {
-		token = strings.TrimSpace(value)
-	}
-	if value, ok := auth.Metadata["profile_arn"].(string); ok {
-		profileARN = strings.TrimSpace(value)
-	}
-	return token, profileARN
+	return strings.TrimSpace(auth.Attributes[cliproxyauth.AttributeAPIKey])
 }
 
 // kiroCatalogModel returns the catalog entry of an upstream model id, when the
@@ -164,21 +151,22 @@ func kiroCatalogModel(auth *cliproxyauth.Auth, modelID string) (*kiroauth.Catalo
 	return &model, true
 }
 
-// applyKiroHeaders sets the headers of the Kiro agent's inference requests.
-func applyKiroHeaders(req *http.Request, token, profileARN string) {
+// applyKiroHeaders sets the headers the Kiro agent sends on inference requests
+// when it runs on an API key. The key names the account and its profile, so
+// no profile is sent.
+func applyKiroHeaders(req *http.Request, apiKey string) {
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+token)
-	req.Header.Set("x-amzn-kiro-origin", kiroauth.InferenceOrigin)
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	req.Header.Set("TokenType", kiroauth.TokenType)
+	req.Header.Set("x-amzn-kiro-origin", kiroauth.Origin)
 	req.Header.Set("x-amzn-codewhisperer-optout", "true")
-	req.Header.Set("x-amzn-kiro-profile", profileARN)
 	req.Header.Set("User-Agent", kiroauth.InferenceUserAgent)
 	req.Header.Set("x-kiro-attempt", "1;max=3")
 }
 
 // wrapKiroUpstreamError turns a failed inference response into an error the
-// conductor classifies. The service reports a rejected access token as 403, so
-// that case is reported as 401, which makes the conductor refresh the token and
-// retry.
+// conductor classifies. The service reports a rejected key as 403; it is
+// reported as 401, the status of a rejected credential.
 func wrapKiroUpstreamError(status int, header http.Header, body []byte) error {
 	apiErr := kiroauth.ParseAPIError(status, body)
 	if apiErr.IsInvalidToken() {

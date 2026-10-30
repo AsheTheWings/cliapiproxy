@@ -14,7 +14,7 @@ func IsConfigAPIKeyAuth(auth *Auth) bool {
 }
 
 // IsAccountCatalogAuth reports whether a config API-key credential serves the
-// model catalog of its key's account (Command Code). Unlike other API-key
+// model catalog of its key's account (Command Code, Kiro). Unlike other API-key
 // credentials it is refreshed: each refresh reloads the catalog into its
 // metadata and sets the metadata expiry to the next reload.
 func IsAccountCatalogAuth(auth *Auth) bool {

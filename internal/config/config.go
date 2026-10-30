@@ -156,6 +156,10 @@ type Config struct {
 	// models of its own account.
 	CommandCodeKey []CommandCodeKey `yaml:"commandcode-api-key" json:"commandcode-api-key"`
 
+	// KiroKey lists the Kiro API keys; each key serves the models of its own
+	// account.
+	KiroKey []KiroKey `yaml:"kiro-api-key" json:"kiro-api-key"`
+
 	// XAI configures provider-wide xAI request behavior.
 	XAI XAIConfig `yaml:"xai" json:"xai"`
 

@@ -310,6 +310,9 @@ func LoadConfigOptional(configFile string, optional bool) (*Config, error) {
 	// Sanitize Command Code keys.
 	cfg.SanitizeCommandCodeKeys()
 
+	// Sanitize Kiro keys.
+	cfg.SanitizeKiroKeys()
+
 	// Sanitize Codex header defaults.
 	cfg.SanitizeCodexHeaderDefaults()
 
