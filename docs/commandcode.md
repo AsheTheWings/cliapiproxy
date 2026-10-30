@@ -35,7 +35,9 @@ account's plan, credits, and model catalog, which also shows that the gateway
 still accepts the key; a reload that cannot load the catalog keeps the
 previous one, and without one it fails and runs again five minutes later. A
 key the gateway rejects with 401 fails the reload with that
-status. An API key has no expiry. Changing the keys takes a restart.
+status. An API key has no expiry. Changing the keys takes a restart. An
+auth-directory file of type `commandcode` holds no usable credential; the
+server ignores it with a warning.
 
 ## Models
 

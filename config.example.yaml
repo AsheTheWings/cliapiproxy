@@ -896,6 +896,15 @@ upstream:
 #       keys:
 #         - api-key: "..."
 #
+#   # Kiro API keys
+#   # Each key serves the models of its own account; a group sets no base-url or models.
+#
+#   kiro:
+#     - name: kiro-1
+#       prefix: "k" # optional: require calls like "k/kiro/claude-haiku-5.5"
+#       keys:
+#         - api-key: "..."
+#
 #   # OpenAI compatibility providers
 #
 #   openai-compatibility:

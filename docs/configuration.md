@@ -75,8 +75,9 @@ such a group lists. A model has a `name` and may set `alias`,
 OpenAI-compatible groups, `input-modalities`. A Meta group without models
 offers the built-in Meta catalog; one with models offers only those it lists.
 A listed Meta model takes every property it does not set from its catalog
-entry. A [Command Code](commandcode.md) group has a `name` and may set
-`prefix` only; each of its keys offers the models of its own account:
+entry. A [Command Code](commandcode.md) or [Kiro](kiro.md) group has a `name`
+and may set `prefix` only; each of its keys offers the models of its own
+account:
 
 ```yaml
 api-keys:

@@ -1,28 +1,42 @@
 # How does the server use Kiro accounts?
 
-Kiro is a provider like Codex or Kimi: a Kiro login is a credential file in
-the auth directory, and requests for `kiro/<model>` run on that account. The
+Kiro is a provider like Codex or Kimi: a Kiro account is an API key in the
+server's inputs, and requests for `kiro/<model>` run on that account. The
 server speaks to Kiro's Responses-style inference route, so every client API
 (Chat Completions, Responses, Claude Messages, Gemini) reaches it through the
 usual translators.
 
-## Logging in
+## Accounts
 
-`-kiro-login` runs the device login: the server prints a verification URL and
-code, waits while the user approves it in a browser, writes the credential
-file, and exits. `-kiro-import FILE` writes the same credential from the
-refresh token that FILE holds; the file must be accessible by its owner only.
-Both commands refresh the token once and load the account's model catalog
-before they write, and both name the file after the account's profile, so
-logging in again with the same account replaces its file.
+An account is an API key that Kiro issues for it. The keys are the API-key
+family `kiro` ([configuration](configuration.md#upstream-api-keys)): an
+overlay declares groups under `api-keys.kiro`, each with a `name` and an
+optional `prefix`, and the protected file's `CLIPROXY_KIRO_KEYS` holds their
+`group=key` items. A group takes no `base-url` or `models`, because the
+service is fixed and each key's account decides its models. Several keys in
+one group balance requests across their accounts:
 
-The credential file holds the access and refresh tokens, the expiry, the
-account's profile ARN, and the model catalog (`kiro_catalog`). The server
-refreshes the token ten minutes before its expiry, since the service can reject
-a token earlier than its stated expiry. A refresh keeps the refresh token, which
-the service does not rotate, and loads the catalog again; when the catalog
-cannot be loaded, the previous one stays. A request the service rejects for an
-invalid token refreshes the credential once and runs again.
+```yaml
+api-keys:
+  kiro:
+    - name: kiro
+```
+
+```sh
+CLIPROXY_KIRO_KEYS='kiro=<key>,kiro=<key>'
+```
+
+Each key becomes a credential the server keeps in memory and never writes to
+the auth directory. Every request carries the key as a Bearer token with the
+header `TokenType: API_KEY`, from which the service derives the account and its
+profile, so the server sends no profile. At start, and then every hour, the
+server reloads the account's model catalog (`ListAvailableModels` on the
+`us-east-1` management host), which also shows that the service still accepts
+the key; a reload that cannot load the catalog keeps the previous one, and
+without one it fails and runs again five minutes later. A key the service
+rejects fails the reload with 401. An API key has no expiry and is
+never refreshed. Changing the keys takes a restart. An auth-directory file of
+type `kiro` holds no usable credential; the server ignores it with a warning.
 
 ## Models
 
@@ -30,7 +44,7 @@ Plans differ in the models they include, so each credential publishes the
 models of its own catalog and nothing else. A model's public id is
 `kiro/<model id>`, for example `kiro/claude-haiku-5.5`. The catalog also sets each model's
 context window, output limit, image input, and reasoning levels. A credential
-without a catalog in its file publishes no models until its next refresh.
+publishes no models until its first catalog load succeeds.
 
 A model's reasoning setting follows the effort values its catalog schema lists.
 Claude models take `adaptive` reasoning with an effort or `disabled`; the other
@@ -47,7 +61,7 @@ level. Models without an effort schema receive no reasoning setting.
 ## What the service receives
 
 The server sends the headers and body fields the Kiro agent sends: `model`,
-`input`, `tools`, `stream`, `origin`, `profileArn`, `metadata`, and `reasoning`.
+`input`, `tools`, `stream`, `origin`, `metadata`, and `reasoning`.
 The values come from one pinned release of the agent, named by the `CLIVersion`
 and `AgentVersion` constants of
 [`internal/auth/kiro`](../internal/auth/kiro/fingerprint.go). The TLS handshake
@@ -93,23 +107,16 @@ catalog's input window, an estimate, and the output token count is 0. A turn
 that calls tools ends with the status `requires_action`, which the server
 reports as `completed`.
 
-The service reports a rejected access token as 403 `access_denied`; the server
-reports it as 401 so the credential refreshes. Other service errors keep their
-status and body.
+The service reports a rejected key as 403 `access_denied`; the server reports
+it as 401. Other service errors keep their status and body.
 
 ## Limits
 
 - A response whose body ends without `response.completed`,
   `response.incomplete`, or an error event fails with a 408 error, also for a
   stream that has already sent text.
-- `-kiro-import` checks POSIX file modes, so it refuses token files on systems
-  that report other modes.
+- The server uses the `us-east-1` hosts. The Kiro agent probes other regions
+  for a key's home region; a key of another region is not supported.
 - Throttling, quota exhaustion, and errors inside an open stream have not been
   observed on the service, so they are not classified apart from their status.
-- The device login keeps polling on an answer without tokens and on a
-  `pending` or `slow_down` error, and stops on any other client error or when
-  the code expires. The service's answer before approval has not been observed
-  in the pinned release.
-- Only the Google identity provider is requested at login; `-kiro-import`
-  accepts the refresh token of any login.
 - Token counting requests are answered by a local estimate.
