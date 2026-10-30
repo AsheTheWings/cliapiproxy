@@ -147,8 +147,9 @@ name select exactly one provider.
 Once its inputs are resolved, the server clears its environment, so no part of
 it reads an environment variable the schema has not validated; upstream
 requests use a proxy only through `requests.proxy-url`. The configuration is
-fixed for the run, so applying a change takes a restart, and the management
-API is disabled. [Observability](observability.md) describes the telemetry
+fixed for the run, so applying a change takes a restart, and the
+[management API](management.md) only reads it.
+[Observability](observability.md) describes the telemetry
 inputs. Credential files are state, not configuration: the server
 watches the auth directory, and changes to it take effect immediately.
 
