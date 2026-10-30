@@ -1166,7 +1166,7 @@ func TestEndToEndStatusPatch_RestoresModelsThroughServerPipeline(t *testing.T) {
 
 	// 1. Confirm models exist before disabling
 	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/v0/management/auth-files/models?name="+fileName, nil)
+	req := httptest.NewRequest(http.MethodGet, "/v8/management/credentials/models?name="+fileName, nil)
 	req.Header.Set("Authorization", "Bearer test-secret")
 	handler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
@@ -1179,9 +1179,9 @@ func TestEndToEndStatusPatch_RestoresModelsThroughServerPipeline(t *testing.T) {
 		t.Fatalf("expected initial models, got %s", rec.Body.String())
 	}
 
-	// 2. Disable credential via PATCH /v0/management/auth-files/status
+	// 2. Disable credential via PATCH /v8/management/credentials/status
 	rec = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodPatch, "/v0/management/auth-files/status", strings.NewReader(`{"name":"`+fileName+`","disabled":true}`))
+	req = httptest.NewRequest(http.MethodPatch, "/v8/management/credentials/status", strings.NewReader(`{"name":"`+fileName+`","disabled":true}`))
 	req.Header.Set("Authorization", "Bearer test-secret")
 	req.Header.Set("Content-Type", "application/json")
 	handler.ServeHTTP(rec, req)
@@ -1189,9 +1189,9 @@ func TestEndToEndStatusPatch_RestoresModelsThroughServerPipeline(t *testing.T) {
 		t.Fatalf("PATCH status disable failed: %s", rec.Body.String())
 	}
 
-	// 3. Confirm GET /v0/management/auth-files/models returns empty list immediately
+	// 3. Confirm GET /v8/management/credentials/models returns empty list immediately
 	rec = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodGet, "/v0/management/auth-files/models?name="+fileName, nil)
+	req = httptest.NewRequest(http.MethodGet, "/v8/management/credentials/models?name="+fileName, nil)
 	req.Header.Set("Authorization", "Bearer test-secret")
 	handler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
@@ -1202,9 +1202,9 @@ func TestEndToEndStatusPatch_RestoresModelsThroughServerPipeline(t *testing.T) {
 		t.Fatalf("expected 0 models after disable, got: %s", rec.Body.String())
 	}
 
-	// 4. Re-enable credential via PATCH /v0/management/auth-files/status
+	// 4. Re-enable credential via PATCH /v8/management/credentials/status
 	rec = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodPatch, "/v0/management/auth-files/status", strings.NewReader(`{"name":"`+fileName+`","disabled":false}`))
+	req = httptest.NewRequest(http.MethodPatch, "/v8/management/credentials/status", strings.NewReader(`{"name":"`+fileName+`","disabled":false}`))
 	req.Header.Set("Authorization", "Bearer test-secret")
 	req.Header.Set("Content-Type", "application/json")
 	handler.ServeHTTP(rec, req)
@@ -1214,7 +1214,7 @@ func TestEndToEndStatusPatch_RestoresModelsThroughServerPipeline(t *testing.T) {
 
 	// 5. Confirm models are synchronously restored immediately without restart
 	rec = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodGet, "/v0/management/auth-files/models?name="+fileName, nil)
+	req = httptest.NewRequest(http.MethodGet, "/v8/management/credentials/models?name="+fileName, nil)
 	req.Header.Set("Authorization", "Bearer test-secret")
 	handler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
@@ -1727,7 +1727,7 @@ func TestEndToEndAuthFileReplacement_RestoresModelsInV1ModelsWithoutRestart(t *t
 		}
 	}
 
-	// 3. Replace credential via management upload (POST /v0/management/auth-files)
+	// 3. Replace credential via management upload (POST /v8/management/credentials)
 	newContent := fmt.Sprintf(`{"type":"codex","email":"user@example.com","access_token":"token-new","id_token":%q}`, teamIDToken)
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
@@ -1743,7 +1743,7 @@ func TestEndToEndAuthFileReplacement_RestoresModelsInV1ModelsWithoutRestart(t *t
 	}
 
 	rec = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodPost, "/v0/management/auth-files", &body)
+	req = httptest.NewRequest(http.MethodPost, "/v8/management/credentials", &body)
 	req.Header.Set("Authorization", "Bearer test-secret")
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	handler.ServeHTTP(rec, req)
@@ -1890,7 +1890,7 @@ func TestEndToEndAuthFilePatch_RestoresModelsInV1ModelsWithoutRestart(t *testing
 	// 2. Patch auth file fields with fresh access token
 	patchBody := fmt.Sprintf(`{"name":%q,"access_token":"token-fresh","id_token":%q}`, fileName, teamIDToken)
 	rec = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodPatch, "/v0/management/auth-files/fields", strings.NewReader(patchBody))
+	req = httptest.NewRequest(http.MethodPatch, "/v8/management/credentials/fields", strings.NewReader(patchBody))
 	req.Header.Set("Authorization", "Bearer test-secret")
 	req.Header.Set("Content-Type", "application/json")
 	handler.ServeHTTP(rec, req)

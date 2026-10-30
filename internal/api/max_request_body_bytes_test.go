@@ -410,8 +410,8 @@ access:
 			method string
 			path   string
 		}{
-			{http.MethodPost, "/v8/management/plugins/store/demo/install"},
-			{http.MethodPut, "/v8/management/config"},
+			{http.MethodPatch, "/v8/management/credentials/fields"},
+			{http.MethodPost, "/v8/management/oauth/auth-url"},
 		} {
 			reqMgmt := httptest.NewRequest(endpoint.method, endpoint.path, io.NopCloser(strings.NewReader(`{"version":"`+strings.Repeat("v", 128)+`"}`)))
 			reqMgmt.ContentLength = -1

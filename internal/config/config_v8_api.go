@@ -1,10 +1,28 @@
 package config
 
 import (
+	"fmt"
 	"strings"
 
 	"gopkg.in/yaml.v3"
 )
+
+// RenderV8 renders cfg as a document in the v8 layout, the form the
+// management API reads.
+func RenderV8(cfg *Config) ([]byte, error) {
+	if cfg == nil {
+		return nil, fmt.Errorf("render configuration: no configuration")
+	}
+	rendered, err := yaml.Marshal((*legacyConfig)(cfg))
+	if err != nil {
+		return nil, fmt.Errorf("render configuration: %w", err)
+	}
+	data, _, err := NormalizeConfigLayout(rendered, true)
+	if err != nil {
+		return nil, fmt.Errorf("render configuration: %w", err)
+	}
+	return data, nil
+}
 
 // ProjectV8ConfigAliases moves canonical fields into a requested historical
 // subtree. Moving, rather than copying, preserves PUT and DELETE semantics when

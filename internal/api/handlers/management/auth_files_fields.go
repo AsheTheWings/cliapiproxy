@@ -96,6 +96,11 @@ func (h *Handler) PatchAuthFileStatus(c *gin.Context) {
 	}
 
 	if coreauth.IsConfigAPIKeyAuth(targetAuth) {
+		// Without a configuration file, the server's inputs own these keys.
+		if h.configFilePath == "" {
+			c.JSON(http.StatusConflict, gin.H{"error": "the account comes from the server's inputs"})
+			return
+		}
 		h.mu.Lock()
 		handled, errToggle := toggleConfigAPIKeyExcludedAll(h.cfg, targetAuth, *req.Disabled)
 		if errToggle != nil {

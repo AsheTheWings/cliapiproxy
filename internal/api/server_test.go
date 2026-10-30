@@ -30,7 +30,6 @@ import (
 	internallogging "github.com/AsheTheWings/cliapiproxy/internal/logging"
 	"github.com/AsheTheWings/cliapiproxy/internal/managementasset"
 	"github.com/AsheTheWings/cliapiproxy/internal/pluginhost"
-	"github.com/AsheTheWings/cliapiproxy/internal/redisqueue"
 	"github.com/AsheTheWings/cliapiproxy/internal/registry"
 	"github.com/AsheTheWings/cliapiproxy/internal/runtime/executor"
 	runtimehelps "github.com/AsheTheWings/cliapiproxy/internal/runtime/executor/helps"
@@ -1595,7 +1594,7 @@ func TestCodexAlphaSearchRecordsRequestLog(t *testing.T) {
 func TestManagementResponseExposesPluginSupportHeaderForCORS(t *testing.T) {
 
 	server := newManagementTestServer(t, "test-management-key")
-	req := httptest.NewRequest(http.MethodGet, "/v0/management/config", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v8/management/config", nil)
 	req.Header.Set("Origin", "http://127.0.0.1:5173")
 	rr := httptest.NewRecorder()
 	server.engine.ServeHTTP(rr, req)
@@ -1631,7 +1630,7 @@ func TestOAuthCallbackRouteSkipsManagementKeyMiddleware(t *testing.T) {
 	}
 	defer managementHandlers.CompleteOAuthSession(state)
 
-	req := httptest.NewRequest(http.MethodGet, "/v0/management/oauth-callback?state="+state+"&code=test-code", nil)
+	req := httptest.NewRequest(http.MethodGet, "/v8/management/oauth/callback?state="+state+"&code=test-code", nil)
 	rr := httptest.NewRecorder()
 	server.engine.ServeHTTP(rr, req)
 
@@ -1666,126 +1665,6 @@ func TestNewServerWithoutPluginHostLeavesHandlerInterceptorsDisabled(t *testing.
 	}
 	if server.handlers.PluginHost != nil {
 		t.Fatalf("handler plugin host = %#v, want nil", server.handlers.PluginHost)
-	}
-}
-
-func TestManagementUsageRequiresManagementAuthAndPopsArray(t *testing.T) {
-
-	prevQueueEnabled := redisqueue.Enabled()
-	redisqueue.SetEnabled(false)
-	t.Cleanup(func() {
-		redisqueue.SetEnabled(false)
-		redisqueue.SetEnabled(prevQueueEnabled)
-	})
-
-	server := newManagementTestServer(t, "test-management-key")
-
-	redisqueue.Enqueue([]byte(`{"id":1}`))
-	redisqueue.Enqueue([]byte(`{"id":2}`))
-
-	missingKeyReq := httptest.NewRequest(http.MethodGet, "/v0/management/usage-queue?count=2", nil)
-	missingKeyRR := httptest.NewRecorder()
-	server.engine.ServeHTTP(missingKeyRR, missingKeyReq)
-	if missingKeyRR.Code != http.StatusUnauthorized {
-		t.Fatalf("missing key status = %d, want %d body=%s", missingKeyRR.Code, http.StatusUnauthorized, missingKeyRR.Body.String())
-	}
-
-	legacyReq := httptest.NewRequest(http.MethodGet, "/v0/management/usage?count=2", nil)
-	legacyReq.Header.Set("Authorization", "Bearer test-management-key")
-	legacyRR := httptest.NewRecorder()
-	server.engine.ServeHTTP(legacyRR, legacyReq)
-	if legacyRR.Code != http.StatusNotFound {
-		t.Fatalf("legacy usage status = %d, want %d body=%s", legacyRR.Code, http.StatusNotFound, legacyRR.Body.String())
-	}
-
-	authReq := httptest.NewRequest(http.MethodGet, "/v0/management/usage-queue?count=2", nil)
-	authReq.Header.Set("Authorization", "Bearer test-management-key")
-	authRR := httptest.NewRecorder()
-	server.engine.ServeHTTP(authRR, authReq)
-	if authRR.Code != http.StatusOK {
-		t.Fatalf("authenticated status = %d, want %d body=%s", authRR.Code, http.StatusOK, authRR.Body.String())
-	}
-
-	var payload []json.RawMessage
-	if errUnmarshal := json.Unmarshal(authRR.Body.Bytes(), &payload); errUnmarshal != nil {
-		t.Fatalf("unmarshal response: %v body=%s", errUnmarshal, authRR.Body.String())
-	}
-	if len(payload) != 2 {
-		t.Fatalf("response records = %d, want 2", len(payload))
-	}
-	for i, raw := range payload {
-		var record struct {
-			ID int `json:"id"`
-		}
-		if errUnmarshal := json.Unmarshal(raw, &record); errUnmarshal != nil {
-			t.Fatalf("unmarshal record %d: %v", i, errUnmarshal)
-		}
-		if record.ID != i+1 {
-			t.Fatalf("record %d id = %d, want %d", i, record.ID, i+1)
-		}
-	}
-
-	if remaining := redisqueue.PopOldest(1); len(remaining) != 0 {
-		t.Fatalf("remaining queue = %q, want empty", remaining)
-	}
-}
-
-func TestManagementPluginsRouteRegistered(t *testing.T) {
-
-	server := newManagementTestServer(t, "test-management-key")
-	enabled := true
-	server.cfg.Plugins.Configs = map[string]proxyconfig.PluginInstanceConfig{
-		"sample": {Enabled: &enabled, Priority: 4},
-	}
-	server.mgmt.SetConfig(server.cfg)
-	if errWrite := os.WriteFile(server.configFilePath, []byte("{}\n"), 0o600); errWrite != nil {
-		t.Fatalf("failed to write config file: %v", errWrite)
-	}
-
-	req := httptest.NewRequest(http.MethodGet, "/v0/management/plugins", nil)
-	req.Header.Set("Authorization", "Bearer test-management-key")
-	rr := httptest.NewRecorder()
-	server.engine.ServeHTTP(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status = %d, want %d body=%s", rr.Code, http.StatusOK, rr.Body.String())
-	}
-
-	var payload struct {
-		PluginsEnabled bool  `json:"plugins_enabled"`
-		Plugins        []any `json:"plugins"`
-	}
-	if errUnmarshal := json.Unmarshal(rr.Body.Bytes(), &payload); errUnmarshal != nil {
-		t.Fatalf("unmarshal response: %v body=%s", errUnmarshal, rr.Body.String())
-	}
-	if payload.Plugins == nil {
-		t.Fatalf("plugins field = nil, want array; body=%s", rr.Body.String())
-	}
-
-	req = httptest.NewRequest(http.MethodGet, "/v0/management/plugins/sample/config", nil)
-	req.Header.Set("Authorization", "Bearer test-management-key")
-	rr = httptest.NewRecorder()
-	server.engine.ServeHTTP(rr, req)
-	if rr.Code != http.StatusOK {
-		t.Fatalf("config status = %d, want %d body=%s", rr.Code, http.StatusOK, rr.Body.String())
-	}
-	var configPayload struct {
-		Enabled  bool `json:"enabled"`
-		Priority int  `json:"priority"`
-	}
-	if errUnmarshal := json.Unmarshal(rr.Body.Bytes(), &configPayload); errUnmarshal != nil {
-		t.Fatalf("unmarshal config response: %v body=%s", errUnmarshal, rr.Body.String())
-	}
-	if !configPayload.Enabled || configPayload.Priority != 4 {
-		t.Fatalf("plugin config = %#v, want enabled true priority 4", configPayload)
-	}
-
-	req = httptest.NewRequest(http.MethodDelete, "/v0/management/plugins/sample", nil)
-	req.Header.Set("Authorization", "Bearer test-management-key")
-	rr = httptest.NewRecorder()
-	server.engine.ServeHTTP(rr, req)
-	if rr.Code != http.StatusOK {
-		t.Fatalf("delete status = %d, want %d body=%s", rr.Code, http.StatusOK, rr.Body.String())
 	}
 }
 
@@ -1834,7 +1713,7 @@ func TestHomeEnabledHidesManagementEndpointsAndControlPanel(t *testing.T) {
 	server.cfg.Home.Enabled = true
 
 	t.Run("management endpoints return 404", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/v0/management/config", nil)
+		req := httptest.NewRequest(http.MethodGet, "/v8/management/config", nil)
 		req.Header.Set("Authorization", "Bearer test-management-key")
 		rr := httptest.NewRecorder()
 		server.engine.ServeHTTP(rr, req)
@@ -1945,7 +1824,7 @@ func TestExampleAPIKeySafeModeShowsWarningAndKeepsManagement(t *testing.T) {
 	})
 
 	t.Run("management endpoints still work", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/v0/management/config", nil)
+		req := httptest.NewRequest(http.MethodGet, "/v8/management/config", nil)
 		req.Header.Set("Authorization", "Bearer test-management-key")
 		rr := httptest.NewRecorder()
 		server.engine.ServeHTTP(rr, req)
