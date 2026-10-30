@@ -21,9 +21,9 @@ import (
 	"github.com/AsheTheWings/cliapiproxy/internal/api/middleware"
 	codexlive "github.com/AsheTheWings/cliapiproxy/internal/client/codex/live"
 	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/dashboard"
 	"github.com/AsheTheWings/cliapiproxy/internal/githubauth"
 	"github.com/AsheTheWings/cliapiproxy/internal/logging"
-	"github.com/AsheTheWings/cliapiproxy/internal/managementasset"
 	"github.com/AsheTheWings/cliapiproxy/internal/pluginhost"
 	"github.com/AsheTheWings/cliapiproxy/internal/redisqueue"
 	"github.com/AsheTheWings/cliapiproxy/internal/telemetry"
@@ -74,6 +74,9 @@ type Server struct {
 
 	// configFilePath is the absolute path to the YAML config file for persistence.
 	configFilePath string
+
+	// dashboardHTML is the management dashboard page; nil when the binary has none.
+	dashboardHTML []byte
 
 	// currentPath is the absolute path to the current working directory.
 	currentPath string
@@ -156,6 +159,7 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
 		cfg:                          cfg,
 		accessManager:                accessManager,
 		configFilePath:               configFilePath,
+		dashboardHTML:                dashboard.HTML(),
 		currentPath:                  wd,
 		wsRoutes:                     make(map[string]struct{}),
 		pluginHost:                   optionState.pluginHost,
@@ -207,7 +211,6 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
 		authManager.SetRetryConfig(cfg.RequestRetry, time.Duration(cfg.MaxRetryInterval)*time.Second, cfg.MaxRetryCredentials)
 	}
 	githubauth.SetToken(cfg.GitHubToken)
-	managementasset.SetCurrentConfig(cfg)
 	auth.SetQuotaCooldownDisabled(cfg.DisableCooling)
 	auth.SetTransientErrorCooldownSeconds(cfg.TransientErrorCooldownSeconds)
 	applySignatureCacheConfig(nil, cfg)

@@ -38,3 +38,8 @@ bin
 .bmad
 _bmad
 _bmad-output
+
+# Dashboard build inputs come from the dashboard stage
+dashboard/node_modules
+dashboard/dist
+internal/dashboard/dist/management.html

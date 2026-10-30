@@ -1,4 +1,18 @@
 # Base images are pinned by digest; change a pin only together with its tag.
+FROM docker.io/oven/bun:1.3.14@sha256:e10577f0db68676a7024391c6e5cb4b879ebd17188ab750cf10024a6d700e5c4 AS dashboard
+
+WORKDIR /src
+
+COPY dashboard/package.json dashboard/bun.lock dashboard/
+RUN cd dashboard && bun install --frozen-lockfile
+
+COPY dashboard/ dashboard/
+COPY scripts/dashboard.sh scripts/
+RUN mkdir -p internal/dashboard/dist
+
+ARG VERSION=0.0.0
+RUN sh scripts/dashboard.sh "$VERSION"
+
 FROM docker.io/library/golang:1.26.10-bookworm@sha256:632dff7351799a5a9954a48dc06670ade72ee44e8c351cdc0e5a57af2fea21af AS builder
 
 WORKDIR /src
@@ -7,6 +21,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
+COPY --from=dashboard /src/internal/dashboard/dist/management.html internal/dashboard/dist/management.html
 
 ARG VERSION=0.0.0
 ARG COMMIT=none

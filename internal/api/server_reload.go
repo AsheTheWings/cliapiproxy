@@ -10,7 +10,6 @@ import (
 	"github.com/AsheTheWings/cliapiproxy/internal/config"
 	"github.com/AsheTheWings/cliapiproxy/internal/githubauth"
 	"github.com/AsheTheWings/cliapiproxy/internal/logging"
-	"github.com/AsheTheWings/cliapiproxy/internal/managementasset"
 	"github.com/AsheTheWings/cliapiproxy/internal/redisqueue"
 	"github.com/AsheTheWings/cliapiproxy/internal/runtime/executor"
 	responsesclaude "github.com/AsheTheWings/cliapiproxy/internal/translator/claude/openai/responses"
@@ -179,7 +178,6 @@ func (s *Server) UpdateClientsContext(ctx context.Context, cfg *config.Config) b
 		s.wsAuthChanged(oldCfg.WebsocketAuth, cfg.WebsocketAuth)
 	}
 	githubauth.SetToken(cfg.GitHubToken)
-	managementasset.SetCurrentConfig(cfg)
 	if errContext := ctx.Err(); errContext != nil {
 		return false
 	}
