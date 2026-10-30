@@ -416,6 +416,16 @@ func compileAPIKeyModelCapabilitiesForAuth(cfg *internalconfig.Config, auth *Aut
 		if entry := resolveMetaAPIKeyConfig(cfg, auth); entry != nil {
 			compileConfiguredModelCapabilities(out, entry.Models, "meta")
 		}
+	case "commandcode", "kiro":
+		// The account's catalog, which only the published model carries,
+		// describes a model's reasoning; only configured levels replace it.
+		if entry := resolveAccountCatalogAPIKeyConfig(cfg, auth); entry != nil {
+			for i := range entry.Models {
+				if configured := entry.Models[i]; configured.Thinking != nil {
+					addConfiguredModelCapability(out, configured.Name, configured.Alias, strings.ToLower(strings.TrimSpace(auth.Provider)), configured.Thinking, false)
+				}
+			}
+		}
 	default:
 		providerKey, compatName := "", ""
 		if auth.Attributes != nil {

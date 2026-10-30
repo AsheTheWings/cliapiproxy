@@ -68,3 +68,40 @@ func TestCommandCodeExecutorIsRegisteredWithTheBaseline(t *testing.T) {
 	}
 	t.Error("the commandcode provider is not among the baseline executors")
 }
+
+func TestCommandCodeGroupModelsSelectFromTheAccountCatalog(t *testing.T) {
+	registry := internalregistry.GetGlobalRegistry()
+	const id = "commandcode-listed"
+	registry.UnregisterClient(id)
+	t.Cleanup(func() { registry.UnregisterClient(id) })
+	service := &Service{cfg: &config.Config{CommandCodeKey: []config.CommandCodeKey{{APIKey: "key", Models: []config.MetaModel{
+		{Name: "commandcode/gpt-6-luna", Alias: "luna", MaxContextLength: 1000},
+		{Name: "commandcode/deepseek/deepseek-v4-flash"},
+		{Name: "commandcode/not-in-the-catalog"},
+	}}}}}
+	auth := &coreauth.Auth{
+		ID: id, Provider: "commandcode", Status: coreauth.StatusActive,
+		Attributes: map[string]string{
+			coreauth.AttributeSource: "config:commandcode[listed]", coreauth.AttributeConfigIndex: "0",
+			coreauth.AttributeAPIKey: "key", coreauth.AttributeAccountCatalog: "true",
+		},
+	}
+
+	service.registerModelsForAuth(context.Background(), auth)
+	if got := registeredCommandCodeModels(id); len(got) != 0 {
+		t.Fatalf("a credential without a catalog published %v", got)
+	}
+
+	auth.Metadata = commandCodeCatalogMetadata("individual-pro", 0)
+	service.registerModelsForAuth(context.Background(), auth)
+	got := make(map[string]*internalregistry.ModelInfo)
+	for _, model := range registry.GetModelsForClient(id) {
+		got[model.ID] = model
+	}
+	if len(got) != 2 || got["luna"] == nil || got["commandcode/deepseek/deepseek-v4-flash"] == nil {
+		t.Fatalf("models = %v, want the listed catalog models", got)
+	}
+	if luna := got["luna"]; luna.ContextLength != 1000 || luna.DisplayName != "gpt-6-luna" || luna.OwnedBy != "commandcode" {
+		t.Errorf("luna = %+v, want the catalog entry with the group's alias and context", luna)
+	}
+}

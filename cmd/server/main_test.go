@@ -44,6 +44,7 @@ api-keys:
   commandcode:
     - name: cc
       prefix: cc
+      models: [{name: commandcode/deepseek/deepseek-v4.1-flash, alias: flash}]
   kiro:
     - name: kiro
 `
@@ -111,7 +112,8 @@ func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
 		},
 		"api-keys.meta": []string{"upstream-key-m prefix= models=[muse-model:480000]"},
 		"api-keys.commandcode": []config.CommandCodeKey{
-			{APIKey: "upstream-key-c1", Prefix: "cc"}, {APIKey: "upstream-key-c2", Prefix: "cc"},
+			{APIKey: "upstream-key-c1", Prefix: "cc", Models: []config.CodexModel{{Name: "commandcode/deepseek/deepseek-v4.1-flash", Alias: "flash"}}},
+			{APIKey: "upstream-key-c2", Prefix: "cc", Models: []config.CodexModel{{Name: "commandcode/deepseek/deepseek-v4.1-flash", Alias: "flash"}}},
 		},
 		"api-keys.kiro": []config.KiroKey{{APIKey: "upstream-key-k"}},
 	}

@@ -878,7 +878,17 @@ type CommandCodeKey struct {
 
 	// Prefix optionally namespaces the key's models (e.g., "cc/commandcode/deepseek/deepseek-v4-flash").
 	Prefix string `yaml:"prefix,omitempty" json:"prefix,omitempty"`
+
+	// Models optionally lists the catalog models the key serves, by their id
+	// in the account's catalog (e.g., "commandcode/deepseek/deepseek-v4.1-flash");
+	// without models, the key serves every model of the catalog.
+	Models []CodexModel `yaml:"models,omitempty" json:"models,omitempty"`
 }
+
+func (k CommandCodeKey) GetAPIKey() string   { return k.APIKey }
+func (k CommandCodeKey) GetBaseURL() string  { return "" }
+func (k CommandCodeKey) GetPrefix() string   { return k.Prefix }
+func (k CommandCodeKey) GetProxyURL() string { return "" }
 
 // KiroKey uses the Command Code key structure for Kiro API keys: the endpoint
 // is fixed, and the key's account decides the models it serves.

@@ -14,8 +14,9 @@ Command Code issues for it. The keys are the API-key family `commandcode`
 ([configuration](configuration.md#upstream-api-keys)): an overlay declares
 groups under `api-keys.commandcode`, each with a `name` and an optional
 `prefix`, and the protected file's `CLIPROXY_COMMANDCODE_KEYS` holds their
-`group=key` items. A group takes no `base-url` or `models`, because the
-gateway is fixed and each key's account decides its models. Several keys in
+`group=key` items. A group takes no `base-url`, because the gateway is fixed
+and each key's account decides its models. A group's `models` select among
+them ([configuration](configuration.md#upstream-api-keys)). Several keys in
 one group balance requests across their accounts:
 
 ```yaml
@@ -23,6 +24,7 @@ api-keys:
   commandcode:
     - name: cc
       prefix: cc
+      models: [{name: commandcode/deepseek/deepseek-v4.1-flash}]
 ```
 
 ```sh
