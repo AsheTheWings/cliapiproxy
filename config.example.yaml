@@ -101,19 +101,12 @@ management:
   # Leave empty to disable the Management API entirely (404 for /v0/management and /v8/management routes).
   secret-key: ""
 
-  # Disable the bundled management control panel asset download and HTTP route when true.
+  # Turn off the /management.html dashboard that the server embeds when true.
   disable-control-panel: false
-
-  # Disable automatic periodic background updates of the management panel from GitHub (default: false).
-  # When enabled, the panel is only downloaded on first access if missing, and never auto-updated afterward.
-  # disable-auto-update-panel: false
 
   # Base URL of remote management API when using TUI client mode (cliproxyapi --tui).
   # Defaults to http://127.0.0.1:<port> if not set. Can also be set via --management-base-url.
   # base-url: "https://proxy.example.com"
-
-  # GitHub repository for the management control panel. Accepts a repository URL or releases API URL.
-  panel-github-repository: "https://github.com/router-for-me/Cli-Proxy-API-Management-Center"
 
 # Client authentication for the proxy API. These are not upstream provider keys.
 access:
