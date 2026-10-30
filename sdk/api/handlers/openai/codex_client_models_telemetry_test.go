@@ -6,11 +6,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/telemetry"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/telemetrytest"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/registry"
+	"github.com/AsheTheWings/cliapiproxy/internal/telemetry"
+	"github.com/AsheTheWings/cliapiproxy/internal/testsupport/telemetrytest"
+	"github.com/AsheTheWings/cliapiproxy/sdk/api/handlers"
 	"go.opentelemetry.io/otel/attribute"
 )
 

@@ -8,10 +8,10 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	translatorcommon "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/common"
-	sdktranslator "github.com/router-for-me/CLIProxyAPI/v8/sdk/translator"
+	"github.com/AsheTheWings/cliapiproxy/internal/clienterror"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	translatorcommon "github.com/AsheTheWings/cliapiproxy/internal/translator/common"
+	sdktranslator "github.com/AsheTheWings/cliapiproxy/sdk/translator"
 	"github.com/tidwall/gjson"
 )
 

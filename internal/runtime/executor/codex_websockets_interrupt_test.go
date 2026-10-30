@@ -11,9 +11,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AsheTheWings/cliapiproxy/internal/testsupport/wait"
+	cliproxyexecutor "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/executor"
 	"github.com/gorilla/websocket"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
-	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
 )
 
 func TestInterruptExecutionSessionRequiresActiveRead(t *testing.T) {

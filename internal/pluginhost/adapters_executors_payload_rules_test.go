@@ -11,11 +11,11 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	coreexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginabi"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
-	sdktranslator "github.com/router-for-me/CLIProxyAPI/v8/sdk/translator"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	coreexecutor "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/executor"
+	"github.com/AsheTheWings/cliapiproxy/sdk/pluginabi"
+	"github.com/AsheTheWings/cliapiproxy/sdk/pluginapi"
+	sdktranslator "github.com/AsheTheWings/cliapiproxy/sdk/translator"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 )

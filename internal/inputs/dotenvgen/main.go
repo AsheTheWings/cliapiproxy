@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/inputs"
+	"github.com/AsheTheWings/cliapiproxy/internal/inputs"
 )
 
 func main() {

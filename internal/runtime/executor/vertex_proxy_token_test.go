@@ -15,10 +15,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
-	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
-	sdkconfig "github.com/router-for-me/CLIProxyAPI/v8/sdk/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	cliproxyauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
+	cliproxyexecutor "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/executor"
+	sdkconfig "github.com/AsheTheWings/cliapiproxy/sdk/config"
 )
 
 func TestVertexAccessTokenUsesCredentialProxyNotRequestProxy(t *testing.T) {

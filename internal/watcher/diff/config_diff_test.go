@@ -6,8 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	sdkconfig "github.com/router-for-me/CLIProxyAPI/v8/sdk/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	sdkconfig "github.com/AsheTheWings/cliapiproxy/sdk/config"
 )
 
 func TestBuildConfigChangeDetailsClientCodexEnableApplyPatch(t *testing.T) {

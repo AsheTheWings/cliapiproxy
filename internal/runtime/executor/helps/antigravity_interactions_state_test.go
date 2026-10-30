@@ -5,9 +5,9 @@ package helps
 import (
 	"testing"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/cache"
-	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
-	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
+	"github.com/AsheTheWings/cliapiproxy/internal/cache"
+	cliproxyauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
+	cliproxyexecutor "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/executor"
 	"github.com/tidwall/gjson"
 )
 

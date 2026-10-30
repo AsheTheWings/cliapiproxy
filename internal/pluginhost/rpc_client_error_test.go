@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
-	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
-	coreexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginabi"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
-	sdktranslator "github.com/router-for-me/CLIProxyAPI/v8/sdk/translator"
+	"github.com/AsheTheWings/cliapiproxy/internal/registry"
+	coreauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
+	coreexecutor "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/executor"
+	"github.com/AsheTheWings/cliapiproxy/sdk/pluginabi"
+	"github.com/AsheTheWings/cliapiproxy/sdk/pluginapi"
+	sdktranslator "github.com/AsheTheWings/cliapiproxy/sdk/translator"
 )
 
 type staticEnvelopePluginClient struct {

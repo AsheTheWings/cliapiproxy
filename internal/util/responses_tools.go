@@ -7,7 +7,7 @@ import (
 	"sort"
 	"strings"
 
-	applypatch "github.com/router-for-me/CLIProxyAPI/v8/internal/client/codex/apply-patch"
+	applypatch "github.com/AsheTheWings/cliapiproxy/internal/client/codex/apply-patch"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 )

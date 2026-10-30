@@ -9,10 +9,10 @@ import (
 	"sync"
 	"testing"
 
-	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
-	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginabi"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
+	coreauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
+	cliproxyexecutor "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/executor"
+	"github.com/AsheTheWings/cliapiproxy/sdk/pluginabi"
+	"github.com/AsheTheWings/cliapiproxy/sdk/pluginapi"
 )
 
 type mockPluginScheduler struct{}

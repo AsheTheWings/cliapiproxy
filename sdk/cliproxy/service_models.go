@@ -6,14 +6,14 @@ import (
 	"strings"
 	"time"
 
-	commandcodeauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/commandcode"
-	kiroauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/kiro"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/constant"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/modelconfig"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
-	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/config"
+	commandcodeauth "github.com/AsheTheWings/cliapiproxy/internal/auth/commandcode"
+	kiroauth "github.com/AsheTheWings/cliapiproxy/internal/auth/kiro"
+	"github.com/AsheTheWings/cliapiproxy/internal/constant"
+	"github.com/AsheTheWings/cliapiproxy/internal/modelconfig"
+	"github.com/AsheTheWings/cliapiproxy/internal/registry"
+	"github.com/AsheTheWings/cliapiproxy/internal/runtime/executor/helps"
+	coreauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
+	"github.com/AsheTheWings/cliapiproxy/sdk/config"
 )
 
 // registerModelsForAuth (re)binds provider models in the global registry using the core auth ID as client identifier.

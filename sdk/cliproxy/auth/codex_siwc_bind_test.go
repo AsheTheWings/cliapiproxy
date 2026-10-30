@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/auth/codex"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
 )
 
 type siwcBindHook struct {

@@ -17,13 +17,13 @@ import (
 	"testing"
 	"time"
 
+	codexauth "github.com/AsheTheWings/cliapiproxy/internal/auth/codex"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	fileauth "github.com/AsheTheWings/cliapiproxy/sdk/auth"
+	cliproxyauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
+	cliproxyexecutor "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/executor"
+	sdktranslator "github.com/AsheTheWings/cliapiproxy/sdk/translator"
 	"github.com/gorilla/websocket"
-	codexauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	fileauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/auth"
-	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
-	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
-	sdktranslator "github.com/router-for-me/CLIProxyAPI/v8/sdk/translator"
 )
 
 func makeTestCodexRefreshJWT(planType, accountID string) string {

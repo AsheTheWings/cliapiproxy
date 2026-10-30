@@ -6,9 +6,9 @@ import (
 	"fmt"
 	"strings"
 
+	claudeauth "github.com/AsheTheWings/cliapiproxy/internal/auth/claude"
+	cliproxyauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
 	"github.com/google/uuid"
-	claudeauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/claude"
-	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 )
 
 // Stable identity seeds for fingerprint-profile=claude-code-cli on non-OAuth credentials.

@@ -13,8 +13,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
 	"github.com/redis/go-redis/v9"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 )
 
 func TestClusterBalanceTargetPreflightFailureRecovery(t *testing.T) {

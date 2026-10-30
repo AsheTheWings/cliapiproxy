@@ -9,13 +9,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AsheTheWings/cliapiproxy/internal/logging"
+	"github.com/AsheTheWings/cliapiproxy/internal/runtime/executor/helps"
+	coreexecutor "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/executor"
+	coresession "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/session"
+	coreusage "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/usage"
+	"github.com/AsheTheWings/cliapiproxy/sdk/config"
 	"github.com/gin-gonic/gin"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
-	coreexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
-	coresession "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/session"
-	coreusage "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/usage"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/config"
 	"golang.org/x/net/context"
 )
 

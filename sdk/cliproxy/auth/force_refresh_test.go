@@ -9,8 +9,8 @@ import (
 	"sync/atomic"
 	"testing"
 
-	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
+	internalconfig "github.com/AsheTheWings/cliapiproxy/internal/config"
+	cliproxyexecutor "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/executor"
 )
 
 func TestManager_ForceRefreshAuth_ClearsErrorAndRefreshes(t *testing.T) {

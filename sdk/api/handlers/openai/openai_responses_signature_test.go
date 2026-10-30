@@ -9,11 +9,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/AsheTheWings/cliapiproxy/internal/registry"
+	"github.com/AsheTheWings/cliapiproxy/sdk/api/handlers"
+	coreauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
+	sdkconfig "github.com/AsheTheWings/cliapiproxy/sdk/config"
 	"github.com/gin-gonic/gin"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
-	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
-	sdkconfig "github.com/router-for-me/CLIProxyAPI/v8/sdk/config"
 )
 
 func TestOpenAIResponsesForwardsInvalidReasoningEncryptedContentToExecutor(t *testing.T) {

@@ -13,11 +13,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
+	"github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/executionregistry"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
 )
 
 func TestHandleDirectWebsocketRejectsClientSecretModelMismatch(t *testing.T) {

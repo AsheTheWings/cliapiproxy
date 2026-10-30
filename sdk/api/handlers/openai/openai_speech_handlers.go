@@ -9,9 +9,9 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/AsheTheWings/cliapiproxy/internal/clienterror"
+	"github.com/AsheTheWings/cliapiproxy/sdk/api/handlers"
 	"github.com/gin-gonic/gin"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
 	"github.com/tidwall/gjson"
 )
 

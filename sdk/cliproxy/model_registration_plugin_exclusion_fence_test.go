@@ -6,11 +6,11 @@ import (
 	"context"
 	"testing"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/pluginhost"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
-	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/config"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
+	"github.com/AsheTheWings/cliapiproxy/internal/pluginhost"
+	"github.com/AsheTheWings/cliapiproxy/internal/registry"
+	coreauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
+	"github.com/AsheTheWings/cliapiproxy/sdk/config"
+	"github.com/AsheTheWings/cliapiproxy/sdk/pluginapi"
 )
 
 type exclusionFenceModelProvider struct {

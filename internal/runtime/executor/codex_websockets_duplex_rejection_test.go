@@ -13,12 +13,12 @@ import (
 	"testing"
 	"time"
 
+	internalcache "github.com/AsheTheWings/cliapiproxy/internal/cache"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	auth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
+	core "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/executor"
+	translator "github.com/AsheTheWings/cliapiproxy/sdk/translator"
 	"github.com/gorilla/websocket"
-	internalcache "github.com/router-for-me/CLIProxyAPI/v8/internal/cache"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	auth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
-	core "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
-	translator "github.com/router-for-me/CLIProxyAPI/v8/sdk/translator"
 	"github.com/tidwall/gjson"
 )
 

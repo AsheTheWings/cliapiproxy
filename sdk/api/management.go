@@ -7,10 +7,10 @@ package api
 import (
 	"context"
 
+	internalmanagement "github.com/AsheTheWings/cliapiproxy/internal/api/handlers/management"
+	coreauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
+	"github.com/AsheTheWings/cliapiproxy/sdk/config"
 	"github.com/gin-gonic/gin"
-	internalmanagement "github.com/router-for-me/CLIProxyAPI/v8/internal/api/handlers/management"
-	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/config"
 )
 
 // Handler re-exports the management handler used by the internal HTTP API.

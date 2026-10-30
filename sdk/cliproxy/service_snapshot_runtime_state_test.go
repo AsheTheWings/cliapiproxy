@@ -10,12 +10,12 @@ import (
 	"testing"
 	"time"
 
-	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/watcher"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/watcher/synthesizer"
-	sdkauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/auth"
-	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/config"
+	internalconfig "github.com/AsheTheWings/cliapiproxy/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/watcher"
+	"github.com/AsheTheWings/cliapiproxy/internal/watcher/synthesizer"
+	sdkauth "github.com/AsheTheWings/cliapiproxy/sdk/auth"
+	coreauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
+	"github.com/AsheTheWings/cliapiproxy/sdk/config"
 )
 
 // Service-level repro on dev: a file snapshot applied through handleAuthUpdates (the

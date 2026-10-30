@@ -10,15 +10,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
-	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
-	coreexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
-	coreusage "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/usage"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
-	sdktranslator "github.com/router-for-me/CLIProxyAPI/v8/sdk/translator"
+	"github.com/AsheTheWings/cliapiproxy/internal/logging"
+	"github.com/AsheTheWings/cliapiproxy/internal/registry"
+	"github.com/AsheTheWings/cliapiproxy/internal/runtime/executor/helps"
+	"github.com/AsheTheWings/cliapiproxy/internal/testsupport/wait"
+	coreauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
+	coreexecutor "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/executor"
+	coreusage "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/usage"
+	"github.com/AsheTheWings/cliapiproxy/sdk/pluginapi"
+	sdktranslator "github.com/AsheTheWings/cliapiproxy/sdk/translator"
 )
 
 type testUsageCapturePlugin struct {

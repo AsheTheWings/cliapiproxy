@@ -8,12 +8,12 @@ import (
 
 	"github.com/tidwall/sjson"
 
-	. "github.com/router-for-me/CLIProxyAPI/v8/internal/constant"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/interfaces"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
-	coreexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
+	. "github.com/AsheTheWings/cliapiproxy/internal/constant"
+	"github.com/AsheTheWings/cliapiproxy/internal/interfaces"
+	"github.com/AsheTheWings/cliapiproxy/internal/thinking"
+	"github.com/AsheTheWings/cliapiproxy/internal/util"
+	coreexecutor "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/executor"
+	"github.com/AsheTheWings/cliapiproxy/sdk/pluginapi"
 	"golang.org/x/net/context"
 )
 

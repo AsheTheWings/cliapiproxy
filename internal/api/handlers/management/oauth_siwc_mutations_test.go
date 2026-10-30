@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
+	coreauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
 )
 
 func TestSIWCFileMutationRejectsLateExchange(t *testing.T) {

@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/interfaces"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginabi"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
+	"github.com/AsheTheWings/cliapiproxy/internal/interfaces"
+	"github.com/AsheTheWings/cliapiproxy/sdk/api/handlers"
+	"github.com/AsheTheWings/cliapiproxy/sdk/pluginabi"
+	"github.com/AsheTheWings/cliapiproxy/sdk/pluginapi"
 )
 
 func TestHostModelExecuteStreamDetachesFromCallbackParentCancel(t *testing.T) {

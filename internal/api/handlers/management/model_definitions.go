@@ -5,9 +5,9 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/AsheTheWings/cliapiproxy/internal/pluginhost"
+	"github.com/AsheTheWings/cliapiproxy/internal/registry"
 	"github.com/gin-gonic/gin"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/pluginhost"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 )
 
 // RefreshModelDefinitions triggers an immediate on-demand refresh of the model catalogs.

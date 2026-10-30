@@ -12,9 +12,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/api"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
+	"github.com/AsheTheWings/cliapiproxy/internal/api"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/testsupport/wait"
 )
 
 func TestServiceShutdown_ViolentShutdownImmediatelyClosesServer(t *testing.T) {

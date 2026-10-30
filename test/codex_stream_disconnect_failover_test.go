@@ -12,16 +12,16 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/registry"
+	runtimeexecutor "github.com/AsheTheWings/cliapiproxy/internal/runtime/executor"
+	_ "github.com/AsheTheWings/cliapiproxy/internal/translator"
+	"github.com/AsheTheWings/cliapiproxy/sdk/api/handlers"
+	openaihandlers "github.com/AsheTheWings/cliapiproxy/sdk/api/handlers/openai"
+	cliproxyauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
+	cliproxyexecutor "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/executor"
+	sdktranslator "github.com/AsheTheWings/cliapiproxy/sdk/translator"
 	"github.com/gin-gonic/gin"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
-	runtimeexecutor "github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor"
-	_ "github.com/router-for-me/CLIProxyAPI/v8/internal/translator"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
-	openaihandlers "github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers/openai"
-	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
-	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
-	sdktranslator "github.com/router-for-me/CLIProxyAPI/v8/sdk/translator"
 )
 
 // TestCodexStreamDisconnectAfterHeadersFailsOver reproduces issue #6247:

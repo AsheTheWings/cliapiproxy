@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
 	"github.com/gin-gonic/gin"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 )
 
 // TestConfigV8ETagIfMatch covers issue #6666: the v8 config endpoints must

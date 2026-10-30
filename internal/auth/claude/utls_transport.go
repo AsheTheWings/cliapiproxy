@@ -8,11 +8,11 @@ import (
 	"strings"
 	"time"
 
+	internalcache "github.com/AsheTheWings/cliapiproxy/internal/cache"
+	"github.com/AsheTheWings/cliapiproxy/internal/httpwire"
+	"github.com/AsheTheWings/cliapiproxy/sdk/config"
+	"github.com/AsheTheWings/cliapiproxy/sdk/proxyutil"
 	tls "github.com/refraction-networking/utls"
-	internalcache "github.com/router-for-me/CLIProxyAPI/v8/internal/cache"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/httpwire"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/config"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/proxyutil"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/proxy"
 )

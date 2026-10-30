@@ -14,7 +14,7 @@ import (
 	"testing/synctest"
 	"time"
 
-	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
+	cliproxyauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
 )
 
 type issue6199AntigravityRefreshResult struct {

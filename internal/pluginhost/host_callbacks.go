@@ -8,13 +8,13 @@ import (
 	"strings"
 	"sync/atomic"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/interfaces"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginabi"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/proxyutil"
+	"github.com/AsheTheWings/cliapiproxy/internal/clienterror"
+	"github.com/AsheTheWings/cliapiproxy/internal/interfaces"
+	"github.com/AsheTheWings/cliapiproxy/internal/logging"
+	"github.com/AsheTheWings/cliapiproxy/sdk/api/handlers"
+	"github.com/AsheTheWings/cliapiproxy/sdk/pluginabi"
+	"github.com/AsheTheWings/cliapiproxy/sdk/pluginapi"
+	"github.com/AsheTheWings/cliapiproxy/sdk/proxyutil"
 	log "github.com/sirupsen/logrus"
 )
 

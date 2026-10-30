@@ -14,9 +14,9 @@ import (
 	"time"
 	"unicode/utf8"
 
-	applypatch "github.com/router-for-me/CLIProxyAPI/v8/internal/client/codex/apply-patch"
-	translatorcommon "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/common"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
+	applypatch "github.com/AsheTheWings/cliapiproxy/internal/client/codex/apply-patch"
+	translatorcommon "github.com/AsheTheWings/cliapiproxy/internal/translator/common"
+	"github.com/AsheTheWings/cliapiproxy/internal/util"
 	log "github.com/sirupsen/logrus"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"

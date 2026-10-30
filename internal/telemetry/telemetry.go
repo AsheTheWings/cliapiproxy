@@ -31,7 +31,7 @@ import (
 )
 
 // ScopeName is the instrumentation scope of every signal the server emits.
-const ScopeName = "github.com/router-for-me/CLIProxyAPI/v8"
+const ScopeName = "github.com/AsheTheWings/cliapiproxy"
 
 // Service identity reported as resource attributes.
 const (

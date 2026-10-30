@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
-	sdkconfig "github.com/router-for-me/CLIProxyAPI/v8/sdk/config"
-	sdkpluginstore "github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginstore"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/util"
+	sdkconfig "github.com/AsheTheWings/cliapiproxy/sdk/config"
+	sdkpluginstore "github.com/AsheTheWings/cliapiproxy/sdk/pluginstore"
 	"gopkg.in/yaml.v3"
 )
 

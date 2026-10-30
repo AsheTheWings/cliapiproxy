@@ -17,12 +17,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/homeplugins"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/pluginhost"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
-	sdkpluginstore "github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginstore"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/home"
+	"github.com/AsheTheWings/cliapiproxy/internal/homeplugins"
+	"github.com/AsheTheWings/cliapiproxy/internal/pluginhost"
+	"github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/executionregistry"
+	sdkpluginstore "github.com/AsheTheWings/cliapiproxy/sdk/pluginstore"
 	"gopkg.in/yaml.v3"
 )
 

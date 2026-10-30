@@ -17,16 +17,16 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
-	sdkaccess "github.com/router-for-me/CLIProxyAPI/v8/sdk/access"
-	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
-	coreexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
-	coreusage "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/usage"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginabi"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
-	sdktranslator "github.com/router-for-me/CLIProxyAPI/v8/sdk/translator"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/registry"
+	"github.com/AsheTheWings/cliapiproxy/internal/testsupport/wait"
+	sdkaccess "github.com/AsheTheWings/cliapiproxy/sdk/access"
+	coreauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
+	coreexecutor "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/executor"
+	coreusage "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/usage"
+	"github.com/AsheTheWings/cliapiproxy/sdk/pluginabi"
+	"github.com/AsheTheWings/cliapiproxy/sdk/pluginapi"
+	sdktranslator "github.com/AsheTheWings/cliapiproxy/sdk/translator"
 )
 
 func TestPluginModelInfoToRegistryModelInfoClonesThinkingAndSlices(t *testing.T) {

@@ -5,10 +5,10 @@ package thinking_test
 import (
 	"testing"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
-	_ "github.com/router-for-me/CLIProxyAPI/v8/internal/thinking/provider/codex"
-	codexclaude "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/codex/claude"
+	"github.com/AsheTheWings/cliapiproxy/internal/registry"
+	"github.com/AsheTheWings/cliapiproxy/internal/thinking"
+	_ "github.com/AsheTheWings/cliapiproxy/internal/thinking/provider/codex"
+	codexclaude "github.com/AsheTheWings/cliapiproxy/internal/translator/codex/claude"
 	"github.com/tidwall/gjson"
 )
 

@@ -13,10 +13,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
-	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
-	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/testsupport/wait"
+	coreauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
+	cliproxyexecutor "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/executor"
+	"github.com/AsheTheWings/cliapiproxy/sdk/config"
 )
 
 func TestAntigravityCapabilityProbe_CallerCancellation(t *testing.T) {

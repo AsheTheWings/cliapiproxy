@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	antigravityclaude "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/antigravity/claude"
-	antigravitychat "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/antigravity/openai/chat-completions"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
+	antigravityclaude "github.com/AsheTheWings/cliapiproxy/internal/translator/antigravity/claude"
+	antigravitychat "github.com/AsheTheWings/cliapiproxy/internal/translator/antigravity/openai/chat-completions"
+	"github.com/AsheTheWings/cliapiproxy/internal/util"
 	"github.com/tidwall/gjson"
 )
 

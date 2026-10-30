@@ -31,7 +31,7 @@ var sourceRoot = func() string {
 }()
 
 // modulePath prefixes this module's function names in caller frames.
-const modulePath = "github.com/router-for-me/CLIProxyAPI/v8/"
+const modulePath = "github.com/AsheTheWings/cliapiproxy/"
 
 // InstallLogEvents makes each warning or error the logger records emit one
 // LogRecord through the global logger provider. A record identifies its log

@@ -7,8 +7,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/AsheTheWings/cliapiproxy/internal/redisqueue"
 	"github.com/gin-gonic/gin"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/redisqueue"
 )
 
 type usageQueueRecord []byte

@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
-	coreusage "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/usage"
+	cliproxyexecutor "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/executor"
+	coreusage "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/usage"
 	"github.com/tidwall/sjson"
 )
 

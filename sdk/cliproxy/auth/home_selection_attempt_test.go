@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
+	"github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/executionregistry"
 )
 
 func TestHomeDispatchSelectionReleasesAttemptCancelTokensWithoutGrowingResources(t *testing.T) {

@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
+	internallogging "github.com/AsheTheWings/cliapiproxy/internal/logging"
+	"github.com/AsheTheWings/cliapiproxy/internal/testsupport/wait"
+	coresession "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/session"
+	coreusage "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/usage"
 	"github.com/gin-gonic/gin"
-	internallogging "github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
-	coresession "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/session"
-	coreusage "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/usage"
 )
 
 func TestUsageQueuePluginPayloadIncludesStableFieldsAndSuccess(t *testing.T) {

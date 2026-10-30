@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/watcher/diff"
-	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
+	"github.com/AsheTheWings/cliapiproxy/internal/watcher/diff"
+	coreauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
 )
 
 func TestNewStableIDGenerator(t *testing.T) {

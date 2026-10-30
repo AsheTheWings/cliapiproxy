@@ -8,9 +8,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/AsheTheWings/cliapiproxy/internal/home"
+	"github.com/AsheTheWings/cliapiproxy/internal/registry"
 	"github.com/gin-gonic/gin"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
 )
 
 func TestDecodeHomeModelsEmptyCatalog(t *testing.T) {

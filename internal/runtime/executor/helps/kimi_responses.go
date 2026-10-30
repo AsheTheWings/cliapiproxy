@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	kimiauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/kimi"
-	translatorcommon "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/common"
-	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
+	kimiauth "github.com/AsheTheWings/cliapiproxy/internal/auth/kimi"
+	translatorcommon "github.com/AsheTheWings/cliapiproxy/internal/translator/common"
+	cliproxyauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 )

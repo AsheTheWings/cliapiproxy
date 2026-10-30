@@ -14,9 +14,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AsheTheWings/cliapiproxy/internal/api/handlers/management"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
 	"github.com/gin-gonic/gin"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/api/handlers/management"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 )
 
 func TestManagementV8RoutesShareAccessControl(t *testing.T) {

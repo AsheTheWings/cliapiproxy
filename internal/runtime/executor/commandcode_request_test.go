@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	commandcodeauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/commandcode"
+	commandcodeauth "github.com/AsheTheWings/cliapiproxy/internal/auth/commandcode"
 	"github.com/tidwall/gjson"
 )
 

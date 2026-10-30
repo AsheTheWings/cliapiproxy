@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
-	cliproxysession "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/session"
+	cliproxyexecutor "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/executor"
+	cliproxysession "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/session"
 	log "github.com/sirupsen/logrus"
 )
 

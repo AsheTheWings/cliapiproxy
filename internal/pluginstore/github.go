@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/httpfetch"
+	"github.com/AsheTheWings/cliapiproxy/internal/httpfetch"
 	log "github.com/sirupsen/logrus"
 )
 

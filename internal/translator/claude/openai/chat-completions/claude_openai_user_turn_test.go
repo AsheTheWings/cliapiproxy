@@ -6,7 +6,7 @@ import (
 	"errors"
 	"testing"
 
-	translatorcommon "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/common"
+	translatorcommon "github.com/AsheTheWings/cliapiproxy/internal/translator/common"
 	"github.com/tidwall/gjson"
 )
 

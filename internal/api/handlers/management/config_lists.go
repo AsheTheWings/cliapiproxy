@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
 	"github.com/gin-gonic/gin"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 )
 
 func parseCredentialWeightPatch(raw json.RawMessage) (*int, error) {

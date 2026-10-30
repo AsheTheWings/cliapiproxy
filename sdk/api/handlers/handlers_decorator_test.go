@@ -8,9 +8,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/AsheTheWings/cliapiproxy/sdk/config"
+	"github.com/AsheTheWings/cliapiproxy/sdk/httptransport"
 	"github.com/gin-gonic/gin"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/config"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/httptransport"
 )
 
 type handlerTestTransport struct {

@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
 )
 
 // BuildConfigChangeDetails computes a redacted, human-readable list of config changes.

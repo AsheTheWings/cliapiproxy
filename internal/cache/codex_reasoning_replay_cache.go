@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	homekv "github.com/router-for-me/CLIProxyAPI/v8/internal/home"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/signature"
+	homekv "github.com/AsheTheWings/cliapiproxy/internal/home"
+	"github.com/AsheTheWings/cliapiproxy/internal/signature"
 	log "github.com/sirupsen/logrus"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"

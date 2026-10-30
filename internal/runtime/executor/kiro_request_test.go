@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	kiroauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/kiro"
+	kiroauth "github.com/AsheTheWings/cliapiproxy/internal/auth/kiro"
 	"github.com/tidwall/gjson"
 )
 

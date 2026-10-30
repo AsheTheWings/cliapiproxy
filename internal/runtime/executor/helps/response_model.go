@@ -3,7 +3,7 @@ package helps
 import (
 	"strings"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
+	"github.com/AsheTheWings/cliapiproxy/internal/thinking"
 	"github.com/tidwall/gjson"
 )
 

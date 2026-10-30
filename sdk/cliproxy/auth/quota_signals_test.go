@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	internallogging "github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
+	internallogging "github.com/AsheTheWings/cliapiproxy/internal/logging"
 )
 
 func TestQuotaStateObserveResponseHeadersKeepsProviderScopedSignals(t *testing.T) {

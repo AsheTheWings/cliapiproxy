@@ -16,12 +16,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/redisqueue"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/watcher/diff"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/watcher/synthesizer"
-	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/redisqueue"
+	"github.com/AsheTheWings/cliapiproxy/internal/util"
+	"github.com/AsheTheWings/cliapiproxy/internal/watcher/diff"
+	"github.com/AsheTheWings/cliapiproxy/internal/watcher/synthesizer"
+	coreauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
 	log "github.com/sirupsen/logrus"
 )
 

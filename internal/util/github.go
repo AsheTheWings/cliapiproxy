@@ -1,6 +1,6 @@
 package util
 
-import "github.com/router-for-me/CLIProxyAPI/v8/internal/githubauth"
+import "github.com/AsheTheWings/cliapiproxy/internal/githubauth"
 
 // ResolveGitHubToken returns the configured GitHub API token, or empty.
 func ResolveGitHubToken() string {

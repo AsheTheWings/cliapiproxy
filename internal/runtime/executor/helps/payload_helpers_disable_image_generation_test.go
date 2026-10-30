@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
 	"github.com/tidwall/gjson"
 )
 

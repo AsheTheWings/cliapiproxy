@@ -14,10 +14,10 @@ import (
 	"strconv"
 	"strings"
 
-	sigcompat "github.com/router-for-me/CLIProxyAPI/v8/internal/signature"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
-	translatorcommon "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/common"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
+	sigcompat "github.com/AsheTheWings/cliapiproxy/internal/signature"
+	"github.com/AsheTheWings/cliapiproxy/internal/thinking"
+	translatorcommon "github.com/AsheTheWings/cliapiproxy/internal/translator/common"
+	"github.com/AsheTheWings/cliapiproxy/internal/util"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 )

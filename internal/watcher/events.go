@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
 	"github.com/fsnotify/fsnotify"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	log "github.com/sirupsen/logrus"
 )
 

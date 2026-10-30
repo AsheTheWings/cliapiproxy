@@ -18,8 +18,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
+	"github.com/AsheTheWings/cliapiproxy/internal/home"
+	"github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/executionregistry"
 )
 
 // rebalanceAdmissionHome controls subscription migration and the delivery of an issued RPOP.

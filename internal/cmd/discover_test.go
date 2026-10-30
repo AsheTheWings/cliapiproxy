@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/discovery"
+	"github.com/AsheTheWings/cliapiproxy/internal/discovery"
 )
 
 type fakeBrowser struct {

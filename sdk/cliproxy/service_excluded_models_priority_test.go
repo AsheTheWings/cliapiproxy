@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
+	management "github.com/AsheTheWings/cliapiproxy/internal/api/handlers/management"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/registry"
+	"github.com/AsheTheWings/cliapiproxy/internal/watcher/synthesizer"
+	coreauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
 	"github.com/gin-gonic/gin"
-	management "github.com/router-for-me/CLIProxyAPI/v8/internal/api/handlers/management"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/watcher/synthesizer"
-	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 )
 
 func TestCodexExcludedModelsCredentialPriorityAfterPatchAndReload(t *testing.T) {

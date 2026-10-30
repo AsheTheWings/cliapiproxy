@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	applypatch "github.com/router-for-me/CLIProxyAPI/v8/internal/client/codex/apply-patch"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
+	applypatch "github.com/AsheTheWings/cliapiproxy/internal/client/codex/apply-patch"
+	"github.com/AsheTheWings/cliapiproxy/internal/util"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 )

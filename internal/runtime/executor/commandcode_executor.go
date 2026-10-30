@@ -9,10 +9,10 @@ import (
 	"strings"
 	"time"
 
-	commandcodeauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/commandcode"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
-	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
+	commandcodeauth "github.com/AsheTheWings/cliapiproxy/internal/auth/commandcode"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/runtime/executor/helps"
+	cliproxyauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
 	log "github.com/sirupsen/logrus"
 )
 

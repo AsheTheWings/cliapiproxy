@@ -15,8 +15,8 @@ import (
 	"strings"
 	"testing"
 
-	devinauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/devin"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	devinauth "github.com/AsheTheWings/cliapiproxy/internal/auth/devin"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
 )
 
 func TestDevinAuthenticatorProviderAndRefreshLead(t *testing.T) {

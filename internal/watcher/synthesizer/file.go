@@ -12,13 +12,13 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/commandcode"
-	kimiauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/kimi"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/kiro"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
+	"github.com/AsheTheWings/cliapiproxy/internal/auth/codex"
+	"github.com/AsheTheWings/cliapiproxy/internal/auth/commandcode"
+	kimiauth "github.com/AsheTheWings/cliapiproxy/internal/auth/kimi"
+	"github.com/AsheTheWings/cliapiproxy/internal/auth/kiro"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	coreauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
+	"github.com/AsheTheWings/cliapiproxy/sdk/pluginapi"
 	log "github.com/sirupsen/logrus"
 )
 

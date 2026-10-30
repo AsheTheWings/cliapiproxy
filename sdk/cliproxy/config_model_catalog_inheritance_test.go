@@ -6,8 +6,8 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/registry"
 )
 
 func TestBuildConfigModelsInheritsCatalogProperties(t *testing.T) {

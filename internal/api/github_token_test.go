@@ -5,9 +5,9 @@ package api
 import (
 	"testing"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/githubauth"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/githubauth"
+	"github.com/AsheTheWings/cliapiproxy/internal/util"
 )
 
 func TestServerGitHubTokenReload(t *testing.T) {

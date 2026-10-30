@@ -6,11 +6,11 @@ import (
 	"strconv"
 	"strings"
 
-	commandcodeauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/commandcode"
-	kiroauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/kiro"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/modelconfig"
-	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/config"
+	commandcodeauth "github.com/AsheTheWings/cliapiproxy/internal/auth/commandcode"
+	kiroauth "github.com/AsheTheWings/cliapiproxy/internal/auth/kiro"
+	"github.com/AsheTheWings/cliapiproxy/internal/modelconfig"
+	coreauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
+	"github.com/AsheTheWings/cliapiproxy/sdk/config"
 )
 
 // accountCatalogKey names the metadata entry that holds the model catalog of a

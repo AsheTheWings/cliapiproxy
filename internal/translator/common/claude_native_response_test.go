@@ -8,8 +8,8 @@ import (
 	"reflect"
 	"testing"
 
-	chat "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/claude/openai/chat-completions"
-	responses "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/claude/openai/responses"
+	chat "github.com/AsheTheWings/cliapiproxy/internal/translator/claude/openai/chat-completions"
+	responses "github.com/AsheTheWings/cliapiproxy/internal/translator/claude/openai/responses"
 	"github.com/tidwall/gjson"
 )
 

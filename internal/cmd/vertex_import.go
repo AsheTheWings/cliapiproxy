@@ -9,11 +9,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/vertex"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
-	sdkAuth "github.com/router-for-me/CLIProxyAPI/v8/sdk/auth"
-	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
+	"github.com/AsheTheWings/cliapiproxy/internal/auth/vertex"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/util"
+	sdkAuth "github.com/AsheTheWings/cliapiproxy/sdk/auth"
+	coreauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
 	log "github.com/sirupsen/logrus"
 )
 

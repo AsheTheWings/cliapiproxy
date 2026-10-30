@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	kiroauth "github.com/AsheTheWings/cliapiproxy/internal/auth/kiro"
 	"github.com/google/uuid"
-	kiroauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/kiro"
 	"github.com/tidwall/gjson"
 )
 

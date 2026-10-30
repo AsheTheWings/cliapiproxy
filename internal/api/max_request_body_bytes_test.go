@@ -15,9 +15,9 @@ import (
 	"sync/atomic"
 	"testing"
 
+	proxyconfig "github.com/AsheTheWings/cliapiproxy/internal/config"
+	sdkaccess "github.com/AsheTheWings/cliapiproxy/sdk/access"
 	"github.com/klauspost/compress/zstd"
-	proxyconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	sdkaccess "github.com/router-for-me/CLIProxyAPI/v8/sdk/access"
 )
 
 type countingBodyReader struct {

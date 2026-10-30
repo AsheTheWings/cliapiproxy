@@ -5,7 +5,7 @@
 ## 安装与导入
 
 ```bash
-go get github.com/router-for-me/CLIProxyAPI/v6/sdk/cliproxy
+go get github.com/AsheTheWings/cliapiproxy/sdk/cliproxy
 ```
 
 ```go
@@ -14,12 +14,12 @@ import (
     "errors"
     "time"
 
-    "github.com/router-for-me/CLIProxyAPI/v6/internal/config"
-    "github.com/router-for-me/CLIProxyAPI/v6/sdk/cliproxy"
+    "github.com/AsheTheWings/cliapiproxy/internal/config"
+    "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy"
 )
 ```
 
-注意模块路径包含 `/v6`。
+模块路径为 `github.com/AsheTheWings/cliapiproxy`。
 
 ## 最小可用示例
 

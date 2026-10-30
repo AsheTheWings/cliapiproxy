@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
+	internallogging "github.com/AsheTheWings/cliapiproxy/internal/logging"
 	"github.com/google/uuid"
-	internallogging "github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
 	log "github.com/sirupsen/logrus"
 )
 

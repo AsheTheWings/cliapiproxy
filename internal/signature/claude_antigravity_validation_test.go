@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/signature/signaturetest"
+	"github.com/AsheTheWings/cliapiproxy/internal/signature/signaturetest"
 	"google.golang.org/protobuf/encoding/protowire"
 )
 

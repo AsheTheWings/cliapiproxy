@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	claudeauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/claude"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
+	claudeauth "github.com/AsheTheWings/cliapiproxy/internal/auth/claude"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	coreauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
 )
 
 // Manager aggregates authenticators and coordinates persistence via a token store.

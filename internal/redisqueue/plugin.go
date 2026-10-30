@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
+	internallogging "github.com/AsheTheWings/cliapiproxy/internal/logging"
+	coresession "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/session"
+	coreusage "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/usage"
 	"github.com/google/uuid"
-	internallogging "github.com/router-for-me/CLIProxyAPI/v8/internal/logging"
-	coresession "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/session"
-	coreusage "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/usage"
 )
 
 func init() {

@@ -6,8 +6,8 @@ import (
 	"bytes"
 	"testing"
 
-	kimiauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/kimi"
-	cliproxyauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
+	kimiauth "github.com/AsheTheWings/cliapiproxy/internal/auth/kimi"
+	cliproxyauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
 	"github.com/tidwall/gjson"
 )
 

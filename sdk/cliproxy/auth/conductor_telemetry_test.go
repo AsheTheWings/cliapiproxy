@@ -6,9 +6,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/telemetry"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/telemetrytest"
-	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
+	"github.com/AsheTheWings/cliapiproxy/internal/telemetry"
+	"github.com/AsheTheWings/cliapiproxy/internal/testsupport/telemetrytest"
+	cliproxyexecutor "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/executor"
 )
 
 func TestExecutionsWithoutCredentialsTraceAsNoCredential(t *testing.T) {

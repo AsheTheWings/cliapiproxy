@@ -5,7 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/redisqueue"
+	"github.com/AsheTheWings/cliapiproxy/internal/redisqueue"
 )
 
 type errorEvent struct {

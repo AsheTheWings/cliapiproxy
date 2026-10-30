@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/redisqueue"
+	internalconfig "github.com/AsheTheWings/cliapiproxy/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/redisqueue"
 )
 
 func TestManagerMarkResultPublishesErrorEventAfterAuthStateUpdate(t *testing.T) {

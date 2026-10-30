@@ -10,7 +10,7 @@ import (
 	"testing/synctest"
 	"time"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
+	"github.com/AsheTheWings/cliapiproxy/internal/testsupport/wait"
 )
 
 func TestDrainRejectsLateInstallAndCancelsBoundScopes(t *testing.T) {

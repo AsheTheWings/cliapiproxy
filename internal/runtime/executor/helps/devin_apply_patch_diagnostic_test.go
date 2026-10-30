@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/translator/common"
+	"github.com/AsheTheWings/cliapiproxy/internal/translator/common"
 )
 
 const devinDiagnosticPatchRequest = `{"tools":[{"type":"custom","name":"apply_patch"},{"type":"function","name":"shell"}]}`
