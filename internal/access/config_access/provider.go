@@ -9,7 +9,9 @@ import (
 	sdkconfig "github.com/AsheTheWings/cliapiproxy/sdk/config"
 )
 
-// Register ensures the config-access provider is available to the access manager.
+// Register makes the config-access provider check the configuration's API
+// keys. A configuration without keys still registers it, so it refuses every
+// request rather than leaving access open; a nil configuration removes it.
 func Register(cfg *sdkconfig.SDKConfig) {
 	if cfg == nil {
 		sdkaccess.UnregisterProvider(sdkaccess.AccessProviderTypeConfigAPIKey)
@@ -17,11 +19,6 @@ func Register(cfg *sdkconfig.SDKConfig) {
 	}
 
 	keys := normalizeKeys(cfg.APIKeys)
-	if len(keys) == 0 {
-		sdkaccess.UnregisterProvider(sdkaccess.AccessProviderTypeConfigAPIKey)
-		return
-	}
-
 	sdkaccess.RegisterProvider(
 		sdkaccess.AccessProviderTypeConfigAPIKey,
 		newProvider(sdkaccess.DefaultAccessProviderName, keys),
@@ -54,9 +51,6 @@ func (p *provider) Identifier() string {
 
 func (p *provider) Authenticate(_ context.Context, r *http.Request) (*sdkaccess.Result, *sdkaccess.AuthError) {
 	if p == nil {
-		return nil, sdkaccess.NewNotHandledError()
-	}
-	if len(p.keys) == 0 {
 		return nil, sdkaccess.NewNotHandledError()
 	}
 	authHeader := r.Header.Get("Authorization")
