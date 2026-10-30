@@ -41,8 +41,8 @@ the auth directory does, without a restart.
 The server serves a management dashboard at `/management.html`, a single page
 built from [`dashboard/`](../dashboard) into the binary. It signs in with the
 management key and works through the API above. Its pages give an overview of
-the keys and credentials, edit each family's upstream groups, manage
-credential files, run OAuth logins, and show the server's version and
-connection. The page answers 404 while the management API is off, and when
-the binary was built without it, as a plain `go build` is;
-[building](building.md#dashboard) describes building it in.
+the keys and credentials, add and revoke client API keys, edit each family's
+upstream groups, manage credential files, run OAuth logins, and show the
+server's version and connection. The page answers 404 while the management
+API is off, and when the binary was built without it, as a plain `go build`
+is; [building](building.md#dashboard) describes building it in.

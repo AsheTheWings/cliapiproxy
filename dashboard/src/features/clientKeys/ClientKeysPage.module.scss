@@ -1,0 +1,112 @@
+@use '../../styles/mixins' as *;
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(26px, 3.2vw, 30px);
+  line-height: 1.15;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.meta {
+  margin: 0;
+  max-width: 70ch;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+
+  @include mobile {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+.refusing {
+  margin: 0;
+  padding: 10px 14px;
+  border: 1px solid var(--amber-30);
+  border-radius: 10px;
+  background: var(--amber-10);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.key {
+  font-family: $font-mono;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.keyInput {
+  font-family: $font-mono;
+}
+
+.keyActions {
+  display: flex;
+  gap: 8px;
+}
+
+.hint {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-tertiary);
+}
+
+.strength {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.strengthTrack {
+  display: flex;
+  gap: 6px;
+}
+
+.strengthSegment {
+  flex: 1;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--strength-color) 16%, transparent);
+
+  &[data-filled='true'] {
+    background: var(--strength-color);
+  }
+}
+
+.strengthLabel {
+  min-height: 16px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--strength-color);
+}

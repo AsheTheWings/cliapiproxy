@@ -42,7 +42,7 @@ export interface CredentialHealth {
 
 /** 顶部计数卡片的原始数值 */
 export interface DashboardCounts {
-  managementKeys: number | null;
+  clientKeys: number | null;
   providerKeys: number | null;
   credentials: number | null;
 }

@@ -18,6 +18,7 @@ import { PageTransition } from '@/components/common/PageTransition';
 import { MainRoutes } from '@/router/MainRoutes';
 import { authFilesApi } from '@/services/api';
 import {
+  IconKey,
   IconSidebarAuthFiles,
   IconSidebarDashboard,
   IconSidebarOauth,
@@ -41,6 +42,7 @@ import type { Theme } from '@/types';
 
 const sidebarIcons: Record<string, ReactNode> = {
   dashboard: <IconSidebarDashboard size={18} />,
+  clientKeys: <IconKey size={18} />,
   aiProviders: <IconSidebarProviders size={18} />,
   authFiles: <IconSidebarAuthFiles size={18} />,
   oauth: <IconSidebarOauth size={18} />,
@@ -479,6 +481,12 @@ export function MainLayout() {
       id: 'gateway',
       labelKey: 'nav_groups.gateway',
       items: [
+        {
+          path: '/client-keys',
+          labelKey: 'nav.client_keys',
+          metaKey: 'nav_meta.client_keys',
+          icon: sidebarIcons.clientKeys,
+        },
         {
           path: '/ai-providers',
           labelKey: 'nav.ai_providers',
