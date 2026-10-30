@@ -6,9 +6,10 @@ of CLI tools: Codex, Claude Code, Grok Build, Antigravity, Kimi, Devin, Meta
 Muse Code, Kiro, and Command Code. Clients and SDKs built for those APIs use the accounts
 through it, with requests balanced across several accounts per provider.
 
-This repository is a fork of
-[router-for-me/CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI). It
-builds the `CLIProxyAPI` server from `cmd/server` and publishes no release.
+This project is derived from
+[router-for-me/CLIProxyAPI](https://github.com/router-for-me/CLIProxyAPI) and
+maintained as a separate repository. It builds the `CLIProxyAPI` server from
+`cmd/server` and publishes no release.
 
 ## Setup
 
