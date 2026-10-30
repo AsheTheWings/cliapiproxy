@@ -1,9 +1,5 @@
 /**
- * 排除模型规则 —— 唯一的纯逻辑源。
- *
- * 由两个已删除的模块合并而来：`excludedModelSelection.ts`（文本/数组式）与
- * `oauthExcludedRules.ts`（Set 式），二者曾是同一个领域模型写了两遍——
- * 其 normalize 实现逐字相同，只是一个吃换行文本、一个吃可迭代对象。
+ * 排除模型规则 —— 唯一的纯逻辑源，接受换行文本、数组与任意可迭代对象。
  *
  * 规则语义（与后端一致）：
  * - 大小写不敏感；
@@ -66,9 +62,8 @@ export function hasExcludedRule(rules: Iterable<string>, candidate: string): boo
 /**
  * 增删一条字面规则。
  *
- * 注意：这里按 key 过滤，**不**豁免含 `*` 的规则。旧的 `toggleExcludedModel` 曾拒绝删除
- * 通配符规则，那是因为调用点有两个互不知情的写入面（列表管精确、textarea 管通配符）需要
- * 互不践踏。统一组件里两个面同属一个组件，该守卫属于组件而非纯函数。
+ * 注意：这里按 key 过滤，**不**豁免含 `*` 的规则。保护通配符规则不被列表操作删除的
+ * 守卫属于编辑组件，而非这个纯函数。
  */
 export function toggleExcludedRule(
   rules: Iterable<string>,
@@ -140,8 +135,8 @@ export function replaceCustomExcludedRules(
  * 单个模型的排除态。
  *
  * `both` 是最微妙的一档：模型既被显式勾选、又被某条通配符规则命中。取消勾选后它**依然
- * 被排除**，所以那一行不能在视觉上「取消打勾」，否则用户会以为点击失败。旧 UI 把这一档
- * 完全藏了起来。
+ * 被排除**，所以那一行不能在视觉上「取消打勾」，否则用户会以为点击失败；这一档必须
+ * 单独显示。
  */
 export type ModelExclusionState =
   | { state: 'included' }
@@ -203,8 +198,8 @@ export interface ExclusionStats {
  * 摘要行与计量条的数据源。
  *
  * `excluded` 数的是**目录内被任意规则命中的模型数**，不是 `rules.length`——一条
- * `gpt-5-*` 可能命中 6 个模型，也可能一个都不命中。用规则数当分子会在新地方复刻
- * 旧 UI 那个谎言：分子分母必须同源，计量条才是诚实的。
+ * `gpt-5-*` 可能命中 6 个模型，也可能一个都不命中。分子分母必须同源（都按目录内的模型
+ * 计），计量条才如实反映排除范围。
  */
 export function summarizeExclusion(
   rules: readonly string[],

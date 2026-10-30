@@ -1,6 +1,5 @@
 /**
  * 认证状态管理
- * 从原项目 src/modules/login.js 和 src/core/connection.js 迁移
  */
 
 import { create } from 'zustand';

@@ -2,7 +2,6 @@ import { parseTimestamp } from './timestamp';
 
 /**
  * 格式化工具函数
- * 从原项目 src/utils/string.js 迁移
  */
 
 /**

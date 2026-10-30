@@ -1,6 +1,5 @@
 /**
  * 通知状态管理
- * 替代原项目中的 showNotification 方法
  */
 
 import { create } from 'zustand';
