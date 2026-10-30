@@ -870,6 +870,16 @@ type MetaKey = CodexKey
 // MetaModel uses the Codex model mapping structure for Meta Muse models.
 type MetaModel = CodexModel
 
+// CommandCodeKey is one Command Code API key. The gateway endpoint is fixed,
+// and the key's account decides the models it serves.
+type CommandCodeKey struct {
+	// APIKey is the account's Command Code API key.
+	APIKey string `yaml:"api-key" json:"api-key"`
+
+	// Prefix optionally namespaces the key's models (e.g., "cc/commandcode/deepseek/deepseek-v4-flash").
+	Prefix string `yaml:"prefix,omitempty" json:"prefix,omitempty"`
+}
+
 // GeminiKey represents the configuration for a Gemini API key,
 // including optional overrides for upstream base URL, proxy routing, and headers.
 type GeminiKey struct {

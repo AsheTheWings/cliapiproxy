@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	commandcodeauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/commandcode"
 	kiroauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/kiro"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/constant"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/modelconfig"
@@ -216,6 +217,13 @@ func (s *Service) registerModelsForAuthWithConfigAndCache(ctx context.Context, c
 		// Every account's catalog differs by plan, so a credential publishes
 		// the catalog its own metadata holds.
 		if catalog, ok := kiroauth.CatalogFromMetadata(a.Metadata); ok {
+			models = catalog.ModelInfos()
+		}
+		models = applyExcludedModels(models, excluded)
+	case "commandcode":
+		// The catalog is shared, and the account's plan and credits decide
+		// which of its models a credential may use.
+		if catalog, ok := commandcodeauth.CatalogFromMetadata(a.Metadata); ok {
 			models = catalog.ModelInfos()
 		}
 		models = applyExcludedModels(models, excluded)

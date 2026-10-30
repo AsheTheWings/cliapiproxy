@@ -41,6 +41,9 @@ api-keys:
   meta:
     - name: muse
       models: [{name: muse-model, max-context-length: 480000}]
+  commandcode:
+    - name: cc
+      prefix: cc
 `
 
 const protected = `CLIPROXY_API_KEYS='client-key-a,client-key-b'
@@ -48,6 +51,7 @@ CLIPROXY_PROXY_URL='http://proxy.invalid:3128'
 OTEL_EXPORTER_OTLP_HEADERS='authorization=Basic%20c2VjcmV0'
 CLIPROXY_OPENAI_COMPATIBILITY_KEYS='alpha=upstream-key-a1,alpha=upstream-key-a2'
 CLIPROXY_META_KEYS='muse=upstream-key-m'
+CLIPROXY_COMMANDCODE_KEYS='cc=upstream-key-c1,cc=upstream-key-c2'
 `
 
 func productionProcess(args ...string) inputs.Process {
@@ -83,6 +87,7 @@ func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
 		"client.codex.optimize-multi-agent-v2": cfg.Client.Codex.OptimizeMultiAgentV2,
 		"api-keys.openai-compatibility":        openAICompatibilitySummary(cfg.OpenAICompatibility),
 		"api-keys.meta":                        metaSummary(cfg.MetaKey),
+		"api-keys.commandcode":                 cfg.CommandCodeKey,
 	}
 	want := map[string]any{
 		"server.host":                          "0.0.0.0",
@@ -101,6 +106,9 @@ func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
 			"  org/model-a as model-a context=480000 input=[text image] levels=[max]",
 		},
 		"api-keys.meta": []string{"upstream-key-m prefix= models=[muse-model:480000]"},
+		"api-keys.commandcode": []config.CommandCodeKey{
+			{APIKey: "upstream-key-c1", Prefix: "cc"}, {APIKey: "upstream-key-c2", Prefix: "cc"},
+		},
 	}
 	schema, errSchema := inputs.Load()
 	if errSchema != nil {
