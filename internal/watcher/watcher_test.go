@@ -115,6 +115,9 @@ func TestMatchProvider(t *testing.T) {
 	if _, ok := matchProvider("missing", []string{"openai"}); ok {
 		t.Fatal("expected match to fail for unknown provider")
 	}
+	if _, ok := matchProvider("kimi.ai", []string{"kimi-ai"}); !ok {
+		t.Fatal("expected a Kimi domain spelling to match its canonical provider")
+	}
 }
 
 func TestSnapshotCoreAuths_ConfigAndAuthFiles(t *testing.T) {

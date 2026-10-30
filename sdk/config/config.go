@@ -59,6 +59,12 @@ func ResolveOAuthModelSetting(settings []OAuthModelSetting, modelID, metadataMod
 	return internalconfig.ResolveOAuthModelSetting(settings, modelID, metadataModelID, modelName)
 }
 
+// CanonicalOAuthProvider returns the provider key of the per-provider OAuth
+// model lists for a credential's provider.
+func CanonicalOAuthProvider(provider string) string {
+	return internalconfig.CanonicalOAuthProvider(provider)
+}
+
 func ParseConfigBytes(data []byte) (*Config, error) { return internalconfig.ParseConfigBytes(data) }
 
 func SaveConfigPreserveComments(configFile string, cfg *Config) error {

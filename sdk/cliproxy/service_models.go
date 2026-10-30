@@ -334,6 +334,7 @@ func (s *Service) registerModelsForAuthWithConfigAndCache(ctx context.Context, c
 	if ctx.Err() != nil {
 		return true
 	}
+	models = applyOAuthModelSelection(cfg, provider, authKind, models)
 	models = applyOAuthModelAliasForAuth(cfg, provider, authKind, a.Attributes, models)
 	if ctx.Err() != nil {
 		return true
@@ -666,6 +667,33 @@ func oauthExcludedModelsForConfig(cfg *config.Config, provider, authKind string)
 		return nil
 	}
 	return cfg.OAuthExcludedModels[providerKey]
+}
+
+// applyOAuthModelSelection keeps the catalog models oauth.models lists for an
+// OAuth credential's canonical provider, matched by id without regard to case.
+// A provider without a list, and every API-key credential, keep their models.
+func applyOAuthModelSelection(cfg *config.Config, provider, authKind string, models []*ModelInfo) []*ModelInfo {
+	if cfg == nil || len(models) == 0 || strings.EqualFold(strings.TrimSpace(authKind), "apikey") {
+		return models
+	}
+	listed := cfg.OAuthModels[config.CanonicalOAuthProvider(provider)]
+	if len(listed) == 0 {
+		return models
+	}
+	keep := make(map[string]struct{}, len(listed))
+	for _, id := range listed {
+		keep[strings.ToLower(strings.TrimSpace(id))] = struct{}{}
+	}
+	out := make([]*ModelInfo, 0, len(listed))
+	for _, model := range models {
+		if model == nil {
+			continue
+		}
+		if _, ok := keep[strings.ToLower(strings.TrimSpace(model.ID))]; ok {
+			out = append(out, model)
+		}
+	}
+	return out
 }
 
 func applyExcludedModels(models []*ModelInfo, excluded []string) []*ModelInfo {

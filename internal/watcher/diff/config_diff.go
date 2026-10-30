@@ -465,6 +465,9 @@ func BuildConfigChangeDetails(oldCfg, newCfg *config.Config) []string {
 	if entries, _ := DiffOAuthExcludedModelChanges(oldCfg.OAuthExcludedModels, newCfg.OAuthExcludedModels); len(entries) > 0 {
 		changes = append(changes, entries...)
 	}
+	if entries, _ := DiffOAuthModelsChanges(oldCfg.OAuthModels, newCfg.OAuthModels); len(entries) > 0 {
+		changes = append(changes, entries...)
+	}
 	if entries, _ := DiffOAuthModelAliasChanges(oldCfg.OAuthModelAlias, newCfg.OAuthModelAlias); len(entries) > 0 {
 		changes = append(changes, entries...)
 	}

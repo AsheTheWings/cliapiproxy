@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"os"
 	"reflect"
+	"slices"
 	"time"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
@@ -122,6 +123,12 @@ func (w *Watcher) reloadConfig() bool {
 	var affectedOAuthProviders []string
 	if oldConfig != nil {
 		_, affectedOAuthProviders = diff.DiffOAuthExcludedModelChanges(oldConfig.OAuthExcludedModels, newConfig.OAuthExcludedModels)
+		_, selectionProviders := diff.DiffOAuthModelsChanges(oldConfig.OAuthModels, newConfig.OAuthModels)
+		for _, provider := range selectionProviders {
+			if !slices.Contains(affectedOAuthProviders, provider) {
+				affectedOAuthProviders = append(affectedOAuthProviders, provider)
+			}
+		}
 	}
 
 	util.SetLogLevel(newConfig)

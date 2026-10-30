@@ -89,3 +89,15 @@ func expectContains(t *testing.T, list []string, target string) {
 	}
 	t.Fatalf("expected list to contain %q, got %#v", target, list)
 }
+
+func TestDiffOAuthModelsChangesReportsAffectedProviders(t *testing.T) {
+	changes, affected := DiffOAuthModelsChanges(
+		map[string][]string{"codex": {"gpt-6-sol"}, "claude": {"claude-x"}},
+		map[string][]string{"codex": {"gpt-6-sol", "gpt-6-luna"}, "claude": {"claude-x"}, "xai": {"grok-x"}},
+	)
+	if len(affected) != 2 || affected[0] != "codex" || affected[1] != "xai" {
+		t.Fatalf("affected = %v, want codex and xai", affected)
+	}
+	expectContains(t, changes, "oauth-models[codex]: updated (1 -> 2 entries)")
+	expectContains(t, changes, "oauth-models[xai]: added (1 entries)")
+}

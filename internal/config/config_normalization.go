@@ -587,3 +587,30 @@ func NormalizeOAuthExcludedModels(entries map[string][]string) map[string][]stri
 	}
 	return out
 }
+
+// NormalizeOAuthModels cleans provider -> listed models mappings the way
+// NormalizeOAuthExcludedModels cleans exclusions: lowercase model names,
+// without empty or repeated entries, under canonical provider keys, so the
+// lists of two spellings of one provider merge.
+func NormalizeOAuthModels(entries map[string][]string) map[string][]string {
+	canonical := make(map[string][]string, len(entries))
+	for provider, models := range entries {
+		key := CanonicalOAuthProvider(provider)
+		canonical[key] = append(canonical[key], models...)
+	}
+	return NormalizeOAuthExcludedModels(canonical)
+}
+
+// CanonicalOAuthProvider returns the provider key OAuth model lists use for a
+// credential's provider: lowercase, with the Kimi domain spellings kimi.ai and
+// kimi.com folded into kimi-ai and kimi.
+func CanonicalOAuthProvider(provider string) string {
+	switch key := strings.ToLower(strings.TrimSpace(provider)); key {
+	case "kimi.ai":
+		return "kimi-ai"
+	case "kimi.com":
+		return "kimi"
+	default:
+		return key
+	}
+}
