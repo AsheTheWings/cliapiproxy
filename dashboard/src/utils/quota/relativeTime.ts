@@ -1,11 +1,9 @@
 /**
  * Relative time beside absolute time.
  *
- * A quota card used to say `08-13 14:30` and leave the arithmetic to the
- * reader. The absolute instant is what you need to plan around; the relative
- * one ("in 11 days") is what you need to *react* to. Showing both costs one
- * short span and removes the mental subtraction, so every date on a card now
- * carries its own countdown.
+ * Every date on a quota card shows the absolute instant, to plan around, and
+ * a relative countdown ("in 11 days"), to react to, so the reader does no
+ * date arithmetic.
  *
  * Pure and clock-free — `nowMs` is always passed in, so every case is directly
  * testable and the caller decides how often it ticks (see `useNow`).
@@ -101,9 +99,8 @@ export interface ResetDisplay {
  * The absolute label wins when present because providers bake it at fetch time
  * and some of them cannot be reproduced at render (`formatCodexResetLabel`
  * resolves `reset_after_seconds` against the fetch-time clock). The instant is
- * only used for the relative half, and its absence degrades to exactly the
- * pre-existing rendering — which is what a store entry cached by an older
- * build, with no `resetAtMs` field, will hit.
+ * only used for the relative half; without it, as in a cached store entry
+ * with no `resetAtMs` field, the absolute label renders alone.
  *
  * Returns null when there is nothing worth rendering at all.
  */

@@ -114,7 +114,7 @@ describe('toggleExcludedRule', () => {
     expect(toggleExcludedRule(added, 'CLAUDE-OPUS', false)).toEqual(['gpt-5-*']);
   });
 
-  test('removes a wildcard rule by name (the old auth-file helper refused to)', () => {
+  test('removes a wildcard rule by name', () => {
     expect(toggleExcludedRule(['gpt-5-*', 'claude-opus'], 'GPT-5-*', false)).toEqual([
       'claude-opus',
     ]);

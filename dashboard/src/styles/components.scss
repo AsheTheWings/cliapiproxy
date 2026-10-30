@@ -197,7 +197,7 @@ textarea {
 }
 
 .loading-spinner {
-  // Fallback: legacy white spinner (in case color-mix is unsupported)
+  // Fallback: white spinner where color-mix is unsupported
   border: 3px solid rgba(255, 255, 255, 0.2);
   border-top-color: #fff;
   border-radius: 50%;

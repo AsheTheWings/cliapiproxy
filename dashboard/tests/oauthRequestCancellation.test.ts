@@ -4,7 +4,7 @@ import { apiClient } from '@/services/api/client';
 import { createOAuthAttempts } from '@/features/oauth/oauthAttempts';
 
 // Use the real Axios interceptor chain with a deferred transport response.
-// Abandoned requests must not emit old server metadata or log out a new session.
+// Abandoned requests must not emit their connection's server metadata or log out a new session.
 describe('OAuth transport cancellation', () => {
   for (const status of [200, 401]) {
     test(`suppresses stale response side effects (${status})`, async () => {

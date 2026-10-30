@@ -25,7 +25,7 @@ export function AuthFileCooldownSection({
   onReset,
 }: AuthFileCooldownSectionProps) {
   const { t } = useTranslation();
-  if (!snapshot) return null; // Old backend: no claim about cooldown support or health.
+  if (!snapshot) return null; // No snapshot: no claim about cooldown support or health.
   if (snapshot.records === null) {
     return <p className={styles.unknown}>{t('auth_files.cooldown_unknown')}</p>;
   }

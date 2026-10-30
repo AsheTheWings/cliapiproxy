@@ -1,6 +1,5 @@
 /**
  * 认证相关类型定义
- * 基于原项目 src/modules/login.js 和 src/core/connection.js
  */
 
 // 登录凭据

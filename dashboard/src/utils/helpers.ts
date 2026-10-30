@@ -1,6 +1,5 @@
 /**
  * 辅助工具函数
- * 从原项目 src/utils/array.js, dom.js, html.js 迁移
  */
 
 /**

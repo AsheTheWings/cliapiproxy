@@ -47,7 +47,7 @@ export type AuthFileDetailsSheetProps = {
 };
 
 /**
- * 凭证详情/编辑抽屉：替代旧的居中 Modal，与提供商工作台的 Sheet 模式一致。
+ * 凭证详情/编辑抽屉，与提供商工作台的 Sheet 模式一致。
  * 脏状态下关闭（Escape/遮罩/×/取消）先走确认对话框。
  */
 export function AuthFileDetailsSheet(props: AuthFileDetailsSheetProps) {

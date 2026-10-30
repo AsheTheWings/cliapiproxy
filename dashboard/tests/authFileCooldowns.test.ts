@@ -57,7 +57,7 @@ describe('cooldown API normalization', () => {
     }
   });
 
-  test('distinguishes old servers, unknown state, and known empty state', () => {
+  test('distinguishes an omitted snapshot, unknown state, and known empty state', () => {
     expect(normalize(undefined)).toBeUndefined();
     expect(normalize(null)?.records).toBeNull();
     expect(normalize([])?.records).toEqual([]);
@@ -202,7 +202,7 @@ describe('cooldown timer semantics', () => {
 });
 
 describe('cooldown section rendering', () => {
-  test('does not add a panel for old servers or known-empty state', () => {
+  test('does not add a panel for an omitted snapshot or known-empty state', () => {
     expect(render()).toBe('');
     expect(render(normalize([]))).toBe('');
     expect(render(normalize(null))).toContain(i18n.t('auth_files.cooldown_unknown'));

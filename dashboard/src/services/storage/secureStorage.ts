@@ -1,6 +1,5 @@
 /**
  * 本地存储混淆服务（可逆）
- * 基于原项目 src/utils/secure-storage.js
  *
  * IMPORTANT: 这不是安全边界，仅用于避免“肉眼直读”的轻度混淆。
  */
@@ -47,7 +46,7 @@ class ObfuscatedStorageService {
       const decrypted = obfuscate ? deobfuscateData(raw) : raw;
       return JSON.parse(decrypted) as T;
     } catch {
-      // JSON解析失败,尝试兼容旧的纯字符串数据 (非JSON格式)
+      // JSON 解析失败时按纯字符串数据（非 JSON 格式）读取
       try {
         // 如果是加密的,尝试解密后直接返回
         if (obfuscate && isObfuscated(raw)) {
@@ -72,7 +71,7 @@ class ObfuscatedStorageService {
   }
 
   /**
-   * 迁移旧的明文缓存为加密格式
+   * 把以明文缓存的键改写为混淆格式
    */
   migratePlaintextKeys(keys: string[]): void {
     keys.forEach((key) => {

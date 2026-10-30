@@ -91,7 +91,7 @@ describe('buildResetDisplay', () => {
   });
 
   test('keeps the baked label alone when the instant is missing', () => {
-    // A store entry cached by an older build carries resetLabel but no resetAtMs.
+    // A cached store entry can carry resetLabel without resetAtMs.
     expect(buildResetDisplay('08-13 14:30', null, NOW, 'en')).toEqual({
       absolute: '08-13 14:30',
       relative: null,
