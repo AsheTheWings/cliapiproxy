@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/keystate"
 	"github.com/AsheTheWings/cliapiproxy/internal/logging"
 	"github.com/AsheTheWings/cliapiproxy/internal/pluginhost"
 	"github.com/AsheTheWings/cliapiproxy/sdk/api/handlers"
@@ -26,6 +27,7 @@ type serverOptionConfig struct {
 	postAuthPersistHook   auth.PostAuthHook
 	pluginHost            *pluginhost.Host
 	configReloadHook      func(context.Context, *config.Config)
+	keyStore              *keystate.Store
 	exampleAPIKeySafeMode bool
 }
 
@@ -125,6 +127,14 @@ func WithPluginHost(host *pluginhost.Host) ServerOption {
 func WithConfigReloadHook(hook func(context.Context, *config.Config)) ServerOption {
 	return func(cfg *serverOptionConfig) {
 		cfg.configReloadHook = hook
+	}
+}
+
+// WithKeyStore lets the management API change the client keys and upstream
+// groups the server keeps as state.
+func WithKeyStore(store *keystate.Store) ServerOption {
+	return func(cfg *serverOptionConfig) {
+		cfg.keyStore = store
 	}
 }
 

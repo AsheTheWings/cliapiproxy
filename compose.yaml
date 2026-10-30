@@ -24,6 +24,7 @@ services:
       - protected
     volumes:
       - auths:/data/auths
+      - keys:/data/keys
 
 configs:
   overlay:
@@ -32,6 +33,8 @@ configs:
         port: 8317
       oauth:
         auth-dir: /data/auths
+      keys:
+        state-file: /data/keys/keys.yaml
 
 secrets:
   protected:
@@ -39,3 +42,4 @@ secrets:
 
 volumes:
   auths: {}
+  keys: {}

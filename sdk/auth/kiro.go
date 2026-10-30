@@ -13,7 +13,7 @@ import (
 var kiroRefreshLead = kiro.RefreshLead
 
 // KiroAuthenticator schedules the catalog reloads of Kiro credentials. Their
-// API keys are inputs, so it has no login.
+// API keys are key state the management API writes, so it has no login.
 type KiroAuthenticator struct{}
 
 // NewKiroAuthenticator constructs a Kiro authenticator.
@@ -32,7 +32,7 @@ func (KiroAuthenticator) RefreshLead() *time.Duration {
 	return &kiroRefreshLead
 }
 
-// Login fails: Kiro API keys come from the api-keys.kiro-keys input.
+// Login fails: Kiro API keys come from the key state.
 func (KiroAuthenticator) Login(context.Context, *config.Config, *LoginOptions) (*coreauth.Auth, error) {
-	return nil, errors.New("kiro: API keys come from the CLIPROXY_KIRO_KEYS input; there is no login")
+	return nil, errors.New("kiro: API keys are added through the management API; there is no login")
 }

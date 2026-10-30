@@ -96,9 +96,9 @@ func (h *Handler) PatchAuthFileStatus(c *gin.Context) {
 	}
 
 	if coreauth.IsConfigAPIKeyAuth(targetAuth) {
-		// Without a configuration file, the server's inputs own these keys.
+		// Without a configuration file, a key changes through its group.
 		if h.configFilePath == "" {
-			c.JSON(http.StatusConflict, gin.H{"error": "the account comes from the server's inputs"})
+			c.JSON(http.StatusConflict, gin.H{"error": "change this key through its provider group"})
 			return
 		}
 		h.mu.Lock()

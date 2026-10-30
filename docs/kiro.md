@@ -1,7 +1,7 @@
 # How does the server use Kiro accounts?
 
-Kiro is a provider like Codex or Kimi: a Kiro account is an API key in the
-server's inputs, and requests for `kiro/<model>` run on that account. The
+Kiro is a provider like Codex or Kimi: a Kiro account is an API key the
+server keeps, and requests for `kiro/<model>` run on that account. The
 server speaks to Kiro's Responses-style inference route, so every client API
 (Chat Completions, Responses, Claude Messages, Gemini) reaches it through the
 usual translators.
@@ -9,22 +9,17 @@ usual translators.
 ## Accounts
 
 An account is an API key that Kiro issues for it. The keys are the API-key
-family `kiro` ([configuration](configuration.md#upstream-api-keys)): an
-overlay declares groups under `api-keys.kiro`, each with a `name` and an
-optional `prefix`, and the protected file's `CLIPROXY_KIRO_KEYS` holds their
-`group=key` items. A group takes no `base-url`, because the service is fixed
-and each key's account decides its models. A group's `models` select among
-them ([configuration](configuration.md#upstream-api-keys)). Several keys in
-one group balance requests across their accounts:
+family `kiro` of the [key state](configuration.md#keys): groups under
+`api-keys.kiro`, each with a `name`, an optional `prefix`, and its keys. A
+group takes no `base-url`, because the service is fixed and each key's
+account decides its models. A group's `models` select among them. Several
+keys in one group balance requests across their accounts:
 
 ```yaml
 api-keys:
   kiro:
     - name: kiro
-```
-
-```sh
-CLIPROXY_KIRO_KEYS='kiro=<key>,kiro=<key>'
+      keys: [{api-key: <key>}, {api-key: <key>}]
 ```
 
 Each key becomes a credential the server keeps in memory and never writes to
@@ -36,7 +31,7 @@ server reloads the account's model catalog (`ListAvailableModels` on the
 the key; a reload that cannot load the catalog keeps the previous one, and
 without one it fails and runs again five minutes later. A key the service
 rejects fails the reload with 401. An API key has no expiry and is
-never refreshed. Changing the keys takes a restart. An auth-directory file of
+never refreshed. A change to the keys takes effect without a restart. An auth-directory file of
 type `kiro` holds no usable credential; the server ignores it with a warning.
 
 ## Models
