@@ -438,6 +438,19 @@ func (s *Service) prepareCoreAuthForModelRegistration(ctx context.Context, auth 
 				}
 				auth.Metadata[antigravityPersistedHintsMetaKey] = persistedHints
 			}
+			// A synthesized account-catalog credential arrives without the state
+			// its refreshes loaded; the same ID means the same key, so that
+			// state (catalog, expiry) still holds.
+			if coreauth.IsAccountCatalogAuth(auth) {
+				if auth.Metadata == nil {
+					auth.Metadata = make(map[string]any)
+				}
+				for k, v := range existing.Metadata {
+					if _, set := auth.Metadata[k]; !set {
+						auth.Metadata[k] = v
+					}
+				}
+			}
 		}
 		if !auth.HasFileSnapshot() && !existing.Disabled && existing.Status != coreauth.StatusDisabled && !auth.Disabled && auth.Status != coreauth.StatusDisabled {
 			auth.LastRefreshedAt = existing.LastRefreshedAt
@@ -634,6 +647,7 @@ func (s *Service) completeModelRegistrationForAuthWithCache(ctx context.Context,
 	// have an empty supportedModelSet (because Register/Update upserts into the
 	// scheduler before registerModelsForAuth runs) and are invisible to the scheduler.
 	s.coreManager.RefreshSchedulerEntry(targetAuth.ID)
+	s.followAccountCatalog(targetAuth)
 	return targetAuth.Generation
 }
 

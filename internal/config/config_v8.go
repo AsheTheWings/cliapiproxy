@@ -68,6 +68,7 @@ var v8KeyFamilies = []configPath{
 	{"gemini-api-key", "gemini"}, {"interactions-api-key", "interactions"},
 	{"vertex-api-key", "vertex"}, {"codex-api-key", "codex"},
 	{"claude-api-key", "claude"}, {"xai-api-key", "xai"}, {"meta-api-key", "meta"},
+	{"commandcode-api-key", "commandcode"},
 	{"openai-compatibility", "openai-compatibility"},
 }
 

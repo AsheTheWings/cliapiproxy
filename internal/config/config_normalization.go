@@ -332,6 +332,24 @@ func sanitizeMetaKeyEntries(entries []MetaKey) []MetaKey {
 	return out
 }
 
+// SanitizeCommandCodeKeys trims Command Code keys and prefixes and drops
+// entries without a key.
+func (cfg *Config) SanitizeCommandCodeKeys() {
+	if cfg == nil || len(cfg.CommandCodeKey) == 0 {
+		return
+	}
+	out := make([]CommandCodeKey, 0, len(cfg.CommandCodeKey))
+	for _, e := range cfg.CommandCodeKey {
+		e.APIKey = strings.TrimSpace(e.APIKey)
+		if e.APIKey == "" {
+			continue
+		}
+		e.Prefix = normalizeModelPrefix(e.Prefix)
+		out = append(out, e)
+	}
+	cfg.CommandCodeKey = out
+}
+
 func sanitizeCodexKeyEntries(entries []CodexKey) []CodexKey {
 	if len(entries) == 0 {
 		return entries

@@ -2,14 +2,14 @@ package synthesizer
 
 import (
 	"fmt"
-	"strconv"
-	"strings"
-
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/commandcode"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/constant"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/watcher/diff"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
+	"strconv"
+	"strings"
 )
 
 // ConfigSynthesizer generates Auth entries from configuration API keys.
@@ -54,6 +54,8 @@ func (s *ConfigSynthesizer) Synthesize(ctx *SynthesisContext) ([]*coreauth.Auth,
 	out = append(out, s.synthesizeXAIKeys(ctx)...)
 	// Meta API Keys
 	out = append(out, s.synthesizeMetaKeys(ctx)...)
+	// Command Code API Keys
+	out = append(out, s.synthesizeCommandCodeKeys(ctx)...)
 	// OpenAI-compat
 	out = append(out, s.synthesizeOpenAICompat(ctx)...)
 	// Vertex-compat
@@ -216,6 +218,39 @@ func (s *ConfigSynthesizer) synthesizeXAIKeys(ctx *SynthesisContext) []*coreauth
 // synthesizeMetaKeys creates Auth entries for Meta API keys.
 func (s *ConfigSynthesizer) synthesizeMetaKeys(ctx *SynthesisContext) []*coreauth.Auth {
 	return s.synthesizeCodexStyleKeys(ctx, ctx.Config.MetaKey, "meta")
+}
+
+// synthesizeCommandCodeKeys creates one config API-key credential per Command
+// Code API key, marked as serving its account's catalog. It has never been
+// refreshed and carries no expiry, so its first refresh, which loads the
+// account's plan and catalog, is due at once.
+func (s *ConfigSynthesizer) synthesizeCommandCodeKeys(ctx *SynthesisContext) []*coreauth.Auth {
+	out := make([]*coreauth.Auth, 0, len(ctx.Config.CommandCodeKey))
+	for i, entry := range ctx.Config.CommandCodeKey {
+		key := strings.TrimSpace(entry.APIKey)
+		if key == "" {
+			continue
+		}
+		prefix := strings.TrimSpace(entry.Prefix)
+		id, token := ctx.IDGenerator.Next(commandcode.Provider+":apikey", key, prefix)
+		out = append(out, &coreauth.Auth{
+			ID:       id,
+			Provider: commandcode.Provider,
+			Label:    commandcode.Provider + "-apikey",
+			Prefix:   prefix,
+			Status:   coreauth.StatusActive,
+			Attributes: map[string]string{
+				coreauth.AttributeSource:         fmt.Sprintf("config:%s[%s]", commandcode.Provider, token),
+				coreauth.AttributeConfigIndex:    strconv.Itoa(i),
+				coreauth.AttributeAPIKey:         key,
+				coreauth.AttributeAccountCatalog: "true",
+			},
+			Metadata:  map[string]any{"type": commandcode.Provider},
+			CreatedAt: ctx.Now,
+			UpdatedAt: ctx.Now,
+		})
+	}
+	return out
 }
 
 func (s *ConfigSynthesizer) synthesizeCodexStyleKeys(ctx *SynthesisContext, entries []config.CodexKey, provider string) []*coreauth.Auth {

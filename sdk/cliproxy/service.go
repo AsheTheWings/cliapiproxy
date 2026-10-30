@@ -143,6 +143,11 @@ type Service struct {
 	antigravityRefreshPending map[string]*antigravityModelRefreshRequest
 	antigravityPersistPending map[string]*antigravityHintPersistRequest
 	antigravityPersistActive  map[string]*antigravityHintPersistRequest
+	// catalogFollowers is protected by catalogFollowMu and names the in-memory
+	// credentials whose catalog changes republish their models; the run
+	// context in antigravityContext bounds each follower.
+	catalogFollowMu  sync.Mutex
+	catalogFollowers map[string]struct{}
 }
 
 // SetResultPolicy sets an execution result policy on the underlying core auth manager.

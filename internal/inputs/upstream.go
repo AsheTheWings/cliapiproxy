@@ -15,6 +15,7 @@ import (
 const (
 	FamilyOpenAICompatibility = "openai-compatibility"
 	FamilyMeta                = "meta"
+	FamilyCommandCode         = "commandcode"
 )
 
 // UpstreamGroup is one upstream provider of an API-key family: where it
@@ -55,11 +56,15 @@ type family struct {
 	requiresBaseURL bool
 	requiresModels  bool
 	inputModalities bool
+	// accountCatalog families serve the models of each key's account from a
+	// fixed endpoint, so their groups declare neither base-url nor models.
+	accountCatalog bool
 }
 
 var families = map[string]family{
 	FamilyOpenAICompatibility: {requiresBaseURL: true, requiresModels: true, inputModalities: true},
 	FamilyMeta:                {},
+	FamilyCommandCode:         {accountCatalog: true},
 }
 
 // groupsFromYAML decodes an overlay's group list. Unknown fields, keys
@@ -76,7 +81,7 @@ func groupsFromYAML(node *yaml.Node) (value, error) {
 	decoder.KnownFields(true)
 	var groups []UpstreamGroup
 	if errDecode := decoder.Decode(&groups); errDecode != nil {
-		return value{}, fmt.Errorf("want groups of name, base-url, prefix, and models; keys belong in the protected file")
+		return value{}, fmt.Errorf("want groups of name, prefix, and, where the family takes them, base-url and models; keys belong in the protected file")
 	}
 	if groups == nil {
 		groups = []UpstreamGroup{}
@@ -99,6 +104,9 @@ func validateGroups(familyName string, groups []UpstreamGroup) error {
 		seen[g.Name] = true
 		if g.BaseURL == "" && rules.requiresBaseURL {
 			return fmt.Errorf("%s: base-url is required", label)
+		}
+		if rules.accountCatalog && (g.BaseURL != "" || len(g.Models) > 0) {
+			return fmt.Errorf("%s: the %s family takes no base-url or models; each key serves its account's models", label, familyName)
 		}
 		if g.BaseURL != "" {
 			if u, errURL := url.Parse(g.BaseURL); errURL != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" || u.User != nil {
