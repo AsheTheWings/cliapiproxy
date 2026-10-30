@@ -57,16 +57,17 @@ default:
 
 代理内置一个访问提供者：
 
-- `config-api-key`：校验 `config.yaml` 顶层的 `api-keys`。
+- `config-api-key`：校验 `access.api-keys` 下的客户端 API 密钥；没有密钥时拒绝所有请求。
   - 凭证来源：`Authorization: Bearer`、`X-Goog-Api-Key`、`X-Api-Key`、`?key=`、`?auth_token=`
   - 元数据：`Result.Metadata["source"]` 会写入匹配到的来源标识
 
-在 CLI 服务端与 `sdk/cliproxy` 中，该 provider 会根据加载到的配置自动注册。
+在 CLI 服务端与 `sdk/cliproxy` 中，该 provider 会为每个加载到的配置自动注册，因此没有客户端密钥的配置会拒绝代理请求，而不会放开访问。
 
 ```yaml
-api-keys:
-  - sk-test-123
-  - sk-prod-456
+access:
+  api-keys:
+    - sk-test-123
+    - sk-prod-456
 ```
 
 ## 引入外部 Go 模块提供者
