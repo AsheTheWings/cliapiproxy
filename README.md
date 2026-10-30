@@ -37,11 +37,11 @@ the Codex backend API under `/backend-api/codex`.
 OAuth credentials are files in the auth directory. A login command runs the
 provider's OAuth flow, writes the credential file, and exits; for example,
 `-codex-device-login` signs in to Codex with a device code and `-xai-login`
-to Grok Build; [Kiro](docs/kiro.md) signs in with `-kiro-login` or imports a
-refresh token with `-kiro-import`. Adding, replacing, or removing a credential
-file takes effect without a restart. API-key credentials of OpenAI-compatible
-providers, Meta Muse, and [Command Code](docs/commandcode.md) are inputs;
-[configuration](docs/configuration.md#upstream-api-keys) describes them.
+to Grok Build. Adding, replacing, or removing a credential file takes effect
+without a restart. API-key credentials of OpenAI-compatible providers, Meta
+Muse, [Command Code](docs/commandcode.md), and [Kiro](docs/kiro.md) are
+inputs; [configuration](docs/configuration.md#upstream-api-keys) describes
+them.
 
 The Go packages under `sdk/` embed the proxy in other programs:
 [usage](docs/sdk-usage.md), [executors and translators](docs/sdk-advanced.md),
