@@ -1225,7 +1225,17 @@
     "save_failed": "Could not save the client keys",
     "error_empty": "Enter a key.",
     "error_charset": "Use visible ASCII characters only, without spaces.",
-    "error_masked": "A key cannot start with *."
+    "error_masked": "A key cannot start with *.",
+    "edit_key": "Edit client key",
+    "edit_hint": "Change the name, or enter a new key to replace this one in place. The stored key stays hidden.",
+    "name": "Name",
+    "name_placeholder": "For example: Alice's laptop",
+    "name_hint": "Optional. Saved with the key on the server, so it shows in every browser.",
+    "key_placeholder": "Paste or generate a key",
+    "strength_empty": "Not entered",
+    "unnamed": "Unnamed",
+    "updated": "Client key updated",
+    "error_name_long": "Use at most {{max}} characters."
   },
   "provider_groups": {
     "subtitle": "Upstream groups by API-key family. Each group balances requests across its keys.",

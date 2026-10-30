@@ -1251,7 +1251,17 @@
     "save_failed": "無法儲存用戶端金鑰",
     "error_empty": "請輸入金鑰。",
     "error_charset": "只能使用可見的 ASCII 字元，且不含空格。",
-    "error_masked": "金鑰不能以 * 開頭。"
+    "error_masked": "金鑰不能以 * 開頭。",
+    "edit_key": "編輯用戶端金鑰",
+    "edit_hint": "修改名稱，或輸入新金鑰原位替換此金鑰。已儲存的金鑰保持隱藏。",
+    "name": "名稱",
+    "name_placeholder": "例如：Alice 的筆電",
+    "name_hint": "選填。與金鑰一起儲存在伺服器上，因此在每個瀏覽器中都可見。",
+    "key_placeholder": "貼上或產生金鑰",
+    "strength_empty": "未輸入",
+    "unnamed": "未命名",
+    "updated": "已更新用戶端金鑰",
+    "error_name_long": "最多使用 {{max}} 個字元。"
   },
   "provider_groups": {
     "subtitle": "依 API 金鑰類別管理上游群組，每個群組在其金鑰之間平衡請求。",

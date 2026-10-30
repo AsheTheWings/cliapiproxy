@@ -1223,7 +1223,17 @@
     "save_failed": "无法保存客户端密钥",
     "error_empty": "请输入密钥。",
     "error_charset": "只能使用可见的 ASCII 字符，且不含空格。",
-    "error_masked": "密钥不能以 * 开头。"
+    "error_masked": "密钥不能以 * 开头。",
+    "edit_key": "编辑客户端密钥",
+    "edit_hint": "修改名称，或输入新密钥原位替换此密钥。已保存的密钥保持隐藏。",
+    "name": "名称",
+    "name_placeholder": "例如：Alice 的笔记本",
+    "name_hint": "可选。与密钥一起保存在服务器上，因此在每个浏览器中都可见。",
+    "key_placeholder": "粘贴或生成密钥",
+    "strength_empty": "未输入",
+    "unnamed": "未命名",
+    "updated": "已更新客户端密钥",
+    "error_name_long": "最多使用 {{max}} 个字符。"
   },
   "provider_groups": {
     "subtitle": "按 API 密钥类别管理上游分组，每个分组在其密钥之间均衡请求。",

@@ -1225,7 +1225,17 @@
     "save_failed": "클라이언트 키를 저장하지 못했습니다",
     "error_empty": "키를 입력하세요.",
     "error_charset": "공백 없이 보이는 ASCII 문자만 사용하세요.",
-    "error_masked": "키는 *로 시작할 수 없습니다."
+    "error_masked": "키는 *로 시작할 수 없습니다.",
+    "edit_key": "클라이언트 키 편집",
+    "edit_hint": "이름을 바꾸거나 새 키를 입력해 이 키를 그 자리에서 교체합니다. 저장된 키는 계속 숨겨집니다.",
+    "name": "이름",
+    "name_placeholder": "예: Alice의 노트북",
+    "name_hint": "선택 사항. 키와 함께 서버에 저장되므로 모든 브라우저에 표시됩니다.",
+    "key_placeholder": "키를 붙여넣거나 생성하세요",
+    "strength_empty": "입력 안 됨",
+    "unnamed": "이름 없음",
+    "updated": "클라이언트 키를 업데이트했습니다",
+    "error_name_long": "최대 {{max}}자까지 사용하세요."
   },
   "provider_groups": {
     "subtitle": "API 키 계열별 업스트림 그룹입니다. 각 그룹은 키 사이에 요청을 분산합니다.",

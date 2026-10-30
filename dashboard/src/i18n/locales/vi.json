@@ -1231,7 +1231,17 @@
     "save_failed": "Không lưu được khóa máy khách",
     "error_empty": "Hãy nhập khóa.",
     "error_charset": "Chỉ dùng ký tự ASCII hiển thị được, không có khoảng trắng.",
-    "error_masked": "Khóa không được bắt đầu bằng *."
+    "error_masked": "Khóa không được bắt đầu bằng *.",
+    "edit_key": "Sửa khóa máy khách",
+    "edit_hint": "Đổi tên, hoặc nhập khóa mới để thay khóa này tại chỗ. Khóa đã lưu vẫn được ẩn.",
+    "name": "Tên",
+    "name_placeholder": "Ví dụ: Laptop của Alice",
+    "name_hint": "Không bắt buộc. Lưu cùng khóa trên máy chủ nên hiển thị ở mọi trình duyệt.",
+    "key_placeholder": "Dán hoặc tạo khóa",
+    "strength_empty": "Chưa nhập",
+    "unnamed": "Chưa đặt tên",
+    "updated": "Đã cập nhật khóa máy khách",
+    "error_name_long": "Dùng tối đa {{max}} ký tự."
   },
   "provider_groups": {
     "subtitle": "Các nhóm upstream theo họ khóa API. Mỗi nhóm cân bằng yêu cầu giữa các khóa của nó.",

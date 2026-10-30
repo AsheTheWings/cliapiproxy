@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -14,24 +14,19 @@ import {
   TableRow,
 } from '@/components/ui/Table';
 import { useHeaderRefresh } from '@/hooks/useHeaderRefresh';
-import { clientKeysApi } from '@/services/api/clientKeys';
+import { clientKeysApi, parseClientKeys, type ClientKey } from '@/services/api/clientKeys';
 import { useConfigStore, useNotificationStore } from '@/stores';
 import { generateSecureApiKey } from '@/utils/apiKey';
-import {
-  API_KEY_STRENGTH_SEGMENTS,
-  evaluateApiKeyStrength,
-  type ApiKeyStrengthTier,
-} from '@/utils/apiKeyStrength';
 import { copyToClipboard } from '@/utils/clipboard';
-import { clientKeyProblem } from './clientKeyForm';
+import {
+  MAX_NAME_LENGTH,
+  clientKeyProblem,
+  nameProblem,
+  withClientKey,
+  withoutClientKey,
+} from './clientKeyForm';
+import { StrengthMeter } from './StrengthMeter';
 import styles from './ClientKeysPage.module.scss';
-
-const TIER_COLORS: Record<ApiKeyStrengthTier, string> = {
-  weak: 'var(--error-color)',
-  fair: 'var(--amber-color)',
-  good: 'var(--success-color)',
-  strong: 'var(--success-color)',
-};
 
 const errorMessage = (error: unknown): string => {
   const data = (error as { data?: { message?: unknown } })?.data;
@@ -40,64 +35,40 @@ const errorMessage = (error: unknown): string => {
   return '';
 };
 
-function StrengthMeter({ value }: { value: string }) {
-  const { t } = useTranslation();
-  const { tier, segments } = useMemo(() => evaluateApiKeyStrength(value), [value]);
-  const label = segments === 0 ? '—' : t(`client_keys.strength_${tier}`);
-  return (
-    <div
-      className={styles.strength}
-      style={
-        {
-          '--strength-color': segments === 0 ? 'var(--text-quaternary)' : TIER_COLORS[tier],
-        } as CSSProperties
-      }
-    >
-      <div
-        className={styles.strengthTrack}
-        role="progressbar"
-        aria-label={t('client_keys.strength')}
-        aria-valuemin={0}
-        aria-valuemax={API_KEY_STRENGTH_SEGMENTS}
-        aria-valuenow={segments}
-        aria-valuetext={label}
-      >
-        {Array.from({ length: API_KEY_STRENGTH_SEGMENTS }, (_, index) => (
-          <span key={index} className={styles.strengthSegment} data-filled={index < segments} />
-        ))}
-      </div>
-      <span className={styles.strengthLabel} aria-hidden="true">
-        {label}
-      </span>
-    </div>
-  );
-}
-
-interface AddKeySheetProps {
+interface KeySheetProps {
   open: boolean;
+  /** The key being edited, or null for a new key. */
+  editing: ClientKey | null;
   saving: boolean;
   onClose: () => void;
-  onSave: (key: string) => void;
+  onSave: (item: ClientKey) => void;
 }
 
-/** Mounted per opening, so each one starts from a fresh generated key. */
-function AddKeySheet({ open, saving, onClose, onSave }: AddKeySheetProps) {
+/** Mounted per opening; a new key starts from a fresh generated key. */
+function KeySheet({ open, editing, saving, onClose, onSave }: KeySheetProps) {
   const { t } = useTranslation();
   const { showNotification } = useNotificationStore();
-  const [key, setKey] = useState(generateSecureApiKey);
-  const [problem, setProblem] = useState<string | null>(null);
+  const [name, setName] = useState(editing?.name ?? '');
+  const [key, setKey] = useState(() => editing?.key ?? generateSecureApiKey());
+  const [keyError, setKeyError] = useState<string | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const trimmed = key.trim();
+  // The stored key stays masked; only a key entered here can be copied or scored.
+  const entered = editing === null || trimmed !== editing.key;
 
   const copy = async () => {
-    const copied = await copyToClipboard(key.trim());
+    const copied = await copyToClipboard(trimmed);
     showNotification(
       t(copied ? 'client_keys.copied' : 'notification.copy_failed'),
       copied ? 'success' : 'error'
     );
   };
   const submit = () => {
-    const next = clientKeyProblem(key.trim());
-    setProblem(next);
-    if (!next) onSave(key.trim());
+    const nextKeyError = clientKeyProblem(trimmed, editing?.key);
+    const nextNameError = nameProblem(name.trim());
+    setKeyError(nextKeyError);
+    setNameError(nextNameError);
+    if (!nextKeyError && !nextNameError) onSave({ key: trimmed, name: name.trim() });
   };
 
   return (
@@ -106,8 +77,8 @@ function AddKeySheet({ open, saving, onClose, onSave }: AddKeySheetProps) {
       onClose={onClose}
       size="md"
       closeDisabled={saving}
-      title={t('client_keys.new_key')}
-      description={t('client_keys.copy_hint')}
+      title={editing ? t('client_keys.edit_key') : t('client_keys.new_key')}
+      description={t(editing ? 'client_keys.edit_hint' : 'client_keys.copy_hint')}
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={saving}>
@@ -121,15 +92,29 @@ function AddKeySheet({ open, saving, onClose, onSave }: AddKeySheetProps) {
     >
       <div className={styles.form}>
         <Input
+          label={t('client_keys.name')}
+          placeholder={t('client_keys.name_placeholder')}
+          hint={t('client_keys.name_hint')}
+          maxLength={MAX_NAME_LENGTH}
+          value={name}
+          disabled={saving}
+          error={nameError ? t(nameError, { max: MAX_NAME_LENGTH }) : undefined}
+          onChange={(event) => {
+            setNameError(null);
+            setName(event.target.value);
+          }}
+        />
+        <Input
           label={t('client_keys.key')}
           className={styles.keyInput}
           autoComplete="off"
           spellCheck={false}
+          placeholder={t('client_keys.key_placeholder')}
           value={key}
           disabled={saving}
-          error={problem ? t(problem) : undefined}
+          error={keyError ? t(keyError) : undefined}
           onChange={(event) => {
-            setProblem(null);
+            setKeyError(null);
             setKey(event.target.value);
           }}
         />
@@ -139,20 +124,27 @@ function AddKeySheet({ open, saving, onClose, onSave }: AddKeySheetProps) {
             size="sm"
             disabled={saving}
             onClick={() => {
-              setProblem(null);
+              setKeyError(null);
               setKey(generateSecureApiKey());
             }}
           >
             <IconRefreshCw size={14} /> {t('client_keys.generate')}
           </Button>
-          <Button variant="secondary" size="sm" disabled={!key.trim()} onClick={copy}>
+          <Button variant="secondary" size="sm" disabled={!trimmed || !entered} onClick={copy}>
             <IconCopy size={14} /> {t('common.copy')}
           </Button>
         </div>
-        <StrengthMeter value={key.trim()} />
+        <StrengthMeter value={entered ? trimmed : ''} />
       </div>
     </Sheet>
   );
+}
+
+interface SheetTarget {
+  /** The key's position, or null for a new key. */
+  index: number | null;
+  /** Remounts the sheet with a fresh draft each time one opens. */
+  key: number;
 }
 
 /** The keys clients present to use the proxy, which the server keeps as key state. */
@@ -161,10 +153,10 @@ export function ClientKeysPage() {
   const { showNotification, showConfirmation } = useNotificationStore();
   const config = useConfigStore((state) => state.config);
   const fetchConfig = useConfigStore((state) => state.fetchConfig);
-  const [sheet, setSheet] = useState<number | null>(null);
+  const [sheet, setSheet] = useState<SheetTarget | null>(null);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const keys = useMemo(() => config?.apiKeys ?? [], [config]);
+  const keys = useMemo(() => parseClientKeys(config?.raw?.access), [config]);
 
   const refresh = useCallback(async () => {
     await fetchConfig(true);
@@ -174,7 +166,12 @@ export function ClientKeysPage() {
     void fetchConfig().catch(() => undefined);
   }, [fetchConfig]);
 
-  const replace = async (next: string[], done: string) => {
+  const openSheet = (index: number | null) => {
+    setSheet((current) => ({ index, key: (current?.key ?? 0) + 1 }));
+    setSheetOpen(true);
+  };
+
+  const replace = async (next: ClientKey[], done: string) => {
     setSaving(true);
     try {
       await clientKeysApi.replace(next);
@@ -189,21 +186,27 @@ export function ClientKeysPage() {
     }
   };
 
+  const label = (item: ClientKey) => (item.name ? `${item.name} (${item.key})` : item.key);
+
   const remove = (index: number) => {
     const last = keys.length === 1;
     showConfirmation({
       title: t('client_keys.revoke'),
       message: t(last ? 'client_keys.revoke_last_confirm' : 'client_keys.revoke_confirm', {
-        key: keys[index],
+        key: label(keys[index]),
       }),
       variant: 'danger',
       confirmText: t('client_keys.revoke'),
-      onConfirm: () =>
-        replace(
-          keys.filter((_, i) => i !== index),
-          t('client_keys.revoked')
-        ),
+      onConfirm: () => replace(withoutClientKey(keys, index), t('client_keys.revoked')),
     });
+  };
+
+  const save = (item: ClientKey) => {
+    if (!sheet) return;
+    void replace(
+      withClientKey(keys, sheet.index, item),
+      t(sheet.index === null ? 'client_keys.saved' : 'client_keys.updated')
+    );
   };
 
   return (
@@ -221,13 +224,7 @@ export function ClientKeysPage() {
         ) : (
           <span />
         )}
-        <Button
-          onClick={() => {
-            setSheet((current) => (current ?? 0) + 1);
-            setSheetOpen(true);
-          }}
-          disabled={saving}
-        >
+        <Button onClick={() => openSheet(null)} disabled={saving}>
           <IconPlus size={14} /> {t('client_keys.add_key')}
         </Button>
       </div>
@@ -241,20 +238,47 @@ export function ClientKeysPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>#</TableHead>
+              <TableHead>{t('client_keys.name')}</TableHead>
               <TableHead>{t('client_keys.key')}</TableHead>
               <TableHead alignRight>{t('common.action')}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {keys.map((key, index) => (
-              <TableRow key={`${index}-${key}`}>
+            {keys.map((item, index) => (
+              <TableRow key={`${index}-${item.key}`}>
                 <TableCell>
-                  <code className={styles.key}>{key}</code>
+                  <span className={styles.index}>{index + 1}</span>
+                </TableCell>
+                <TableCell>
+                  {item.name ? (
+                    <span className={styles.name}>{item.name}</span>
+                  ) : (
+                    <span className={styles.unnamed}>{t('client_keys.unnamed')}</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <code className={styles.key}>{item.key}</code>
                 </TableCell>
                 <TableCell alignRight>
-                  <Button variant="ghost" size="sm" disabled={saving} onClick={() => remove(index)}>
-                    {t('client_keys.revoke')}
-                  </Button>
+                  <div className={styles.rowActions}>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={saving}
+                      onClick={() => openSheet(index)}
+                    >
+                      {t('common.edit')}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={saving}
+                      onClick={() => remove(index)}
+                    >
+                      {t('client_keys.revoke')}
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
@@ -263,12 +287,13 @@ export function ClientKeysPage() {
       )}
 
       {sheet !== null && (
-        <AddKeySheet
-          key={sheet}
+        <KeySheet
+          key={sheet.key}
           open={sheetOpen}
+          editing={sheet.index === null ? null : (keys[sheet.index] ?? null)}
           saving={saving}
           onClose={() => setSheetOpen(false)}
-          onSave={(key) => void replace([...keys, key], t('client_keys.saved'))}
+          onSave={save}
         />
       )}
     </div>
