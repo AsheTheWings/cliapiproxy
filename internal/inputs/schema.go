@@ -11,6 +11,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/AsheTheWings/cliapiproxy/internal/upstream"
 )
 
 //go:embed schema.json
@@ -319,7 +321,7 @@ func (sh Shape) check() error {
 		}
 	case TypeBoolean, TypePath, TypePathList:
 	case TypeUpstreamGroups:
-		if _, known := families[sh.Family]; !known {
+		if !upstream.KnownFamily(sh.Family) {
 			return fmt.Errorf("unknown upstream family %q", sh.Family)
 		}
 	case TypeCredentialList:

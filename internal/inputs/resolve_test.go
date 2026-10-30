@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/AsheTheWings/cliapiproxy/internal/upstream"
 	"gopkg.in/yaml.v3"
 )
 
@@ -329,12 +330,12 @@ func TestUpstreamGroupsCarryTheirKeys(t *testing.T) {
 		t.Fatal(errDoc)
 	}
 	var parsed struct {
-		APIKeys map[string][]renderedGroup `yaml:"api-keys"`
+		APIKeys map[string][]upstream.Group `yaml:"api-keys"`
 	}
 	if errParse := yaml.Unmarshal(doc, &parsed); errParse != nil {
 		t.Fatal(errParse)
 	}
-	keys := func(g renderedGroup) []string {
+	keys := func(g upstream.Group) []string {
 		var out []string
 		for _, k := range g.Keys {
 			out = append(out, g.Name+"="+k.APIKey)
