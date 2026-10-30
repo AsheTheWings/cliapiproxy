@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/AsheTheWings/cliapiproxy/internal/upstream"
 	"gopkg.in/yaml.v3"
 )
 
@@ -24,7 +25,7 @@ func (e *Effective) ConfigDocument() ([]byte, error) {
 			continue
 		}
 		raw := v.raw()
-		if groups, isGroups := raw.([]UpstreamGroup); isGroups {
+		if groups, isGroups := raw.([]upstream.Spec); isGroups {
 			if len(groups) == 0 {
 				continue
 			}

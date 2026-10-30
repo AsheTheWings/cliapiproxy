@@ -8,11 +8,12 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/AsheTheWings/cliapiproxy/internal/upstream"
 	"gopkg.in/yaml.v3"
 )
 
 // value holds one typed input value: a string (string and path shapes),
-// an int64, a bool, a []string (string and path lists), an []UpstreamGroup,
+// an int64, a bool, a []string (string and path lists), an []upstream.Spec,
 // or a []Credential.
 type value struct {
 	v any
@@ -105,7 +106,7 @@ func (sh Shape) fromJSON(raw any) (value, error) {
 			return value{}, fmt.Errorf("want an empty list")
 		}
 		if sh.Type == TypeUpstreamGroups {
-			return value{[]UpstreamGroup{}}, nil
+			return value{[]upstream.Spec{}}, nil
 		}
 		return value{[]Credential{}}, nil
 	}
@@ -222,8 +223,8 @@ func (sh Shape) validate(v value) error {
 				}
 			}
 		}
-	case []UpstreamGroup:
-		return validateGroups(sh.Family, x)
+	case []upstream.Spec:
+		return upstream.ValidateSpecs(sh.Family, x)
 	}
 	return nil
 }

@@ -12,6 +12,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/AsheTheWings/cliapiproxy/internal/upstream"
 	"gopkg.in/yaml.v3"
 )
 
@@ -173,7 +174,7 @@ func (r *resolver) checkCredentials() {
 		if !okGroups || !okCredentials {
 			continue
 		}
-		for _, p := range checkCredentials(groups.v.([]UpstreamGroup), credentials.v.([]Credential)) {
+		for _, p := range checkCredentials(groups.v.([]upstream.Spec), credentials.v.([]Credential)) {
 			r.problem("%s: %s", in.Credentials, p)
 		}
 	}
