@@ -21,6 +21,7 @@ import {
   IconSidebarAuthFiles,
   IconSidebarDashboard,
   IconSidebarOauth,
+  IconSidebarProviders,
   IconSidebarSystem,
 } from '@/components/ui/icons';
 import { INLINE_LOGO_JPEG } from '@/assets/logoInline';
@@ -40,6 +41,7 @@ import type { Theme } from '@/types';
 
 const sidebarIcons: Record<string, ReactNode> = {
   dashboard: <IconSidebarDashboard size={18} />,
+  aiProviders: <IconSidebarProviders size={18} />,
   authFiles: <IconSidebarAuthFiles size={18} />,
   oauth: <IconSidebarOauth size={18} />,
   system: <IconSidebarSystem size={18} />,
@@ -477,6 +479,12 @@ export function MainLayout() {
       id: 'gateway',
       labelKey: 'nav_groups.gateway',
       items: [
+        {
+          path: '/ai-providers',
+          labelKey: 'nav.ai_providers',
+          metaKey: 'nav_meta.ai_providers',
+          icon: sidebarIcons.aiProviders,
+        },
         {
           path: '/auth-files',
           labelKey: 'nav.auth_files',

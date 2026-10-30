@@ -2,6 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { authFilesApi } from '@/services/api';
 import { useAuthStore, useConfigStore } from '@/stores';
 import {
+  PROVIDER_FAMILIES,
+  parseProviderGroups,
+  type ProviderFamily,
+} from '@/services/api/providerGroups';
+import {
   mergeRecentRequestBucketGroups,
   normalizeRecentRequestUsageEntry,
   type RecentRequestBucket,
@@ -83,16 +88,16 @@ const createAccumulator = (): ProviderAccumulator => ({
   bucketGroups: [],
 });
 
-export const getProviderKeyCounts = (config: Config) => ({
-  gemini: config.geminiApiKeys?.length ?? 0,
-  interactions: config.interactionsApiKeys?.length ?? 0,
-  codex: config.codexApiKeys?.length ?? 0,
-  meta: config.metaApiKeys?.length ?? 0,
-  xai: config.xaiApiKeys?.length ?? 0,
-  claude: config.claudeApiKeys?.length ?? 0,
-  vertex: config.vertexApiKeys?.length ?? 0,
-  openai: config.openaiCompatibility?.length ?? 0,
-});
+/** Upstream API keys per family, across the inputs' groups and the provider state. */
+export const getProviderKeyCounts = (config: Config): Record<ProviderFamily, number> => {
+  const groups = parseProviderGroups(config.raw?.['api-keys']);
+  return Object.fromEntries(
+    PROVIDER_FAMILIES.map((family) => [
+      family,
+      groups[family].reduce((sum, group) => sum + group.keys.length, 0),
+    ])
+  ) as Record<ProviderFamily, number>;
+};
 
 /**
  * 汇总仪表盘所需的全部数据。

@@ -106,19 +106,20 @@ describe('splitWindowMinutes', () => {
 });
 
 describe('provider key counts', () => {
-  test('includes Muse API keys and defaults missing configuration to zero', () => {
-    expect(getProviderKeyCounts({ metaApiKeys: [{ apiKey: 'fixture-meta-key' }] }).meta).toBe(1);
-    expect(getProviderKeyCounts({}).meta).toBe(0);
-  });
-  test('includes native Interactions API keys in the dashboard total inputs', () => {
+  test('counts every key of every group per family and defaults to zero', () => {
     const counts = getProviderKeyCounts({
-      geminiApiKeys: [{ apiKey: 'gemini-key' }],
-      interactionsApiKeys: [{ apiKey: 'interactions-1' }, { apiKey: 'interactions-2' }],
-      codexApiKeys: [{ apiKey: 'codex-key' }],
+      raw: {
+        'api-keys': {
+          kiro: [
+            { name: 'a', keys: [{ 'api-key': '****1' }, { 'api-key': '****2' }] },
+            { name: 'b', keys: [{ 'api-key': '****3' }] },
+          ],
+          meta: [{ name: 'muse', keys: [{ 'api-key': '****4' }] }],
+        },
+      },
     });
-
-    expect(counts.interactions).toBe(2);
-    expect(Object.values(counts).reduce((sum, count) => sum + count, 0)).toBe(4);
+    expect(counts).toEqual({ 'openai-compatibility': 0, meta: 1, commandcode: 0, kiro: 3 });
+    expect(getProviderKeyCounts({}).kiro).toBe(0);
   });
 });
 

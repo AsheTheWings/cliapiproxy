@@ -1,6 +1,6 @@
 export * from './client';
 export * from './config';
-export * from './providers';
+export * from './providerGroups';
 export * from './authFiles';
 export * from './oauth';
 export * from './transformers';

@@ -9,4 +9,3 @@ export * from './auth';
 export * from './provider';
 export * from './authFile';
 export * from './quota';
-export * from './plugin';

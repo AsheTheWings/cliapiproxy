@@ -1,12 +1,7 @@
 import { useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import {
-  IconBot,
-  IconFileText,
-  IconSidebarOauth,
-  IconSidebarSystem,
-} from '@/components/ui/icons';
+import { IconBot, IconFileText, IconSidebarOauth, IconSidebarSystem } from '@/components/ui/icons';
 import { useAuthStore } from '@/stores';
 import { useHeaderRefresh } from '@/hooks/useHeaderRefresh';
 import { formatCompactNumber, formatDateValue, formatPercent } from '@/utils/format';
@@ -159,7 +154,6 @@ export function DashboardPage() {
       label: t('dashboard.runtime_build'),
       value: formatDateValue(serverBuildDate, i18n.language) || DASH,
     },
-    { label: t('dashboard.runtime_proxy'), value: config?.proxyUrl?.trim() || DASH, mono: true },
   ];
 
   const runtimeToggles = config
