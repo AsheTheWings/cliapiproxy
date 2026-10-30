@@ -16,6 +16,7 @@ const (
 	FamilyOpenAICompatibility = "openai-compatibility"
 	FamilyMeta                = "meta"
 	FamilyCommandCode         = "commandcode"
+	FamilyKiro                = "kiro"
 )
 
 // UpstreamGroup is one upstream provider of an API-key family: where it
@@ -65,6 +66,7 @@ var families = map[string]family{
 	FamilyOpenAICompatibility: {requiresBaseURL: true, requiresModels: true, inputModalities: true},
 	FamilyMeta:                {},
 	FamilyCommandCode:         {accountCatalog: true},
+	FamilyKiro:                {accountCatalog: true},
 }
 
 // groupsFromYAML decodes an overlay's group list. Unknown fields, keys

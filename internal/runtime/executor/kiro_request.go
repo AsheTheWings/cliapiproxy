@@ -26,8 +26,6 @@ type kiroRequestInput struct {
 	Body []byte
 	// Model is the upstream model id.
 	Model string
-	// ProfileARN is the account's profile.
-	ProfileARN string
 	// SessionID is the client session the request belongs to; empty gives each
 	// request its own conversation.
 	SessionID string
@@ -94,9 +92,7 @@ func buildKiroRequest(in kiroRequestInput) ([]byte, error) {
 		out.Write(toolsJSON)
 	}
 	out.WriteString(`,"stream":true,"origin":`)
-	out.Write(kiroMarshal(kiroauth.InferenceOrigin))
-	out.WriteString(`,"profileArn":`)
-	out.Write(kiroMarshal(in.ProfileARN))
+	out.Write(kiroMarshal(kiroauth.Origin))
 	out.WriteString(`,"metadata":`)
 	out.Write(kiroMetadata(in.SessionID, prompts))
 	if raw := kiroReasoningJSON(root, reasoning, in.CatalogModel != nil); raw != nil {

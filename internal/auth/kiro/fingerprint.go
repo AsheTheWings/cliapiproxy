@@ -12,9 +12,10 @@ const (
 		" os/linux md/appVersion-" + CLIVersion + " app/AmazonQ-For-CLI acp-client/kiro-cli-non-interactive"
 
 	// ControlPlaneUserAgent is the User-Agent of catalog requests, which the
-	// launcher sends.
-	ControlPlaneUserAgent = "aws-sdk-rust/1.6.0 ua/2.1 api/kirocontrolplanebearer/0.1.0 os/linux lang/rust/1.94.1 md/appVersion-" +
-		CLIVersion + " app/AmazonQ-For-CLI"
+	// agent sends when it runs on an API key. The agent's own value names the
+	// host's kernel release after os/linux; the server names none.
+	ControlPlaneUserAgent = "aws-sdk-js/1.0.0 ua/2.1 os/linux lang/js md/nodejs#22.22.2 api/kirocontrolplanebearer#1.0.0 m/N,E " +
+		InferenceUserAgent
 	// ControlPlaneAmzUserAgent is the X-Amz-User-Agent of catalog requests.
-	ControlPlaneAmzUserAgent = "aws-sdk-rust/1.6.0 ua/2.1 api/kirocontrolplanebearer/0.1.0 os/linux lang/rust/1.94.1 m/F,C app/AmazonQ-For-CLI"
+	ControlPlaneAmzUserAgent = "aws-sdk-js/1.0.0 " + InferenceUserAgent
 )

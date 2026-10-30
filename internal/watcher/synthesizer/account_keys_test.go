@@ -41,3 +41,22 @@ func TestCommandCodeKeysBecomeAccountCatalogCredentials(t *testing.T) {
 		t.Error("a new credential holds a catalog before its first reload")
 	}
 }
+
+func TestKiroKeysBecomeAccountCatalogCredentials(t *testing.T) {
+	auths, err := NewConfigSynthesizer().Synthesize(&SynthesisContext{
+		Config: &config.Config{
+			CommandCodeKey: []config.CommandCodeKey{{APIKey: "same-key"}},
+			KiroKey:        []config.KiroKey{{APIKey: "same-key"}},
+		},
+		Now: time.Date(2026, 10, 30, 12, 0, 0, 0, time.UTC), IDGenerator: NewStableIDGenerator(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(auths) != 2 || auths[1].Provider != "kiro" || auths[0].ID == auths[1].ID {
+		t.Fatalf("auths = %+v", auths)
+	}
+	if kind, key := auths[1].AccountInfo(); kind != "api_key" || key != "same-key" || !coreauth.IsAccountCatalogAuth(auths[1]) {
+		t.Errorf("credential = %+v", auths[1])
+	}
+}

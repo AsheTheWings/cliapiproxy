@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	commandcodeauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/commandcode"
+	kiroauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/kiro"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 )
 
@@ -15,6 +16,8 @@ func accountCatalogKey(provider string) (string, bool) {
 	switch strings.ToLower(strings.TrimSpace(provider)) {
 	case commandcodeauth.Provider:
 		return commandcodeauth.CatalogMetadataKey, true
+	case kiroauth.Provider:
+		return kiroauth.CatalogMetadataKey, true
 	default:
 		return "", false
 	}

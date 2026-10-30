@@ -37,7 +37,7 @@ func kiroTestModel(t *testing.T, id string) *kiroauth.CatalogModel {
 func buildTestRequest(t *testing.T, body, model, session string) gjson.Result {
 	t.Helper()
 	out, err := buildKiroRequest(kiroRequestInput{
-		Body: []byte(body), Model: model, ProfileARN: "arn:profile", SessionID: session,
+		Body: []byte(body), Model: model, SessionID: session,
 		CatalogModel: kiroTestModel(t, model),
 	})
 	if err != nil {
@@ -59,10 +59,10 @@ func TestKiroRequestCarriesOnlyTheFieldsTheRouteAccepts(t *testing.T) {
 		keys = append(keys, key.String())
 		return true
 	})
-	if want := "model,input,stream,origin,profileArn,metadata,reasoning"; strings.Join(keys, ",") != want {
+	if want := "model,input,stream,origin,metadata,reasoning"; strings.Join(keys, ",") != want {
 		t.Errorf("keys = %v, want %s", keys, want)
 	}
-	if !got.Get("stream").Bool() || got.Get("origin").String() != "AI_EDITOR" || got.Get("profileArn").String() != "arn:profile" {
+	if !got.Get("stream").Bool() || got.Get("origin").String() != "AI_EDITOR" {
 		t.Errorf("envelope = %s", got.Raw)
 	}
 	if got.Get("metadata.mine").Exists() {
@@ -145,7 +145,7 @@ func TestKiroRequestReasoningFollowsTheModelSchema(t *testing.T) {
 }
 
 func TestKiroRequestWithoutACatalogSendsNoReasoning(t *testing.T) {
-	out, err := buildKiroRequest(kiroRequestInput{Body: []byte(`{"input":"hi","reasoning":{"effort":"high"}}`), Model: "claude-haiku-5.5", ProfileARN: "arn:profile"})
+	out, err := buildKiroRequest(kiroRequestInput{Body: []byte(`{"input":"hi","reasoning":{"effort":"high"}}`), Model: "claude-haiku-5.5"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,12 +211,12 @@ func TestKiroRequestImages(t *testing.T) {
 	}
 	_, err := buildKiroRequest(kiroRequestInput{
 		Body:  []byte(`{"input":[{"role":"user","content":[{"type":"input_image","image_url":"https://example.test/a.png"}]}]}`),
-		Model: "claude-haiku-5.5", ProfileARN: "arn:profile",
+		Model: "claude-haiku-5.5",
 	})
 	if err == nil || !strings.Contains(err.Error(), "data URIs") {
 		t.Errorf("a remote image URL gave %v", err)
 	}
-	if _, err = buildKiroRequest(kiroRequestInput{Body: []byte(`{"input":[]}`), Model: "m", ProfileARN: "p"}); err == nil {
+	if _, err = buildKiroRequest(kiroRequestInput{Body: []byte(`{"input":[]}`), Model: "m"}); err == nil {
 		t.Error("an empty input was accepted")
 	}
 }

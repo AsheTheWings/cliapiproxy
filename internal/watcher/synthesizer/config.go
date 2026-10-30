@@ -3,6 +3,7 @@ package synthesizer
 import (
 	"fmt"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/commandcode"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/kiro"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/constant"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
@@ -13,7 +14,8 @@ import (
 )
 
 // ConfigSynthesizer generates Auth entries from configuration API keys.
-// It handles Gemini, Interactions, Claude, Codex, xAI, OpenAI-compat, and Vertex-compat providers.
+// It handles Gemini, Interactions, Claude, Codex, xAI, Meta, Command Code,
+// Kiro, OpenAI-compat, and Vertex-compat providers.
 type ConfigSynthesizer struct{}
 
 // NewConfigSynthesizer creates a new ConfigSynthesizer instance.
@@ -55,7 +57,9 @@ func (s *ConfigSynthesizer) Synthesize(ctx *SynthesisContext) ([]*coreauth.Auth,
 	// Meta API Keys
 	out = append(out, s.synthesizeMetaKeys(ctx)...)
 	// Command Code API Keys
-	out = append(out, s.synthesizeCommandCodeKeys(ctx)...)
+	out = append(out, s.synthesizeAccountKeys(ctx, ctx.Config.CommandCodeKey, commandcode.Provider)...)
+	// Kiro API Keys
+	out = append(out, s.synthesizeAccountKeys(ctx, ctx.Config.KiroKey, kiro.Provider)...)
 	// OpenAI-compat
 	out = append(out, s.synthesizeOpenAICompat(ctx)...)
 	// Vertex-compat
@@ -220,32 +224,32 @@ func (s *ConfigSynthesizer) synthesizeMetaKeys(ctx *SynthesisContext) []*coreaut
 	return s.synthesizeCodexStyleKeys(ctx, ctx.Config.MetaKey, "meta")
 }
 
-// synthesizeCommandCodeKeys creates one config API-key credential per Command
-// Code API key, marked as serving its account's catalog. It has never been
-// refreshed and carries no expiry, so its first refresh, which loads the
-// account's plan and catalog, is due at once.
-func (s *ConfigSynthesizer) synthesizeCommandCodeKeys(ctx *SynthesisContext) []*coreauth.Auth {
-	out := make([]*coreauth.Auth, 0, len(ctx.Config.CommandCodeKey))
-	for i, entry := range ctx.Config.CommandCodeKey {
+// synthesizeAccountKeys creates one config API-key credential per API key of a
+// provider whose keys serve their account's catalog (Command Code, Kiro),
+// marked as such. It has never been refreshed and carries no expiry, so its
+// first refresh, which loads the account's catalog, is due at once.
+func (s *ConfigSynthesizer) synthesizeAccountKeys(ctx *SynthesisContext, entries []config.CommandCodeKey, provider string) []*coreauth.Auth {
+	out := make([]*coreauth.Auth, 0, len(entries))
+	for i, entry := range entries {
 		key := strings.TrimSpace(entry.APIKey)
 		if key == "" {
 			continue
 		}
 		prefix := strings.TrimSpace(entry.Prefix)
-		id, token := ctx.IDGenerator.Next(commandcode.Provider+":apikey", key, prefix)
+		id, token := ctx.IDGenerator.Next(provider+":apikey", key, prefix)
 		out = append(out, &coreauth.Auth{
 			ID:       id,
-			Provider: commandcode.Provider,
-			Label:    commandcode.Provider + "-apikey",
+			Provider: provider,
+			Label:    provider + "-apikey",
 			Prefix:   prefix,
 			Status:   coreauth.StatusActive,
 			Attributes: map[string]string{
-				coreauth.AttributeSource:         fmt.Sprintf("config:%s[%s]", commandcode.Provider, token),
+				coreauth.AttributeSource:         fmt.Sprintf("config:%s[%s]", provider, token),
 				coreauth.AttributeConfigIndex:    strconv.Itoa(i),
 				coreauth.AttributeAPIKey:         key,
 				coreauth.AttributeAccountCatalog: "true",
 			},
-			Metadata:  map[string]any{"type": commandcode.Provider},
+			Metadata:  map[string]any{"type": provider},
 			CreatedAt: ctx.Now,
 			UpdatedAt: ctx.Now,
 		})

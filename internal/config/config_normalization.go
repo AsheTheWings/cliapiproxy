@@ -335,11 +335,27 @@ func sanitizeMetaKeyEntries(entries []MetaKey) []MetaKey {
 // SanitizeCommandCodeKeys trims Command Code keys and prefixes and drops
 // entries without a key.
 func (cfg *Config) SanitizeCommandCodeKeys() {
-	if cfg == nil || len(cfg.CommandCodeKey) == 0 {
+	if cfg == nil {
 		return
 	}
-	out := make([]CommandCodeKey, 0, len(cfg.CommandCodeKey))
-	for _, e := range cfg.CommandCodeKey {
+	cfg.CommandCodeKey = sanitizeAccountKeys(cfg.CommandCodeKey)
+}
+
+// SanitizeKiroKeys trims Kiro keys and prefixes and drops entries without a
+// key.
+func (cfg *Config) SanitizeKiroKeys() {
+	if cfg == nil {
+		return
+	}
+	cfg.KiroKey = sanitizeAccountKeys(cfg.KiroKey)
+}
+
+func sanitizeAccountKeys(entries []CommandCodeKey) []CommandCodeKey {
+	if len(entries) == 0 {
+		return entries
+	}
+	out := make([]CommandCodeKey, 0, len(entries))
+	for _, e := range entries {
 		e.APIKey = strings.TrimSpace(e.APIKey)
 		if e.APIKey == "" {
 			continue
@@ -347,7 +363,7 @@ func (cfg *Config) SanitizeCommandCodeKeys() {
 		e.Prefix = normalizeModelPrefix(e.Prefix)
 		out = append(out, e)
 	}
-	cfg.CommandCodeKey = out
+	return out
 }
 
 func sanitizeCodexKeyEntries(entries []CodexKey) []CodexKey {

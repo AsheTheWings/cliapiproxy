@@ -389,6 +389,9 @@ func TestUpstreamGroupsFailClosed(t *testing.T) {
 		{"api-keys:\n  commandcode:\n    - {name: cc, models: [{name: m}]}\n", "CLIPROXY_COMMANDCODE_KEYS='cc=secret-c'\n",
 			"api-keys.commandcode: group cc: the commandcode family takes no base-url or models"},
 		{"api-keys:\n  commandcode:\n    - {name: cc}\n", "", "api-keys.commandcode-keys: group cc has no key"},
+		{"api-keys:\n  kiro:\n    - {name: k, base-url: https://kiro.invalid}\n", "CLIPROXY_KIRO_KEYS='k=secret-k'\n",
+			"api-keys.kiro: group k: the kiro family takes no base-url or models"},
+		{"api-keys:\n  kiro:\n    - {name: k}\n", "", "api-keys.kiro-keys: group k has no key"},
 		{"api-keys:\n  openai-compatibility-keys: secret-x\n", "",
 			"api-keys.openai-compatibility-keys is a protected input and belongs in the protected file as CLIPROXY_OPENAI_COMPATIBILITY_KEYS"},
 	}

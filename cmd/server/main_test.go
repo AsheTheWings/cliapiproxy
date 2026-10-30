@@ -44,6 +44,8 @@ api-keys:
   commandcode:
     - name: cc
       prefix: cc
+  kiro:
+    - name: kiro
 `
 
 const protected = `CLIPROXY_API_KEYS='client-key-a,client-key-b'
@@ -52,6 +54,7 @@ OTEL_EXPORTER_OTLP_HEADERS='authorization=Basic%20c2VjcmV0'
 CLIPROXY_OPENAI_COMPATIBILITY_KEYS='alpha=upstream-key-a1,alpha=upstream-key-a2'
 CLIPROXY_META_KEYS='muse=upstream-key-m'
 CLIPROXY_COMMANDCODE_KEYS='cc=upstream-key-c1,cc=upstream-key-c2'
+CLIPROXY_KIRO_KEYS='kiro=upstream-key-k'
 `
 
 func productionProcess(args ...string) inputs.Process {
@@ -88,6 +91,7 @@ func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
 		"api-keys.openai-compatibility":        openAICompatibilitySummary(cfg.OpenAICompatibility),
 		"api-keys.meta":                        metaSummary(cfg.MetaKey),
 		"api-keys.commandcode":                 cfg.CommandCodeKey,
+		"api-keys.kiro":                        cfg.KiroKey,
 	}
 	want := map[string]any{
 		"server.host":                          "0.0.0.0",
@@ -109,6 +113,7 @@ func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
 		"api-keys.commandcode": []config.CommandCodeKey{
 			{APIKey: "upstream-key-c1", Prefix: "cc"}, {APIKey: "upstream-key-c2", Prefix: "cc"},
 		},
+		"api-keys.kiro": []config.KiroKey{{APIKey: "upstream-key-k"}},
 	}
 	schema, errSchema := inputs.Load()
 	if errSchema != nil {

@@ -13,7 +13,9 @@ import (
 	"strings"
 
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/commandcode"
 	kimiauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/kimi"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/kiro"
 	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
@@ -110,6 +112,12 @@ func synthesizeFileAuths(ctx *SynthesisContext, fullPath string, data []byte) ([
 	provider := strings.ToLower(strings.TrimSpace(t))
 	if provider == "gemini" {
 		provider = "gemini-cli"
+	}
+	// Kiro and Command Code accounts are API-key inputs, so an auth file of
+	// either type holds no credential the server uses.
+	if provider == kiro.Provider || provider == commandcode.Provider {
+		log.Warnf("ignoring auth file %s: %s accounts are API keys in the protected file", filepath.Base(fullPath), provider)
+		return nil, nil
 	}
 	if ctx.PluginAuthParser != nil {
 		auths, handled, errParse := parsePluginFileAuths(ctx.PluginAuthParser, pluginapi.AuthParseRequest{

@@ -121,7 +121,7 @@ func TestModelInfoUsesThePublicPrefixAndCatalogLimits(t *testing.T) {
 	}
 }
 
-func TestCatalogSurvivesTheCredentialFile(t *testing.T) {
+func TestCatalogSurvivesAJSONRoundTrip(t *testing.T) {
 	catalog, err := ParseCatalog([]byte(catalogJSON))
 	if err != nil {
 		t.Fatal(err)

@@ -36,14 +36,13 @@ type kiroPreparedRequest struct {
 	body         []byte
 	upstreamBody []byte
 	token        string
-	profileARN   string
 	contextLimit int
 }
 
 func (e *KiroExecutor) prepareRequest(ctx context.Context, auth *cliproxyauth.Auth, req cliproxyexecutor.Request, opts cliproxyexecutor.Options, stream bool) (*kiroPreparedRequest, error) {
-	token, profileARN := kiroCreds(auth)
-	if token == "" || profileARN == "" {
-		return nil, statusErr{code: http.StatusUnauthorized, msg: "kiro executor: the credential has no access token or profile"}
+	token := kiroAPIKey(auth)
+	if token == "" {
+		return nil, statusErr{code: http.StatusUnauthorized, msg: "kiro executor: the credential has no API key"}
 	}
 	baseModel := thinking.ParseSuffix(req.Model).ModelName
 	upstreamModel := kiroauth.UpstreamModel(baseModel)
@@ -85,7 +84,6 @@ func (e *KiroExecutor) prepareRequest(ctx context.Context, auth *cliproxyauth.Au
 	upstreamBody, err := buildKiroRequest(kiroRequestInput{
 		Body:         body,
 		Model:        upstreamModel,
-		ProfileARN:   profileARN,
 		SessionID:    util.SessionIDFromContext(ctx),
 		CatalogModel: catalogModel,
 	})
@@ -103,7 +101,6 @@ func (e *KiroExecutor) prepareRequest(ctx context.Context, auth *cliproxyauth.Au
 		body:            body,
 		upstreamBody:    upstreamBody,
 		token:           token,
-		profileARN:      profileARN,
 	}
 	if catalogModel != nil {
 		prepared.contextLimit = catalogModel.TokenLimits.MaxInputTokens
@@ -117,7 +114,7 @@ func (e *KiroExecutor) send(ctx context.Context, auth *cliproxyauth.Auth, prepar
 	if err != nil {
 		return nil, err
 	}
-	applyKiroHeaders(httpReq, prepared.token, prepared.profileARN)
+	applyKiroHeaders(httpReq, prepared.token)
 	var authID, authLabel, authType, authValue string
 	if auth != nil {
 		authID = auth.ID
