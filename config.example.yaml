@@ -1065,6 +1065,17 @@ oauth:
   #   meta:
   #     - "muse-spark-1.1"
 
+  # OAuth provider served models
+  # Applies to OAuth/file-backed credentials of each provider: a listed provider serves only
+  # the catalog models it lists, matched by id without regard to case, each with every property
+  # its catalog entry gives it. A provider without a list serves its whole catalog.
+  # models:
+  #   codex:
+  #     - "gpt-6-sol"
+  #     - "gpt-6-luna"
+  #   claude:
+  #     - "claude-sonnet-5-5"
+
   # OAuth provider request-scoped error rules (custom error classification for OAuth credentials)
   # request-scoped-errors:
   #   vertex:

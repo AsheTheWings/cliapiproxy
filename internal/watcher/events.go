@@ -13,13 +13,15 @@ import (
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	log "github.com/sirupsen/logrus"
 )
 
 func matchProvider(provider string, targets []string) (string, bool) {
 	p := strings.ToLower(strings.TrimSpace(provider))
+	canonical := config.CanonicalOAuthProvider(p)
 	for _, t := range targets {
-		if strings.EqualFold(p, strings.TrimSpace(t)) {
+		if strings.EqualFold(p, strings.TrimSpace(t)) || strings.EqualFold(canonical, config.CanonicalOAuthProvider(t)) {
 			return p, true
 		}
 	}

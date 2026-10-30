@@ -24,7 +24,11 @@ func (m memFiles) ReadFile(name string) ([]byte, fs.FileMode, error) {
 }
 
 const overlay = `server: {host: 0.0.0.0, port: 9100}
-oauth: {auth-dir: /var/lib/cliapiproxy/auths}
+oauth:
+  auth-dir: /var/lib/cliapiproxy/auths
+  models:
+    codex: [gpt-6-sol]
+    kimi-ai: [Kimi-K3]
 routing:
   strategy: fill-first
   force-model-prefix: true
@@ -93,6 +97,14 @@ func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
 		"api-keys.meta":                        metaSummary(cfg.MetaKey),
 		"api-keys.commandcode":                 cfg.CommandCodeKey,
 		"api-keys.kiro":                        cfg.KiroKey,
+		"oauth.models.antigravity":             cfg.OAuthModels["antigravity"],
+		"oauth.models.claude":                  cfg.OAuthModels["claude"],
+		"oauth.models.codex":                   cfg.OAuthModels["codex"],
+		"oauth.models.devin":                   cfg.OAuthModels["devin"],
+		"oauth.models.kimi":                    cfg.OAuthModels["kimi"],
+		"oauth.models.kimi-ai":                 cfg.OAuthModels["kimi-ai"],
+		"oauth.models.meta":                    cfg.OAuthModels["meta"],
+		"oauth.models.xai":                     cfg.OAuthModels["xai"],
 	}
 	want := map[string]any{
 		"server.host":                          "0.0.0.0",
@@ -116,6 +128,15 @@ func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
 			{APIKey: "upstream-key-c2", Prefix: "cc", Models: []config.CodexModel{{Name: "commandcode/deepseek/deepseek-v4.1-flash", Alias: "flash"}}},
 		},
 		"api-keys.kiro": []config.KiroKey{{APIKey: "upstream-key-k"}},
+		// A provider without a list keeps no entry; names are lowercased.
+		"oauth.models.antigravity": []string(nil),
+		"oauth.models.claude":      []string(nil),
+		"oauth.models.codex":       []string{"gpt-6-sol"},
+		"oauth.models.devin":       []string(nil),
+		"oauth.models.kimi":        []string(nil),
+		"oauth.models.kimi-ai":     []string{"kimi-k3"},
+		"oauth.models.meta":        []string(nil),
+		"oauth.models.xai":         []string(nil),
 	}
 	schema, errSchema := inputs.Load()
 	if errSchema != nil {

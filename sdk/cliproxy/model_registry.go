@@ -48,12 +48,15 @@ func SetGlobalModelRegistryHook(hook ModelRegistryHook) {
 }
 
 // modelRegistrationFence captures the model-registration inputs and the
-// global exclusion summaries and registry epoch observed when registration began.
+// global exclusion and OAuth model list summaries and registry epoch observed
+// when registration began.
 // Publication takes the auth mutation lock, then the config read lock, then the
-// registry lock. Obsolete inherited exclusions must not advance the registry epoch
-// and invalidate newer work, even if the credential attributes are unchanged.
+// registry lock. Obsolete inherited exclusions or model lists must not advance
+// the registry epoch and invalidate newer work, even if the credential
+// attributes are unchanged.
 type modelRegistrationFence struct {
 	globalExclusions          map[string]diff.ExcludedModelsSummary
+	globalSelections          map[string]diff.ExcludedModelsSummary
 	exclusionProvider         string
 	fallbackExclusionProvider string
 	registryEpoch             uint64
@@ -73,8 +76,15 @@ func newModelRegistrationFence(a *coreauth.Auth, cfg *config.Config) modelRegist
 			exclusions[provider] = diff.SummarizeExcludedModels(rules)
 		}
 	}
+	var selections map[string]diff.ExcludedModelsSummary
+	if cfg != nil && len(cfg.OAuthModels) > 0 {
+		selections = make(map[string]diff.ExcludedModelsSummary, len(cfg.OAuthModels))
+		for provider, listed := range cfg.OAuthModels {
+			selections[provider] = diff.SummarizeExcludedModels(listed)
+		}
+	}
 	if a == nil {
-		return modelRegistrationFence{globalExclusions: exclusions}
+		return modelRegistrationFence{globalExclusions: exclusions, globalSelections: selections}
 	}
 	provider := strings.ToLower(strings.TrimSpace(a.Provider))
 	if _, _, compat := openAICompatInfoFromAuth(a); compat {
@@ -82,6 +92,7 @@ func newModelRegistrationFence(a *coreauth.Auth, cfg *config.Config) modelRegist
 	}
 	return modelRegistrationFence{
 		globalExclusions:  exclusions,
+		globalSelections:  selections,
 		exclusionProvider: provider,
 		registryEpoch:     GlobalModelRegistry().ClientRegistrationEpoch(a.ID),
 		registrationEpoch: a.RegistrationEpoch,
@@ -102,6 +113,7 @@ func (f modelRegistrationFence) withAuth(a *coreauth.Auth) modelRegistrationFenc
 	}
 	next := newModelRegistrationFence(a, nil)
 	next.globalExclusions = f.globalExclusions
+	next.globalSelections = f.globalSelections
 	next.fallbackExclusionProvider = f.fallbackExclusionProvider
 	next.registryEpoch = f.registryEpoch
 	return next
@@ -121,19 +133,31 @@ func (f modelRegistrationFence) publishUnregister(s *Service, authID string) boo
 
 func (f modelRegistrationFence) publishIfCurrent(s *Service, authID string, publish func() bool) bool {
 	publishWithConfig := func() bool {
-		if s != nil && !f.disabled && f.authKind != coreauth.AuthKindAPIKey && strings.TrimSpace(f.attributes["excluded_models"]) == "" {
+		if s != nil && !f.disabled && f.authKind != coreauth.AuthKindAPIKey {
 			s.cfgMu.RLock()
 			defer s.cfgMu.RUnlock()
 			// Match the watcher's normalization so no-op and unrelated reloads do not
 			// discard work. A real change always schedules a replacement: the watcher
 			// redispatches affected auths, and applyConfigRuntime re-registers every
 			// auth (which also covers Home mode, where no watcher runs).
-			for _, provider := range [2]string{f.exclusionProvider, f.fallbackExclusionProvider} {
-				if provider == "" {
-					continue
+			// A credential's own exclusions replace the global ones.
+			if strings.TrimSpace(f.attributes["excluded_models"]) == "" {
+				for _, provider := range [2]string{f.exclusionProvider, f.fallbackExclusionProvider} {
+					if provider == "" {
+						continue
+					}
+					current := oauthExcludedModelsForConfig(s.cfg, provider, f.authKind)
+					if f.globalExclusions[provider] != diff.SummarizeExcludedModels(current) {
+						return false
+					}
 				}
-				current := oauthExcludedModelsForConfig(s.cfg, provider, f.authKind)
-				if f.globalExclusions[provider] != diff.SummarizeExcludedModels(current) {
+			}
+			if provider := config.CanonicalOAuthProvider(f.exclusionProvider); provider != "" {
+				var current []string
+				if s.cfg != nil {
+					current = s.cfg.OAuthModels[provider]
+				}
+				if f.globalSelections[provider] != diff.SummarizeExcludedModels(current) {
 					return false
 				}
 			}

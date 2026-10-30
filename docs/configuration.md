@@ -116,6 +116,21 @@ field outside this list. A key of a group the overlay does not declare is
 unused, so keys can be delivered before the overlay that declares their
 group.
 
+## OAuth models
+
+`oauth.models.<provider>` lists, by catalog id, the models the OAuth
+credential files of one provider offer: `antigravity`, `claude`, `codex`,
+`devin`, `kimi`, `kimi-ai`, `meta`, or `xai`. A listed model keeps every
+property its catalog entry gives it, and ids match without regard to case.
+An empty list, the default, offers the provider's whole catalog. The lists
+apply to credential files only; an API-key group lists its own models:
+
+```yaml
+oauth:
+  models:
+    codex: [gpt-6-sol, gpt-6-luna]
+```
+
 ## Model prefixes
 
 A group's `prefix`, or the `prefix` field of an OAuth credential file,
