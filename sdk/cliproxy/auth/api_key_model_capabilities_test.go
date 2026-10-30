@@ -45,6 +45,24 @@ func TestAttachResolvedAPIKeyModelInfoUsesSelectedCredential(t *testing.T) {
 	assertResolvedThinkingLevels(t, manager.attachResolvedAPIKeyModelInfo(cliproxyexecutor.Request{}, authMax, "tenant/public-model", "shared-upstream"), "max")
 }
 
+// An account-catalog model binds a configured capability only when its entry
+// sets thinking; otherwise the published model's catalog reasoning applies.
+func TestAccountCatalogModelsBindOnlyConfiguredThinking(t *testing.T) {
+	cfg := &internalconfig.Config{CommandCodeKey: []internalconfig.CommandCodeKey{{APIKey: "cc-key", Models: []internalconfig.CodexModel{
+		{Name: "commandcode/m-catalog"},
+		{Name: "commandcode/m-configured", Thinking: &registry.ThinkingSupport{Levels: []string{"max"}}},
+	}}}}
+	auth := &Auth{ID: "cc-auth", Provider: "commandcode", Attributes: map[string]string{"api_key": "cc-key"}}
+	capabilities := compileAPIKeyModelCapabilitiesForAuth(cfg, auth)
+	if _, bound := capabilities["commandcode/m-catalog"]; bound {
+		t.Errorf("a model without thinking bound a capability: %+v", capabilities)
+	}
+	routes := capabilities["commandcode/m-configured"]
+	if len(routes) != 1 || routes[0].modelInfo.Thinking == nil || len(routes[0].modelInfo.Thinking.Levels) != 1 || routes[0].modelInfo.Thinking.Levels[0] != "max" {
+		t.Errorf("configured routes = %+v, want the configured max level", routes)
+	}
+}
+
 func TestAttachResolvedAPIKeyModelInfoUsesExactDuplicateCredentialConfig(t *testing.T) {
 	manager := NewManager(nil, nil, nil)
 	highModels := []internalconfig.ClaudeModel{{

@@ -68,16 +68,20 @@ Each upstream API-key family the schema declares pairs two inputs: an
 `upstream-groups` input in the overlay files, keyed `api-keys.<family>`, and
 the `credential-list` input its `credentials` names in the protected file.
 A group has a `name` of lowercase letters, digits, and hyphens, and may set
-`base-url`, `prefix`, and `models`. An OpenAI-compatible group requires
-`base-url` and at least one model, because the server offers only the models
-such a group lists. A model has a `name` and may set `alias`,
+`base-url`, `prefix`, and `models`. A model has a `name` and may set `alias`,
 `display-name`, `max-context-length`, `thinking.levels`, and, for
-OpenAI-compatible groups, `input-modalities`. A Meta group without models
-offers the built-in Meta catalog; one with models offers only those it lists.
-A listed Meta model takes every property it does not set from its catalog
-entry. A [Command Code](commandcode.md) or [Kiro](kiro.md) group has a `name`
-and may set `prefix` only; each of its keys offers the models of its own
-account:
+OpenAI-compatible groups, `input-modalities`. An OpenAI-compatible group
+requires `base-url` and at least one model, because the server offers only
+the models such a group lists. A group of another family without models
+offers its provider's catalog: the built-in Meta catalog, or for
+[Command Code](commandcode.md) and [Kiro](kiro.md), the catalog of each key's
+account. A group with models offers only those it lists, and a listed model
+takes every property it does not set from its catalog entry. A Command Code
+or Kiro group takes no `base-url`, and it offers a listed model only while
+the account's catalog has it; a model's `name` is its id in that catalog, as
+`/v1/models` lists it. Its `thinking.levels` change the levels it publishes,
+but a request still reaches the upstream with only an effort the catalog
+lists for the model:
 
 ```yaml
 api-keys:
@@ -93,6 +97,9 @@ api-keys:
   meta:
     - name: muse
       models: [{name: muse-spark-1.3}]
+  commandcode:
+    - name: cc
+      models: [{name: commandcode/deepseek/deepseek-v4.1-flash}]
 ```
 
 The keys are comma-separated `group=key` items, and a group with several
@@ -101,6 +108,7 @@ keys balances requests across them:
 ```sh
 CLIPROXY_OPENAI_COMPATIBILITY_KEYS='example=<key>,example=<key>'
 CLIPROXY_META_KEYS='muse=<key>'
+CLIPROXY_COMMANDCODE_KEYS='cc=<key>'
 ```
 
 A run fails when a group has no key or an overlay group holds a key or a

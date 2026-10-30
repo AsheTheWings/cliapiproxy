@@ -78,3 +78,25 @@ func TestKiroExecutorIsRegisteredWithTheBaseline(t *testing.T) {
 		t.Error("the kiro provider is not among the baseline executors")
 	}
 }
+
+func TestKiroGroupModelsSelectFromTheAccountCatalog(t *testing.T) {
+	registry := internalregistry.GetGlobalRegistry()
+	const id = "kiro-listed"
+	registry.UnregisterClient(id)
+	t.Cleanup(func() { registry.UnregisterClient(id) })
+	service := &Service{cfg: &config.Config{KiroKey: []config.KiroKey{{APIKey: "key", Models: []config.MetaModel{
+		{Name: "kiro/qwen3-coder-next", Alias: "qwen"},
+	}}}}}
+	service.registerModelsForAuth(context.Background(), &coreauth.Auth{
+		ID: id, Provider: "kiro", Status: coreauth.StatusActive,
+		Attributes: map[string]string{
+			coreauth.AttributeSource: "config:kiro[listed]", coreauth.AttributeConfigIndex: "0",
+			coreauth.AttributeAPIKey: "key", coreauth.AttributeAccountCatalog: "true",
+		},
+		Metadata: kiroCatalogMetadata("qwen3-coder-next", "claude-haiku-5.5"),
+	})
+	models := registry.GetModelsForClient(id)
+	if len(models) != 1 || models[0].ID != "qwen" || models[0].ContextLength != 200000 {
+		t.Errorf("models = %+v, want the listed catalog model under its alias with the catalog's context", models)
+	}
+}

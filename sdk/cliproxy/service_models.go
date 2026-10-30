@@ -216,16 +216,14 @@ func (s *Service) registerModelsForAuthWithConfigAndCache(ctx context.Context, c
 	case "kiro":
 		// Every account's catalog differs by plan, so a credential publishes
 		// the catalog its own metadata holds.
-		if catalog, ok := kiroauth.CatalogFromMetadata(a.Metadata); ok {
-			models = catalog.ModelInfos()
-		}
+		catalog, hasCatalog := kiroauth.CatalogFromMetadata(a.Metadata)
+		models = accountCatalogModels(accountKeys(cfg, kiroauth.Provider), a, catalog.ModelInfos(), hasCatalog)
 		models = applyExcludedModels(models, excluded)
 	case "commandcode":
 		// The catalog is shared, and the account's plan and credits decide
 		// which of its models a credential may use.
-		if catalog, ok := commandcodeauth.CatalogFromMetadata(a.Metadata); ok {
-			models = catalog.ModelInfos()
-		}
+		catalog, hasCatalog := commandcodeauth.CatalogFromMetadata(a.Metadata)
+		models = accountCatalogModels(accountKeys(cfg, commandcodeauth.Provider), a, catalog.ModelInfos(), hasCatalog)
 		models = applyExcludedModels(models, excluded)
 	default:
 		// Handle OpenAI-compatibility providers by name using config

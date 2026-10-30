@@ -58,7 +58,7 @@ type family struct {
 	requiresModels  bool
 	inputModalities bool
 	// accountCatalog families serve the models of each key's account from a
-	// fixed endpoint, so their groups declare neither base-url nor models.
+	// fixed endpoint, so their groups declare no base-url.
 	accountCatalog bool
 }
 
@@ -107,8 +107,8 @@ func validateGroups(familyName string, groups []UpstreamGroup) error {
 		if g.BaseURL == "" && rules.requiresBaseURL {
 			return fmt.Errorf("%s: base-url is required", label)
 		}
-		if rules.accountCatalog && (g.BaseURL != "" || len(g.Models) > 0) {
-			return fmt.Errorf("%s: the %s family takes no base-url or models; each key serves its account's models", label, familyName)
+		if rules.accountCatalog && g.BaseURL != "" {
+			return fmt.Errorf("%s: the %s family takes no base-url; each key serves its account's models", label, familyName)
 		}
 		if g.BaseURL != "" {
 			if u, errURL := url.Parse(g.BaseURL); errURL != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" || u.User != nil {

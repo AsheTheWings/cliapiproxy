@@ -888,16 +888,21 @@ upstream:
 #           weight: 5 # optional: weighted-round-robin share; omitted defaults to 1; maximum 1,000,000
 #
 #   # Command Code API keys
-#   # Each key serves the models its own account's plan allows; a group sets no base-url or models.
+#   # Each key serves the models its own account's plan allows; a group sets no base-url.
+#   # Optional models select among them by catalog id, inheriting every property they do not set.
 #
 #   commandcode:
 #     - name: commandcode-1
 #       prefix: "cc" # optional: require calls like "cc/commandcode/deepseek/deepseek-v4-flash"
+#       models:
+#         - name: "commandcode/deepseek/deepseek-v4.1-flash" # id in the account's catalog
+#           alias: "flash" # optional: client alias mapped to the catalog model
 #       keys:
 #         - api-key: "..."
 #
 #   # Kiro API keys
-#   # Each key serves the models of its own account; a group sets no base-url or models.
+#   # Each key serves the models of its own account; a group sets no base-url.
+#   # Optional models select among them by catalog id, as for Command Code.
 #
 #   kiro:
 #     - name: kiro-1

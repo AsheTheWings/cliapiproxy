@@ -476,6 +476,10 @@ func configuredModelAliasEntries(cfg *internalconfig.Config, auth *Auth) []model
 		if entry := resolveMetaAPIKeyConfig(cfg, auth); entry != nil {
 			models = asModelAliasEntries(entry.Models)
 		}
+	case "commandcode", "kiro":
+		if entry := resolveAccountCatalogAPIKeyConfig(cfg, auth); entry != nil {
+			models = asModelAliasEntries(entry.Models)
+		}
 	default:
 		providerKey := ""
 		compatName := ""
@@ -636,6 +640,10 @@ func (m *Manager) rebuildAPIKeyModelAliasLocked(cfg *internalconfig.Config) {
 			if entry := resolveMetaAPIKeyConfig(cfg, auth); entry != nil {
 				compileAPIKeyModelAliasForModels(byAlias, entry.Models)
 			}
+		case "commandcode", "kiro":
+			if entry := resolveAccountCatalogAPIKeyConfig(cfg, auth); entry != nil {
+				compileAPIKeyModelAliasForModels(byAlias, entry.Models)
+			}
 		default:
 			// OpenAI-compat uses config selection from auth.Attributes.
 			providerKey := ""
@@ -758,6 +766,8 @@ func (m *Manager) applyAPIKeyModelAliasWithRouting(routing *apiKeyModelRoutingSn
 		upstreamModel = resolveUpstreamModelForVertexAPIKey(cfg, auth, requestedModel)
 	case "meta":
 		upstreamModel = resolveUpstreamModelForMetaAPIKey(cfg, auth, requestedModel)
+	case "commandcode", "kiro":
+		upstreamModel = resolveUpstreamModelForAccountCatalogAPIKey(cfg, auth, requestedModel)
 	default:
 		upstreamModel = resolveUpstreamModelForOpenAICompatAPIKey(cfg, auth, requestedModel)
 	}
@@ -922,6 +932,29 @@ func resolveUpstreamModelForVertexAPIKey(cfg *internalconfig.Config, auth *Auth,
 
 func resolveUpstreamModelForMetaAPIKey(cfg *internalconfig.Config, auth *Auth, requestedModel string) string {
 	entry := resolveMetaAPIKeyConfig(cfg, auth)
+	if entry == nil {
+		return ""
+	}
+	return resolveModelAliasFromConfigModels(requestedModel, asModelAliasEntries(entry.Models))
+}
+
+// resolveAccountCatalogAPIKeyConfig returns the Command Code or Kiro key entry
+// of an account-catalog credential.
+func resolveAccountCatalogAPIKeyConfig(cfg *internalconfig.Config, auth *Auth) *internalconfig.CommandCodeKey {
+	if cfg == nil || auth == nil {
+		return nil
+	}
+	switch strings.ToLower(strings.TrimSpace(auth.Provider)) {
+	case "commandcode":
+		return resolveAPIKeyConfig(cfg.CommandCodeKey, auth)
+	case "kiro":
+		return resolveAPIKeyConfig(cfg.KiroKey, auth)
+	}
+	return nil
+}
+
+func resolveUpstreamModelForAccountCatalogAPIKey(cfg *internalconfig.Config, auth *Auth, requestedModel string) string {
+	entry := resolveAccountCatalogAPIKeyConfig(cfg, auth)
 	if entry == nil {
 		return ""
 	}

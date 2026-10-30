@@ -132,6 +132,10 @@ func TestAPIKeyModelAlias_MultipleProviders(t *testing.T) {
 		ClaudeKey: []internalconfig.ClaudeKey{{APIKey: "claude-key", Models: []internalconfig.ClaudeModel{{Name: "claude-sonnet-4", Alias: "cs4"}}}},
 		CodexKey:  []internalconfig.CodexKey{{APIKey: "codex-key", Models: []internalconfig.CodexModel{{Name: "o3", Alias: "o"}}}},
 		XAIKey:    []internalconfig.XAIKey{{APIKey: "xai-key", Models: []internalconfig.XAIModel{{Name: "grok-4.5", Alias: "grok-latest"}}}},
+		CommandCodeKey: []internalconfig.CommandCodeKey{{APIKey: "cc-key", Models: []internalconfig.CodexModel{
+			{Name: "commandcode/deepseek/deepseek-v4.1-flash", Alias: "flash"},
+		}}},
+		KiroKey: []internalconfig.KiroKey{{APIKey: "kiro-key", Models: []internalconfig.CodexModel{{Name: "kiro/qwen3-coder-next", Alias: "qwen"}}}},
 	}
 
 	mgr := NewManager(nil, nil, nil)
@@ -142,6 +146,8 @@ func TestAPIKeyModelAlias_MultipleProviders(t *testing.T) {
 	_, _ = mgr.Register(ctx, &Auth{ID: "claude-auth", Provider: "claude", Attributes: map[string]string{"api_key": "claude-key"}})
 	_, _ = mgr.Register(ctx, &Auth{ID: "codex-auth", Provider: "codex", Attributes: map[string]string{"api_key": "codex-key"}})
 	_, _ = mgr.Register(ctx, &Auth{ID: "xai-auth", Provider: "xai", Attributes: map[string]string{"api_key": "xai-key"}})
+	_, _ = mgr.Register(ctx, &Auth{ID: "cc-auth", Provider: "commandcode", Attributes: map[string]string{"api_key": "cc-key"}})
+	_, _ = mgr.Register(ctx, &Auth{ID: "kiro-auth", Provider: "kiro", Attributes: map[string]string{"api_key": "kiro-key"}})
 
 	tests := []struct {
 		authID, input, want string
@@ -150,6 +156,8 @@ func TestAPIKeyModelAlias_MultipleProviders(t *testing.T) {
 		{"claude-auth", "cs4", "claude-sonnet-4"},
 		{"codex-auth", "o", "o3"},
 		{"xai-auth", "grok-latest", "grok-4.5"},
+		{"cc-auth", "flash", "commandcode/deepseek/deepseek-v4.1-flash"},
+		{"kiro-auth", "qwen", "kiro/qwen3-coder-next"},
 	}
 
 	for _, tt := range tests {
