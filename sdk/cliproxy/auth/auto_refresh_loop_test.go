@@ -591,3 +591,36 @@ func TestNextRefreshCheckAtIncludesSIWCWhenClassifiedAsAPIKey(t *testing.T) {
 		t.Fatalf("nextRefreshCheckAt = (%v, %v), want (%v, true)", due, ok, wantDue)
 	}
 }
+
+func TestAccountCatalogAPIKeysAreTheOnlyRefreshedAPIKeys(t *testing.T) {
+	const provider = "account-catalog-test"
+	lead := time.Minute
+	RegisterRefreshLeadProvider(provider, func() *time.Duration { return &lead })
+	t.Cleanup(func() {
+		refreshLeadMu.Lock()
+		delete(refreshLeadFactories, provider)
+		refreshLeadMu.Unlock()
+	})
+	now := time.Date(2026, 10, 30, 12, 0, 0, 0, time.UTC)
+	newAuth := func(accountCatalog bool) *Auth {
+		attributes := map[string]string{AttributeSource: "config:" + provider + "[t]", AttributeAPIKey: "k"}
+		if accountCatalog {
+			attributes[AttributeAccountCatalog] = "true"
+		}
+		return &Auth{ID: provider, Provider: provider, Attributes: attributes, Metadata: map[string]any{}}
+	}
+
+	if _, ok := nextRefreshCheckAt(now, newAuth(false), refreshCheckInterval); ok {
+		t.Error("a plain config API key was scheduled for refresh")
+	}
+	fresh := newAuth(true)
+	if got, ok := nextRefreshCheckAt(now, fresh, refreshCheckInterval); !ok || !got.Equal(now) {
+		t.Errorf("first refresh = %v, %v; want due at once", got, ok)
+	}
+	refreshed := newAuth(true)
+	refreshed.LastRefreshedAt = now
+	refreshed.Metadata["expired"] = now.Add(time.Hour).Format(time.RFC3339)
+	if got, ok := nextRefreshCheckAt(now, refreshed, refreshCheckInterval); !ok || !got.Equal(now.Add(time.Hour-lead)) {
+		t.Errorf("next refresh = %v, %v; want the lead before the expiry", got, ok)
+	}
+}

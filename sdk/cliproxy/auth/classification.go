@@ -14,6 +14,7 @@ const (
 	AuthSourcePostgres    = "postgres"
 
 	AttributeAPIKey               = "api_key"
+	AttributeAccountCatalog       = "account_catalog"
 	AttributeAuthKind             = "auth_kind"
 	AttributeCodexAlphaSearch     = "codex_alpha_search"
 	AttributeCodexDisableCloaking = "codex_disable_cloaking"
