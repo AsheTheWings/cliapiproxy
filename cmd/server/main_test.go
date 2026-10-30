@@ -5,12 +5,17 @@ package main
 import (
 	"fmt"
 	"io/fs"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/AsheTheWings/cliapiproxy/internal/api/handlers/management"
 	"github.com/AsheTheWings/cliapiproxy/internal/config"
 	"github.com/AsheTheWings/cliapiproxy/internal/inputs"
+	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type memFiles map[string]string
@@ -35,6 +40,7 @@ routing:
   retry: {request-retry: 5, max-retry-interval: 90}
 client:
   codex: {enable-apply-patch: true, optimize-multi-agent-v2: true}
+management: {allow-remote: true}
 api-keys:
   openai-compatibility:
     - name: alpha
@@ -55,6 +61,7 @@ api-keys:
 
 const protected = `CLIPROXY_API_KEYS='client-key-a,client-key-b'
 CLIPROXY_PROXY_URL='http://proxy.invalid:3128'
+CLIPROXY_MANAGEMENT_KEY='management-key'
 OTEL_EXPORTER_OTLP_HEADERS='authorization=Basic%20c2VjcmV0'
 CLIPROXY_OPENAI_COMPATIBILITY_KEYS='alpha=upstream-key-a1,alpha=upstream-key-a2'
 CLIPROXY_META_KEYS='muse=upstream-key-m'
@@ -87,6 +94,8 @@ func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
 		"oauth.auth-dir":                       cfg.AuthDir,
 		"access.api-keys":                      cfg.APIKeys,
 		"requests.proxy-url":                   cfg.ProxyURL,
+		"management.secret-key":                bcrypt.CompareHashAndPassword([]byte(cfg.RemoteManagement.SecretKey), []byte("management-key")) == nil,
+		"management.allow-remote":              cfg.RemoteManagement.AllowRemote,
 		"routing.strategy":                     cfg.Routing.Strategy,
 		"routing.force-model-prefix":           cfg.ForceModelPrefix,
 		"routing.retry.request-retry":          cfg.RequestRetry,
@@ -107,11 +116,14 @@ func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
 		"oauth.models.xai":                     cfg.OAuthModels["xai"],
 	}
 	want := map[string]any{
-		"server.host":                          "0.0.0.0",
-		"server.port":                          9100,
-		"oauth.auth-dir":                       "/var/lib/cliapiproxy/auths",
-		"access.api-keys":                      []string{"client-key-a", "client-key-b"},
-		"requests.proxy-url":                   "http://proxy.invalid:3128",
+		"server.host":        "0.0.0.0",
+		"server.port":        9100,
+		"oauth.auth-dir":     "/var/lib/cliapiproxy/auths",
+		"access.api-keys":    []string{"client-key-a", "client-key-b"},
+		"requests.proxy-url": "http://proxy.invalid:3128",
+		// The server keeps only the key's bcrypt hash.
+		"management.secret-key":                true,
+		"management.allow-remote":              true,
 		"routing.strategy":                     "fill-first",
 		"routing.force-model-prefix":           true,
 		"routing.retry.request-retry":          5,
@@ -155,9 +167,61 @@ func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
 			t.Errorf("%s = %#v, want %#v", in.Key, got[in.Key], want[in.Key])
 		}
 	}
-	if cfg.RemoteManagement.SecretKey != "" {
-		t.Fatal("the management API must stay disabled")
+}
+
+// Without a management key the management API stays off.
+func TestManagementIsOffWithoutItsKey(t *testing.T) {
+	files := memFiles{"/etc/cliapiproxy/overlay.yaml": "server: {port: 9100}\noauth: {auth-dir: /var/lib/cliapiproxy/auths}\n",
+		"/run/cliapiproxy/protected.env": "CLIPROXY_API_KEYS='client-key-a'\n"}
+	plan, err := resolveRun(productionProcess(), files)
+	if err != nil {
+		t.Fatal(err)
 	}
+	if got := plan.cfg.RemoteManagement; got.SecretKey != "" || got.AllowRemote {
+		t.Fatalf("management = %+v, want no key and loopback only", got)
+	}
+}
+
+// The management API's view of the configuration holds no value the
+// protected file delivers.
+func TestManagementConfigViewRedactsProtectedValues(t *testing.T) {
+	plan, err := resolveRun(productionProcess(), testFiles)
+	if err != nil {
+		t.Fatal(err)
+	}
+	gin.SetMode(gin.TestMode)
+	rec := httptest.NewRecorder()
+	c, _ := gin.CreateTestContext(rec)
+	c.Request = httptest.NewRequest(http.MethodGet, "/v8/management/config", nil)
+	management.NewHandler(plan.cfg, "", nil).ConfigV8Effective(c)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body %s", rec.Code, rec.Body)
+	}
+	body := rec.Body.String()
+	if !strings.Contains(body, "https://alpha.invalid/v1") {
+		t.Fatalf("the view lacks the upstream groups: %s", body)
+	}
+	for _, value := range protectedValues(protected) {
+		if strings.Contains(body, value) {
+			t.Errorf("the view exposes %q", value)
+		}
+	}
+}
+
+// protectedValues lists every value of a protected file: each item of each
+// line, without the group of a group=key item.
+func protectedValues(file string) []string {
+	var out []string
+	for _, line := range strings.Split(strings.TrimSpace(file), "\n") {
+		_, quoted, _ := strings.Cut(line, "=")
+		for _, item := range strings.Split(strings.Trim(quoted, "'"), ",") {
+			if _, key, isPair := strings.Cut(item, "="); isPair {
+				item = key
+			}
+			out = append(out, item)
+		}
+	}
+	return out
 }
 
 func openAICompatibilitySummary(groups []config.OpenAICompatibility) []string {
