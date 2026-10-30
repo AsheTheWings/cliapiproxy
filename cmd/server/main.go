@@ -9,6 +9,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io/fs"
 	"os"
 	"strings"
 	"time"
@@ -20,6 +21,7 @@ import (
 	"github.com/AsheTheWings/cliapiproxy/internal/config"
 	"github.com/AsheTheWings/cliapiproxy/internal/githubauth"
 	"github.com/AsheTheWings/cliapiproxy/internal/inputs"
+	"github.com/AsheTheWings/cliapiproxy/internal/keystate"
 	"github.com/AsheTheWings/cliapiproxy/internal/logging"
 	"github.com/AsheTheWings/cliapiproxy/internal/misc"
 	"github.com/AsheTheWings/cliapiproxy/internal/redisqueue"
@@ -108,7 +110,10 @@ func run() int {
 		return 0
 	}
 	// Request and error-request files would be a second diagnostics sink.
-	serverOptions := []api.ServerOption{api.WithRequestLoggerFactory(func(*config.Config, string) logging.RequestLogger { return nil })}
+	serverOptions := []api.ServerOption{
+		api.WithRequestLoggerFactory(func(*config.Config, string) logging.RequestLogger { return nil }),
+		api.WithKeyStore(plan.keys),
+	}
 	if safemode.HasExampleAPIKeys(cfg.APIKeys) {
 		matches := safemode.ExampleAPIKeys(cfg.APIKeys)
 		log.WithField("api_keys", strings.Join(matches, ",")).Error("unsafe example API key configured; proxy API endpoints disabled until api-keys is updated")
@@ -130,6 +135,7 @@ const telemetryShutdownTimeout = 10 * time.Second
 type runPlan struct {
 	profile   string
 	cfg       *config.Config
+	keys      *keystate.Store
 	telemetry telemetry.Settings
 	// telemetryProbe runs the telemetry probe instead of serving.
 	telemetryProbe bool
@@ -152,15 +158,19 @@ func resolveRun(process inputs.Process, files inputs.Files) (*runPlan, error) {
 	if errDocument != nil {
 		return nil, fmt.Errorf("render configuration: %w", errDocument)
 	}
-	cfg, errParse := config.ParseConfigBytes(doc)
-	if errParse != nil {
-		return nil, fmt.Errorf("parse configuration: %w", errParse)
+	statePath := eff.String("keys.state-file")
+	state, errState := readKeyState(files, statePath)
+	if errState != nil {
+		return nil, errState
 	}
-	authDir, errAuthDir := util.ResolveAuthDir(cfg.AuthDir)
-	if errAuthDir != nil {
-		return nil, errAuthDir
+	store, errStore := keystate.New(statePath, doc, state)
+	if errStore != nil {
+		return nil, errStore
 	}
-	cfg.AuthDir = authDir
+	cfg, errConfig := store.Config()
+	if errConfig != nil {
+		return nil, errConfig
+	}
 	command, errCommand := selectCommand(eff)
 	if errCommand != nil {
 		return nil, errCommand
@@ -179,8 +189,24 @@ func resolveRun(process inputs.Process, files inputs.Files) (*runPlan, error) {
 		Environment:    eff.String("CLIPROXY_DEPLOYMENT_ENVIRONMENT"),
 		Console:        os.Stdout,
 	}
-	return &runPlan{profile: eff.Profile, cfg: cfg, telemetry: settings, telemetryProbe: eff.Bool("telemetry-probe"),
+	return &runPlan{profile: eff.Profile, cfg: cfg, keys: store, telemetry: settings, telemetryProbe: eff.Bool("telemetry-probe"),
 		validate: eff.Bool("validate"), localModel: eff.Bool("local-model"), command: command}, nil
+}
+
+// readKeyState reads the key state file, which holds keys and so must be
+// readable by its owner alone; an absent file is the empty state.
+func readKeyState(files inputs.Files, path string) ([]byte, error) {
+	data, mode, errRead := files.ReadFile(path)
+	if errors.Is(errRead, fs.ErrNotExist) {
+		return nil, nil
+	}
+	if errRead != nil {
+		return nil, fmt.Errorf("keys.state-file %s: %w", path, errRead)
+	}
+	if mode&0o077 != 0 {
+		return nil, fmt.Errorf("keys.state-file %s: readable by others; want mode 0600", path)
+	}
+	return data, nil
 }
 
 // serviceVersion is the build's version with its revision as build metadata,

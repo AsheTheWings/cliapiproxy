@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/AsheTheWings/cliapiproxy/internal/upstream"
 	"gopkg.in/yaml.v3"
 )
 
@@ -14,23 +13,16 @@ const ConfigVersion = 8
 // ConfigDocument renders the effective keyed inputs as a configuration
 // document in the v8 layout, for the configuration parser to read in memory.
 // Keys the schema does not declare keep the parser's defaults; entry-point-only
-// keys stay out. Upstream groups carry the keys of their credentials input,
-// which has no key of its own in the document; an empty group list stays out.
+// keys stay out.
 func (e *Effective) ConfigDocument() ([]byte, error) {
 	root := &yaml.Node{Kind: yaml.MappingNode}
 	appendValue(root, "config-version", ConfigVersion)
 	for _, in := range e.schema.Inputs {
 		v, ok := e.values[in.Name]
-		if in.Key == "" || in.EntryPointOnly || !ok || e.schema.credentialOwner(in.Name) {
+		if in.Key == "" || in.EntryPointOnly || !ok {
 			continue
 		}
 		raw := v.raw()
-		if groups, isGroups := raw.([]upstream.Spec); isGroups {
-			if len(groups) == 0 {
-				continue
-			}
-			raw = renderGroups(groups, e.values[in.Credentials].v.([]Credential))
-		}
 		parts := strings.Split(in.Key, ".")
 		parent := root
 		for _, part := range parts[:len(parts)-1] {

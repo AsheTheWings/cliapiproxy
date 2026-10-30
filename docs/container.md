@@ -12,15 +12,17 @@ The server takes its inputs as [configuration](configuration.md) describes:
   environment.
 - The overlay, a Compose config, sets the port and the auth directory.
 - The protected file, `protected.env` beside `compose.yaml`, is a Compose
-  secret at `/run/secrets/protected`. It holds the client API keys and any
+  secret at `/run/secrets/protected`. It holds the management key and any
   OTLP headers, and must be readable by the server's UID 65532 alone:
 
   ```sh
-  CLIPROXY_API_KEYS='<client key>'
+  CLIPROXY_MANAGEMENT_KEY='<management key>'
   ```
 
 - The `auths` volume at `/data/auths` holds the credential files, which are
   state the server writes as it refreshes tokens.
+- The `keys` volume at `/data/keys` holds the key state file, `keys.yaml`,
+  with the client and upstream API keys the management API writes.
 
 A login command runs in the same container with its flag appended, for
 example `docker compose run --rm cliapiproxy -codex-device-login`.

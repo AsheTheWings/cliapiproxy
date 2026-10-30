@@ -28,6 +28,20 @@ func (m memFiles) ReadFile(name string) ([]byte, fs.FileMode, error) {
 	return []byte(data), 0o600, nil
 }
 
+// sharedFiles serves one of its files readable by everyone.
+type sharedFiles struct {
+	files  memFiles
+	shared string
+}
+
+func (m sharedFiles) ReadFile(name string) ([]byte, fs.FileMode, error) {
+	data, mode, err := m.files.ReadFile(name)
+	if err == nil && name == m.shared {
+		mode = 0o644
+	}
+	return data, mode, err
+}
+
 const overlay = `server: {host: 0.0.0.0, port: 9100}
 oauth:
   auth-dir: /var/lib/cliapiproxy/auths
@@ -41,6 +55,13 @@ routing:
 client:
   codex: {enable-apply-patch: true, optimize-multi-agent-v2: true}
 management: {allow-remote: true}
+keys: {state-file: /var/lib/cliapiproxy/keys.yaml}
+`
+
+// keyState holds every key the server uses: the client keys and each
+// family's upstream groups.
+const keyState = `access:
+  api-keys: [client-key-a, client-key-b]
 api-keys:
   openai-compatibility:
     - name: alpha
@@ -48,25 +69,24 @@ api-keys:
       prefix: alpha
       models:
         - {name: org/model-a, alias: model-a, max-context-length: 480000, input-modalities: [text, image], thinking: {levels: [max]}}
+      keys: [{api-key: upstream-key-a1}, {api-key: upstream-key-a2}]
   meta:
     - name: muse
       models: [{name: muse-model, max-context-length: 480000}]
+      keys: [{api-key: upstream-key-m}]
   commandcode:
     - name: cc
       prefix: cc
       models: [{name: commandcode/deepseek/deepseek-v4.1-flash, alias: flash}]
+      keys: [{api-key: upstream-key-c1}, {api-key: upstream-key-c2}]
   kiro:
     - name: kiro
+      keys: [{api-key: upstream-key-k}]
 `
 
-const protected = `CLIPROXY_API_KEYS='client-key-a,client-key-b'
-CLIPROXY_PROXY_URL='http://proxy.invalid:3128'
+const protected = `CLIPROXY_PROXY_URL='http://proxy.invalid:3128'
 CLIPROXY_MANAGEMENT_KEY='management-key'
 OTEL_EXPORTER_OTLP_HEADERS='authorization=Basic%20c2VjcmV0'
-CLIPROXY_OPENAI_COMPATIBILITY_KEYS='alpha=upstream-key-a1,alpha=upstream-key-a2'
-CLIPROXY_META_KEYS='muse=upstream-key-m'
-CLIPROXY_COMMANDCODE_KEYS='cc=upstream-key-c1,cc=upstream-key-c2'
-CLIPROXY_KIRO_KEYS='kiro=upstream-key-k'
 `
 
 func productionProcess(args ...string) inputs.Process {
@@ -79,7 +99,9 @@ func productionProcess(args ...string) inputs.Process {
 	}}
 }
 
-var testFiles = memFiles{"/etc/cliapiproxy/overlay.yaml": overlay, "/run/cliapiproxy/protected.env": protected}
+const keyStatePath = "/var/lib/cliapiproxy/keys.yaml"
+
+var testFiles = memFiles{"/etc/cliapiproxy/overlay.yaml": overlay, "/run/cliapiproxy/protected.env": protected, keyStatePath: keyState}
 
 // Every keyed input must reach the configuration the server runs with.
 func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
@@ -92,7 +114,6 @@ func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
 		"server.host":                          cfg.Host,
 		"server.port":                          cfg.Port,
 		"oauth.auth-dir":                       cfg.AuthDir,
-		"access.api-keys":                      cfg.APIKeys,
 		"requests.proxy-url":                   cfg.ProxyURL,
 		"management.secret-key":                bcrypt.CompareHashAndPassword([]byte(cfg.RemoteManagement.SecretKey), []byte("management-key")) == nil,
 		"management.allow-remote":              cfg.RemoteManagement.AllowRemote,
@@ -102,10 +123,6 @@ func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
 		"routing.retry.max-retry-interval":     cfg.MaxRetryInterval,
 		"client.codex.enable-apply-patch":      cfg.Client.Codex.EnableApplyPatch,
 		"client.codex.optimize-multi-agent-v2": cfg.Client.Codex.OptimizeMultiAgentV2,
-		"api-keys.openai-compatibility":        openAICompatibilitySummary(cfg.OpenAICompatibility),
-		"api-keys.meta":                        metaSummary(cfg.MetaKey),
-		"api-keys.commandcode":                 cfg.CommandCodeKey,
-		"api-keys.kiro":                        cfg.KiroKey,
 		"oauth.models.antigravity":             cfg.OAuthModels["antigravity"],
 		"oauth.models.claude":                  cfg.OAuthModels["claude"],
 		"oauth.models.codex":                   cfg.OAuthModels["codex"],
@@ -119,7 +136,6 @@ func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
 		"server.host":        "0.0.0.0",
 		"server.port":        9100,
 		"oauth.auth-dir":     "/var/lib/cliapiproxy/auths",
-		"access.api-keys":    []string{"client-key-a", "client-key-b"},
 		"requests.proxy-url": "http://proxy.invalid:3128",
 		// The server keeps only the key's bcrypt hash.
 		"management.secret-key":                true,
@@ -130,16 +146,6 @@ func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
 		"routing.retry.max-retry-interval":     90,
 		"client.codex.enable-apply-patch":      true,
 		"client.codex.optimize-multi-agent-v2": true,
-		"api-keys.openai-compatibility": []string{
-			"alpha https://alpha.invalid/v1 prefix=alpha keys=[upstream-key-a1 upstream-key-a2]",
-			"  org/model-a as model-a context=480000 input=[text image] levels=[max]",
-		},
-		"api-keys.meta": []string{"upstream-key-m prefix= models=[muse-model:480000]"},
-		"api-keys.commandcode": []config.CommandCodeKey{
-			{APIKey: "upstream-key-c1", Prefix: "cc", Models: []config.CodexModel{{Name: "commandcode/deepseek/deepseek-v4.1-flash", Alias: "flash"}}},
-			{APIKey: "upstream-key-c2", Prefix: "cc", Models: []config.CodexModel{{Name: "commandcode/deepseek/deepseek-v4.1-flash", Alias: "flash"}}},
-		},
-		"api-keys.kiro": []config.KiroKey{{APIKey: "upstream-key-k"}},
 		// A provider without a list keeps no entry; names are lowercased.
 		"oauth.models.antigravity": []string(nil),
 		"oauth.models.claude":      []string(nil),
@@ -155,8 +161,7 @@ func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
 		t.Fatal(errSchema)
 	}
 	for _, in := range schema.Inputs {
-		// A credential-list input reaches the configuration inside its groups.
-		if in.Key == "" || in.EntryPointOnly || in.Shape.Type == inputs.TypeCredentialList {
+		if in.Key == "" || in.EntryPointOnly {
 			continue
 		}
 		if _, covered := want[in.Key]; !covered {
@@ -171,14 +176,62 @@ func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
 
 // Without a management key the management API stays off.
 func TestManagementIsOffWithoutItsKey(t *testing.T) {
-	files := memFiles{"/etc/cliapiproxy/overlay.yaml": "server: {port: 9100}\noauth: {auth-dir: /var/lib/cliapiproxy/auths}\n",
-		"/run/cliapiproxy/protected.env": "CLIPROXY_API_KEYS='client-key-a'\n"}
+	files := memFiles{"/etc/cliapiproxy/overlay.yaml": "server: {port: 9100}\noauth: {auth-dir: /var/lib/cliapiproxy/auths}\nkeys: {state-file: /var/lib/cliapiproxy/keys.yaml}\n"}
 	plan, err := resolveRun(productionProcess(), files)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got := plan.cfg.RemoteManagement; got.SecretKey != "" || got.AllowRemote {
 		t.Fatalf("management = %+v, want no key and loopback only", got)
+	}
+}
+
+// The key state file is the only source of the client keys and the upstream
+// groups, and a state file others can read is refused, since it holds keys.
+func TestKeyStateHoldsEveryKey(t *testing.T) {
+	plan, err := resolveRun(productionProcess(), testFiles)
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := plan.cfg
+	got := map[string]any{
+		"access.api-keys":               cfg.APIKeys,
+		"api-keys.openai-compatibility": openAICompatibilitySummary(cfg.OpenAICompatibility),
+		"api-keys.meta":                 metaSummary(cfg.MetaKey),
+		"api-keys.commandcode":          cfg.CommandCodeKey,
+		"api-keys.kiro":                 cfg.KiroKey,
+	}
+	want := map[string]any{
+		"access.api-keys": []string{"client-key-a", "client-key-b"},
+		"api-keys.openai-compatibility": []string{
+			"alpha https://alpha.invalid/v1 prefix=alpha keys=[upstream-key-a1 upstream-key-a2]",
+			"  org/model-a as model-a context=480000 input=[text image] levels=[max]",
+		},
+		"api-keys.meta": []string{"upstream-key-m prefix= models=[muse-model:480000]"},
+		"api-keys.commandcode": []config.CommandCodeKey{
+			{APIKey: "upstream-key-c1", Prefix: "cc", Models: []config.CodexModel{{Name: "commandcode/deepseek/deepseek-v4.1-flash", Alias: "flash"}}},
+			{APIKey: "upstream-key-c2", Prefix: "cc", Models: []config.CodexModel{{Name: "commandcode/deepseek/deepseek-v4.1-flash", Alias: "flash"}}},
+		},
+		"api-keys.kiro": []config.KiroKey{{APIKey: "upstream-key-k"}},
+	}
+	for key, value := range want {
+		if !reflect.DeepEqual(got[key], value) {
+			t.Errorf("%s = %#v, want %#v", key, got[key], value)
+		}
+	}
+	shared := sharedFiles{files: testFiles, shared: keyStatePath}
+	if _, err = resolveRun(productionProcess(), shared); err == nil || !strings.Contains(err.Error(), "readable by others") {
+		t.Fatalf("err = %v, want a refused state file", err)
+	}
+	for _, line := range []string{"CLIPROXY_API_KEYS='client-key-a'\n", "CLIPROXY_KIRO_KEYS='kiro=upstream-key-k'\n"} {
+		files := memFiles{keyStatePath: keyState, "/etc/cliapiproxy/overlay.yaml": overlay, "/run/cliapiproxy/protected.env": protected + line}
+		if _, err = resolveRun(productionProcess(), files); err == nil || !strings.Contains(err.Error(), "is not a protected input") {
+			t.Errorf("protected line %q: err = %v, want it refused", line, err)
+		}
+	}
+	files := memFiles{keyStatePath: keyState, "/etc/cliapiproxy/overlay.yaml": overlay + "api-keys:\n  kiro: [{name: k}]\n", "/run/cliapiproxy/protected.env": protected}
+	if _, err = resolveRun(productionProcess(), files); err == nil || !strings.Contains(err.Error(), "api-keys is not an input") {
+		t.Errorf("overlay api-keys: err = %v, want it refused", err)
 	}
 }
 
@@ -208,18 +261,16 @@ func TestManagementConfigViewRedactsProtectedValues(t *testing.T) {
 	}
 }
 
-// protectedValues lists every value of a protected file: each item of each
-// line, without the group of a group=key item.
+// protectedValues lists every value of a protected file and every key of
+// the key state.
 func protectedValues(file string) []string {
 	var out []string
 	for _, line := range strings.Split(strings.TrimSpace(file), "\n") {
 		_, quoted, _ := strings.Cut(line, "=")
-		for _, item := range strings.Split(strings.Trim(quoted, "'"), ",") {
-			if _, key, isPair := strings.Cut(item, "="); isPair {
-				item = key
-			}
-			out = append(out, item)
-		}
+		out = append(out, strings.Trim(quoted, "'"))
+	}
+	for _, key := range []string{"client-key-a", "client-key-b", "upstream-key-a1", "upstream-key-a2", "upstream-key-m", "upstream-key-c1", "upstream-key-c2", "upstream-key-k"} {
+		out = append(out, key)
 	}
 	return out
 }

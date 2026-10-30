@@ -8,13 +8,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/AsheTheWings/cliapiproxy/internal/upstream"
 	"gopkg.in/yaml.v3"
 )
 
 // value holds one typed input value: a string (string and path shapes),
-// an int64, a bool, a []string (string and path lists), an []upstream.Spec,
-// or a []Credential.
+// an int64, a bool, or a []string (string and path lists).
 type value struct {
 	v any
 }
@@ -100,15 +98,6 @@ func (sh Shape) fromJSON(raw any) (value, error) {
 			out = append(out, s)
 		}
 		return value{out}, nil
-	case TypeUpstreamGroups, TypeCredentialList:
-		items, ok := raw.([]any)
-		if !ok || len(items) > 0 {
-			return value{}, fmt.Errorf("want an empty list")
-		}
-		if sh.Type == TypeUpstreamGroups {
-			return value{[]upstream.Spec{}}, nil
-		}
-		return value{[]Credential{}}, nil
 	}
 	return value{}, fmt.Errorf("unknown shape type %q", sh.Type)
 }
@@ -117,10 +106,6 @@ func (sh Shape) fromJSON(raw any) (value, error) {
 // already have the shape's YAML type: a quoted "8317" is not an integer.
 func (sh Shape) fromYAML(node *yaml.Node) (value, error) {
 	switch sh.Type {
-	case TypeUpstreamGroups:
-		return groupsFromYAML(node)
-	case TypeCredentialList:
-		return value{}, fmt.Errorf("want group=key items in the protected file")
 	case TypeStringList, TypePathList:
 		if node.Kind != yaml.SequenceNode {
 			return value{}, fmt.Errorf("want a list")
@@ -181,10 +166,6 @@ func (sh Shape) fromText(text string) (value, error) {
 		return value{strings.Split(text, ",")}, nil
 	case TypePathList:
 		return value{filepath.SplitList(text)}, nil
-	case TypeCredentialList:
-		return credentialsFromText(text)
-	case TypeUpstreamGroups:
-		return value{}, fmt.Errorf("want a list of groups in an overlay file")
 	}
 	return value{}, fmt.Errorf("unknown shape type %q", sh.Type)
 }
@@ -223,8 +204,6 @@ func (sh Shape) validate(v value) error {
 				}
 			}
 		}
-	case []upstream.Spec:
-		return upstream.ValidateSpecs(sh.Family, x)
 	}
 	return nil
 }

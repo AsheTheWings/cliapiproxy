@@ -296,7 +296,13 @@ func (b *Builder) Build() (*Service, error) {
 	service.serverOptions = append(service.serverOptions,
 		api.WithPostAuthPersistHook(service.runtimeAuthSyncHook()),
 		api.WithPluginHost(pluginHost),
-		api.WithConfigReloadHook(func(_ context.Context, _ *config.Config) {
+		api.WithConfigReloadHook(func(_ context.Context, cfg *config.Config) {
+			// Without a configuration file, the management API's change is
+			// the configuration itself.
+			if service.configPath == "" {
+				service.applyConfigUpdate(cfg)
+				return
+			}
 			service.reloadConfigFromWatcher()
 		}),
 	)

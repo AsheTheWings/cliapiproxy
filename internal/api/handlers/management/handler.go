@@ -15,6 +15,7 @@ import (
 
 	"github.com/AsheTheWings/cliapiproxy/internal/buildinfo"
 	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/keystate"
 	"github.com/AsheTheWings/cliapiproxy/internal/pluginhost"
 	"github.com/AsheTheWings/cliapiproxy/internal/pluginstore"
 	sdkAuth "github.com/AsheTheWings/cliapiproxy/sdk/auth"
@@ -55,6 +56,7 @@ type Handler struct {
 	postAuthPersistHook     coreauth.PostAuthHook
 	pluginHost              *pluginhost.Host
 	configReloadHook        func(context.Context, *config.Config)
+	keyStore                *keystate.Store
 	pluginStoreRegistryURL  string
 	pluginStoreHTTPClient   pluginstore.HTTPDoer
 	pluginStoreRateLimiter  *pluginstore.GitHubRateLimiter
@@ -208,6 +210,17 @@ func (h *Handler) SetConfigReloadHook(hook func(context.Context, *config.Config)
 	}
 	h.mu.Lock()
 	h.configReloadHook = hook
+	h.mu.Unlock()
+}
+
+// SetKeyStore sets the store of the client keys and upstream groups the
+// server keeps as state; without one, no route changes them.
+func (h *Handler) SetKeyStore(store *keystate.Store) {
+	if h == nil {
+		return
+	}
+	h.mu.Lock()
+	h.keyStore = store
 	h.mu.Unlock()
 }
 
