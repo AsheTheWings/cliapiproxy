@@ -223,6 +223,7 @@ func baselineExecutorAuths() []*coreauth.Auth {
 		"devin",
 		"meta",
 		"kiro",
+		"commandcode",
 		"openai-compatibility",
 	}
 	auths := make([]*coreauth.Auth, 0, len(providers))
@@ -330,6 +331,8 @@ func (s *Service) registerExecutorForAuth(a *coreauth.Auth, forceReplace bool) {
 		s.coreManager.RegisterExecutor(executor.NewMetaExecutor(cfg))
 	case "kiro":
 		s.coreManager.RegisterExecutor(executor.NewKiroExecutor(cfg))
+	case "commandcode":
+		s.coreManager.RegisterExecutor(executor.NewCommandCodeExecutor(cfg))
 	default:
 		providerKey := strings.ToLower(strings.TrimSpace(a.Provider))
 		if providerKey == "" {
