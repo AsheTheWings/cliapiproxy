@@ -69,7 +69,7 @@ func (h *Handler) PutProviderGroups(c *gin.Context) {
 }
 
 // decodeProviderGroups reads a JSON list of groups, ignoring the auth indexes
-// GET /config adds to each key.
+// and read-only markers GET /config adds.
 func decodeProviderGroups(body []byte) ([]upstream.Group, error) {
 	var node yaml.Node
 	if err := yaml.Unmarshal(body, &node); err != nil || len(node.Content) == 0 || node.Content[0].Kind != yaml.SequenceNode {
@@ -78,6 +78,7 @@ func decodeProviderGroups(body []byte) ([]upstream.Group, error) {
 	for _, group := range node.Content[0].Content {
 		deleteConfigV8Path(group, []string{"auth_index"})
 		deleteConfigV8Path(group, []string{"auth-index"})
+		deleteConfigV8Path(group, []string{"read-only"})
 		if keys := configV8Node(group, []string{"keys"}); keys != nil {
 			for _, key := range keys.Content {
 				deleteConfigV8Path(key, []string{"auth_index"})
@@ -165,18 +166,29 @@ func unmaskKeys(g, stored upstream.Group) (upstream.Group, error) {
 }
 
 // providerGroupsNode renders each family's groups, the inputs' first, with
-// their keys, as the api-keys subtree of the v8 layout.
+// their keys, as the api-keys subtree of the v8 layout. The inputs' groups
+// carry read-only: true, since only the server's inputs change them.
 func providerGroupsNode(store *providers.Store) (*yaml.Node, error) {
-	view := map[string][]upstream.Group{}
+	root := &yaml.Node{Kind: yaml.MappingNode}
 	for _, family := range upstream.Families() {
 		inputs, state := store.Groups(family)
-		if groups := append(inputs, state...); len(groups) > 0 {
-			view[family] = groups
+		if len(inputs)+len(state) == 0 {
+			continue
 		}
+		list := &yaml.Node{Kind: yaml.SequenceNode}
+		for i, g := range append(append([]upstream.Group(nil), inputs...), state...) {
+			var group yaml.Node
+			if err := group.Encode(g); err != nil {
+				return nil, err
+			}
+			if i < len(inputs) {
+				group.Content = append(group.Content,
+					&yaml.Node{Kind: yaml.ScalarNode, Value: "read-only"},
+					&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!bool", Value: "true"})
+			}
+			list.Content = append(list.Content, &group)
+		}
+		root.Content = append(root.Content, &yaml.Node{Kind: yaml.ScalarNode, Value: family}, list)
 	}
-	var node yaml.Node
-	if err := node.Encode(view); err != nil {
-		return nil, err
-	}
-	return &node, nil
+	return root, nil
 }

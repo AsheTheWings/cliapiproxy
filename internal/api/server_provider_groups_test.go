@@ -84,7 +84,8 @@ func TestManagementKeepsProviderGroupsAsState(t *testing.T) {
 	if err := json.Unmarshal(view.Body.Bytes(), &groups); err != nil {
 		t.Fatal(err)
 	}
-	if len(groups["kiro"]) != 1 || groups["kiro"][0]["name"] != "kiro" || len(groups["commandcode"]) != 1 || groups["commandcode"][0]["name"] != "inputs" {
+	if len(groups["kiro"]) != 1 || groups["kiro"][0]["name"] != "kiro" || groups["kiro"][0]["read-only"] != nil ||
+		len(groups["commandcode"]) != 1 || groups["commandcode"][0]["name"] != "inputs" || groups["commandcode"][0]["read-only"] != true {
 		t.Fatalf("groups = %v", groups)
 	}
 
