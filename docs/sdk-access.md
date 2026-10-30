@@ -57,16 +57,17 @@ Each `Result` includes the provider identifier, the resolved principal, and opti
 
 The proxy includes one built-in access provider:
 
-- `config-api-key`: Validates API keys declared under top-level `api-keys`.
+- `config-api-key`: Validates the client API keys under `access.api-keys`. Without keys it refuses every request.
   - Credential sources: `Authorization: Bearer`, `X-Goog-Api-Key`, `X-Api-Key`, `?key=`, `?auth_token=`
   - Metadata: `Result.Metadata["source"]` is set to the matched source label.
 
-In the CLI server and `sdk/cliproxy`, this provider is registered automatically based on the loaded configuration.
+In the CLI server and `sdk/cliproxy`, this provider is registered automatically for every loaded configuration, so a configuration without client keys refuses proxy requests rather than leaving them open.
 
 ```yaml
-api-keys:
-  - sk-test-123
-  - sk-prod-456
+access:
+  api-keys:
+    - sk-test-123
+    - sk-prod-456
 ```
 
 ## Loading Providers from External Go Modules
