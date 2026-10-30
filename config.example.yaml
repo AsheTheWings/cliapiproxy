@@ -887,6 +887,15 @@ upstream:
 #         - api-key: "..."
 #           weight: 5 # optional: weighted-round-robin share; omitted defaults to 1; maximum 1,000,000
 #
+#   # Command Code API keys
+#   # Each key serves the models its own account's plan allows; a group sets no base-url or models.
+#
+#   commandcode:
+#     - name: commandcode-1
+#       prefix: "cc" # optional: require calls like "cc/commandcode/deepseek/deepseek-v4-flash"
+#       keys:
+#         - api-key: "..."
+#
 #   # OpenAI compatibility providers
 #
 #   openai-compatibility:
