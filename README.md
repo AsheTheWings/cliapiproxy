@@ -30,8 +30,9 @@ CLIPROXY_PROFILE=development ./CLIProxyAPI
 ```
 
 The server keeps the client and upstream API keys itself and starts with
-none, refusing every proxy request until the
-[management API](docs/management.md) adds a client key.
+none, refusing every proxy request until a client key exists. Sign in to the
+[management dashboard](docs/management.md#dashboard) at
+`http://127.0.0.1:8317/management.html` with the management key to add one.
 
 ## Usage
 
@@ -47,7 +48,7 @@ without a restart. API-key credentials of OpenAI-compatible providers, Meta
 Muse, [Command Code](docs/commandcode.md), and [Kiro](docs/kiro.md) are
 [key state](docs/configuration.md#keys) the management API writes. The
 [management dashboard](docs/management.md#dashboard) at `/management.html`
-edits the upstream API keys and the credential files.
+edits the client and upstream API keys and the credential files.
 
 The Go packages under `sdk/` embed the proxy in other programs:
 [usage](docs/sdk-usage.md), [executors and translators](docs/sdk-advanced.md),

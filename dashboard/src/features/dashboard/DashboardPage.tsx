@@ -146,8 +146,8 @@ export function DashboardPage() {
     { label: t('dashboard.runtime_routing'), value: routingStrategy },
     { label: t('dashboard.runtime_retry'), value: String(config?.requestRetry ?? 0) },
     {
-      label: t('dashboard.runtime_management_keys'),
-      value: counts.managementKeys === null ? DASH : String(counts.managementKeys),
+      label: t('dashboard.runtime_client_keys'),
+      value: counts.clientKeys === null ? DASH : String(counts.clientKeys),
     },
     { label: t('dashboard.runtime_version'), value: serverVersion?.trim() || DASH },
     {

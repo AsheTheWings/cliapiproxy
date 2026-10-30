@@ -88,7 +88,7 @@ const createAccumulator = (): ProviderAccumulator => ({
   bucketGroups: [],
 });
 
-/** Upstream API keys per family, across the inputs' groups and the provider state. */
+/** Upstream API keys per family, across every group of the key state. */
 export const getProviderKeyCounts = (config: Config): Record<ProviderFamily, number> => {
   const groups = parseProviderGroups(config.raw?.['api-keys']);
   return Object.fromEntries(
@@ -213,7 +213,7 @@ export function useDashboardOverview() {
 
   const counts = useMemo<DashboardCounts>(
     () => ({
-      managementKeys: config ? (config.apiKeys?.length ?? 0) : null,
+      clientKeys: config ? (config.apiKeys?.length ?? 0) : null,
       providerKeys: providerKeyCounts
         ? Object.values(providerKeyCounts).reduce((sum, count) => sum + count, 0)
         : null,
