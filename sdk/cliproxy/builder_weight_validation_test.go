@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	internalconfig "github.com/AsheTheWings/cliapiproxy/internal/config"
 )
 
 func TestBuilderBuildRejectsInvalidWithConfigCredentialWeight(t *testing.T) {

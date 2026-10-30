@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	homekv "github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	homekv "github.com/AsheTheWings/cliapiproxy/internal/home"
 	"github.com/tidwall/gjson"
 )
 

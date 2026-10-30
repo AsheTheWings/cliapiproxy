@@ -8,9 +8,9 @@ import (
 	"sync"
 	"testing"
 
-	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
+	cliproxyexecutor "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/executor"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
+	"github.com/AsheTheWings/cliapiproxy/internal/registry"
 )
 
 type replaceAwareExecutor struct {

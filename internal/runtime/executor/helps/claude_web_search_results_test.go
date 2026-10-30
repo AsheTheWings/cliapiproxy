@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/cache"
+	"github.com/AsheTheWings/cliapiproxy/internal/cache"
 	"github.com/tidwall/gjson"
 )
 

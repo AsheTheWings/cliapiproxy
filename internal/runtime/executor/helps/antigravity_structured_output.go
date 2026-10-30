@@ -4,8 +4,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/translator/common"
+	"github.com/AsheTheWings/cliapiproxy/internal/thinking"
+	"github.com/AsheTheWings/cliapiproxy/internal/translator/common"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 )

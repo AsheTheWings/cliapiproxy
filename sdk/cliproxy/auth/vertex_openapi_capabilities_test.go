@@ -6,9 +6,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/modelconfig"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/modelconfig"
+	"github.com/AsheTheWings/cliapiproxy/internal/registry"
 )
 
 func TestCompileVertexAPIKeyOpenAPICapabilities(t *testing.T) {

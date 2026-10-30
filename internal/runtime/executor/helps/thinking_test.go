@@ -6,10 +6,10 @@ import (
 	"context"
 	"testing"
 
-	helps "github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
-	_ "github.com/router-for-me/CLIProxyAPI/v8/internal/thinking/provider/gemini"
-	_ "github.com/router-for-me/CLIProxyAPI/v8/internal/translator"
-	sdktranslator "github.com/router-for-me/CLIProxyAPI/v8/sdk/translator"
+	helps "github.com/AsheTheWings/cliapiproxy/internal/runtime/executor/helps"
+	_ "github.com/AsheTheWings/cliapiproxy/internal/thinking/provider/gemini"
+	_ "github.com/AsheTheWings/cliapiproxy/internal/translator"
+	sdktranslator "github.com/AsheTheWings/cliapiproxy/sdk/translator"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 )

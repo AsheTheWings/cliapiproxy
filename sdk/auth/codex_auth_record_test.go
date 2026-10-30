@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
+	"github.com/AsheTheWings/cliapiproxy/internal/auth/codex"
 )
 
 func makeTestCodexJWT(planType, accountID string) string {

@@ -9,10 +9,10 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	sdkaccess "github.com/AsheTheWings/cliapiproxy/sdk/access"
+	"github.com/AsheTheWings/cliapiproxy/sdk/pluginapi"
 	"github.com/klauspost/compress/zstd"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	sdkaccess "github.com/router-for-me/CLIProxyAPI/v8/sdk/access"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
 )
 
 // Decoding runs before authentication, so what it allocates, produces and runs at once is bounded.

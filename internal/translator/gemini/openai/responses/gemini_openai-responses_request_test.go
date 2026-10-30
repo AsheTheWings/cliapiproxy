@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	internalsignature "github.com/router-for-me/CLIProxyAPI/v8/internal/signature"
+	internalsignature "github.com/AsheTheWings/cliapiproxy/internal/signature"
 	"github.com/tidwall/gjson"
 )
 

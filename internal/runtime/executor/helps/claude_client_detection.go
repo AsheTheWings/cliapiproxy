@@ -8,8 +8,8 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
 	"github.com/google/uuid"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	"github.com/tidwall/gjson"
 )
 

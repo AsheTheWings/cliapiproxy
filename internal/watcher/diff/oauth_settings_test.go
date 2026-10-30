@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
 )
 
 func TestDiffOAuthSettingsChanges(t *testing.T) {

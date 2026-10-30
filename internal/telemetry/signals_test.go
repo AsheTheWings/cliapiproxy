@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/AsheTheWings/cliapiproxy/internal/telemetry"
+	"github.com/AsheTheWings/cliapiproxy/internal/testsupport/telemetrytest"
 	"github.com/gin-gonic/gin"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/telemetry"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/telemetrytest"
 	"github.com/sirupsen/logrus"
 	otellog "go.opentelemetry.io/otel/log"
 	sdklog "go.opentelemetry.io/otel/sdk/log"

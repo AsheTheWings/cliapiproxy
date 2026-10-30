@@ -10,13 +10,13 @@ import (
 	"strings"
 	"testing"
 
-	internalcache "github.com/router-for-me/CLIProxyAPI/v8/internal/cache"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	homekv "github.com/router-for-me/CLIProxyAPI/v8/internal/home"
-	internalsignature "github.com/router-for-me/CLIProxyAPI/v8/internal/signature"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
-	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
-	sdktranslator "github.com/router-for-me/CLIProxyAPI/v8/sdk/translator"
+	internalcache "github.com/AsheTheWings/cliapiproxy/internal/cache"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	homekv "github.com/AsheTheWings/cliapiproxy/internal/home"
+	internalsignature "github.com/AsheTheWings/cliapiproxy/internal/signature"
+	"github.com/AsheTheWings/cliapiproxy/internal/util"
+	cliproxyexecutor "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/executor"
+	sdktranslator "github.com/AsheTheWings/cliapiproxy/sdk/translator"
 	"github.com/tidwall/gjson"
 )
 

@@ -14,8 +14,8 @@ import (
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 
-	toolschema "github.com/router-for-me/CLIProxyAPI/v8/internal/client/codex/tool-schema"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
+	toolschema "github.com/AsheTheWings/cliapiproxy/internal/client/codex/tool-schema"
+	"github.com/AsheTheWings/cliapiproxy/internal/util"
 )
 
 const (

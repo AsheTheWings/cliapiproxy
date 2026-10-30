@@ -13,7 +13,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
+	"github.com/AsheTheWings/cliapiproxy/internal/testsupport/wait"
 )
 
 type roundTripFunc func(*http.Request) (*http.Response, error)

@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
+	internalconfig "github.com/AsheTheWings/cliapiproxy/internal/config"
 	"github.com/google/uuid"
-	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
 	log "github.com/sirupsen/logrus"
 )
 

@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
+	"github.com/AsheTheWings/cliapiproxy/internal/util"
 	"github.com/tidwall/gjson"
 )
 

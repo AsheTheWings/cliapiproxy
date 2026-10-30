@@ -11,7 +11,7 @@ import (
 	"syscall"
 	"unsafe"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
+	"github.com/AsheTheWings/cliapiproxy/internal/clienterror"
 	"golang.org/x/sys/windows"
 )
 

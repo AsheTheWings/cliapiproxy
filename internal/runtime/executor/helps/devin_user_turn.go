@@ -3,7 +3,7 @@ package helps
 import (
 	"strings"
 
-	translatorcommon "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/common"
+	translatorcommon "github.com/AsheTheWings/cliapiproxy/internal/translator/common"
 )
 
 // CheckDevinUserTurns applies the shared user-turn policy to the parsed prompts.

@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	sdktranslator "github.com/router-for-me/CLIProxyAPI/v8/sdk/translator"
-	_ "github.com/router-for-me/CLIProxyAPI/v8/sdk/translator/builtin"
+	sdktranslator "github.com/AsheTheWings/cliapiproxy/sdk/translator"
+	_ "github.com/AsheTheWings/cliapiproxy/sdk/translator/builtin"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 )

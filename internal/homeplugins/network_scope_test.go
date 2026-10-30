@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	internalpluginstore "github.com/router-for-me/CLIProxyAPI/v8/internal/pluginstore"
-	sdkpluginstore "github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginstore"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	internalpluginstore "github.com/AsheTheWings/cliapiproxy/internal/pluginstore"
+	sdkpluginstore "github.com/AsheTheWings/cliapiproxy/sdk/pluginstore"
 )
 
 type networkScopeDoer func(*http.Request) (*http.Response, error)

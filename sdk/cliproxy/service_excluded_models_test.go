@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	internalregistry "github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
-	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/config"
+	internalregistry "github.com/AsheTheWings/cliapiproxy/internal/registry"
+	coreauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
+	"github.com/AsheTheWings/cliapiproxy/sdk/config"
 )
 
 func TestRegisterModelsForAuth_CredentialExcludedModelsOverrideGlobal(t *testing.T) {

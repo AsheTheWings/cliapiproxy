@@ -3,9 +3,9 @@ package responses
 import (
 	"strings"
 
-	applypatch "github.com/router-for-me/CLIProxyAPI/v8/internal/client/codex/apply-patch"
-	translatorcommon "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/common"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
+	applypatch "github.com/AsheTheWings/cliapiproxy/internal/client/codex/apply-patch"
+	translatorcommon "github.com/AsheTheWings/cliapiproxy/internal/translator/common"
+	"github.com/AsheTheWings/cliapiproxy/internal/util"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 )

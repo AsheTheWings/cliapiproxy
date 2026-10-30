@@ -19,8 +19,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	sdkpluginstore "github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginstore"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	sdkpluginstore "github.com/AsheTheWings/cliapiproxy/sdk/pluginstore"
 	"gopkg.in/yaml.v3"
 )
 

@@ -8,8 +8,8 @@ import (
 	"os"
 	"testing"
 
-	metaauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth/meta"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	metaauth "github.com/AsheTheWings/cliapiproxy/internal/auth/meta"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
 )
 
 func TestBuildMetaAuthRecord_PreservesSubscriptionMetadata_Issue6117(t *testing.T) {

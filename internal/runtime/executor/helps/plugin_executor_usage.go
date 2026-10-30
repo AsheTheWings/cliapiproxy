@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"strings"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/usage"
+	"github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/usage"
 	"github.com/tidwall/gjson"
 )
 

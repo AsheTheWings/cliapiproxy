@@ -5,7 +5,7 @@ The `sdk/cliproxy` module exposes the proxy as a reusable Go library so external
 ## Install & Import
 
 ```bash
-go get github.com/router-for-me/CLIProxyAPI/v6/sdk/cliproxy
+go get github.com/AsheTheWings/cliapiproxy/sdk/cliproxy
 ```
 
 ```go
@@ -14,12 +14,12 @@ import (
     "errors"
     "time"
 
-    "github.com/router-for-me/CLIProxyAPI/v6/internal/config"
-    "github.com/router-for-me/CLIProxyAPI/v6/sdk/cliproxy"
+    "github.com/AsheTheWings/cliapiproxy/internal/config"
+    "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy"
 )
 ```
 
-Note the `/v6` module path.
+The module path is `github.com/AsheTheWings/cliapiproxy`.
 
 ## Minimal Embed
 

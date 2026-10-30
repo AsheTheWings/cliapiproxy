@@ -5,7 +5,7 @@ package executor
 import (
 	"testing"
 
-	sdktranslator "github.com/router-for-me/CLIProxyAPI/v8/sdk/translator"
+	sdktranslator "github.com/AsheTheWings/cliapiproxy/sdk/translator"
 )
 
 func TestResponseFormatOrSourceUsesExplicitResponseFormat(t *testing.T) {

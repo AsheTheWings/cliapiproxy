@@ -5,7 +5,7 @@ package auth
 import (
 	"testing"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/kiro"
+	"github.com/AsheTheWings/cliapiproxy/internal/auth/kiro"
 )
 
 func TestKiroRefreshLeadStaysBeforeTheReloadMoment(t *testing.T) {

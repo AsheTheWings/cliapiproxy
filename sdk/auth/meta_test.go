@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/meta"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/auth/meta"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
 )
 
 type metaTestTransport func(*http.Request) (*http.Response, error)

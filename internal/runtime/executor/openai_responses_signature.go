@@ -6,11 +6,11 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/runtime/executor/helps"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/signature"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
-	cliproxyexecutor "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executor"
+	"github.com/AsheTheWings/cliapiproxy/internal/runtime/executor/helps"
+	"github.com/AsheTheWings/cliapiproxy/internal/signature"
+	"github.com/AsheTheWings/cliapiproxy/internal/thinking"
+	"github.com/AsheTheWings/cliapiproxy/internal/util"
+	cliproxyexecutor "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/executor"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 )

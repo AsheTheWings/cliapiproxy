@@ -3,8 +3,8 @@ package common
 import (
 	"strings"
 
-	sigcompat "github.com/router-for-me/CLIProxyAPI/v8/internal/signature"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
+	sigcompat "github.com/AsheTheWings/cliapiproxy/internal/signature"
+	"github.com/AsheTheWings/cliapiproxy/internal/thinking"
 	"github.com/tidwall/gjson"
 )
 

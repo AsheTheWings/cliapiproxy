@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
+	"github.com/AsheTheWings/cliapiproxy/internal/home"
 )
 
 type homeRequestLogClient interface {

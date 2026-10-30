@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/pluginstore"
+	"github.com/AsheTheWings/cliapiproxy/internal/pluginstore"
 	log "github.com/sirupsen/logrus"
 )
 

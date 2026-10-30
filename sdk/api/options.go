@@ -7,11 +7,11 @@ package api
 import (
 	"time"
 
+	internalapi "github.com/AsheTheWings/cliapiproxy/internal/api"
+	"github.com/AsheTheWings/cliapiproxy/sdk/api/handlers"
+	"github.com/AsheTheWings/cliapiproxy/sdk/config"
+	"github.com/AsheTheWings/cliapiproxy/sdk/logging"
 	"github.com/gin-gonic/gin"
-	internalapi "github.com/router-for-me/CLIProxyAPI/v8/internal/api"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/api/handlers"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/config"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/logging"
 )
 
 // ServerOption customises HTTP server construction.

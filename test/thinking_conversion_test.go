@@ -7,21 +7,21 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/router-for-me/CLIProxyAPI/v8/internal/translator"
+	_ "github.com/AsheTheWings/cliapiproxy/internal/translator"
 
 	// Import provider packages to trigger init() registration of ProviderAppliers
-	_ "github.com/router-for-me/CLIProxyAPI/v8/internal/thinking/provider/antigravity"
-	_ "github.com/router-for-me/CLIProxyAPI/v8/internal/thinking/provider/claude"
-	_ "github.com/router-for-me/CLIProxyAPI/v8/internal/thinking/provider/codex"
-	_ "github.com/router-for-me/CLIProxyAPI/v8/internal/thinking/provider/gemini"
-	_ "github.com/router-for-me/CLIProxyAPI/v8/internal/thinking/provider/interactions"
-	_ "github.com/router-for-me/CLIProxyAPI/v8/internal/thinking/provider/kimi"
-	_ "github.com/router-for-me/CLIProxyAPI/v8/internal/thinking/provider/openai"
-	_ "github.com/router-for-me/CLIProxyAPI/v8/internal/thinking/provider/xai"
+	_ "github.com/AsheTheWings/cliapiproxy/internal/thinking/provider/antigravity"
+	_ "github.com/AsheTheWings/cliapiproxy/internal/thinking/provider/claude"
+	_ "github.com/AsheTheWings/cliapiproxy/internal/thinking/provider/codex"
+	_ "github.com/AsheTheWings/cliapiproxy/internal/thinking/provider/gemini"
+	_ "github.com/AsheTheWings/cliapiproxy/internal/thinking/provider/interactions"
+	_ "github.com/AsheTheWings/cliapiproxy/internal/thinking/provider/kimi"
+	_ "github.com/AsheTheWings/cliapiproxy/internal/thinking/provider/openai"
+	_ "github.com/AsheTheWings/cliapiproxy/internal/thinking/provider/xai"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/thinking"
-	sdktranslator "github.com/router-for-me/CLIProxyAPI/v8/sdk/translator"
+	"github.com/AsheTheWings/cliapiproxy/internal/registry"
+	"github.com/AsheTheWings/cliapiproxy/internal/thinking"
+	sdktranslator "github.com/AsheTheWings/cliapiproxy/sdk/translator"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 )

@@ -1,9 +1,9 @@
 package gemini
 
 import (
-	. "github.com/router-for-me/CLIProxyAPI/v8/internal/constant"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/interfaces"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/translator/translator"
+	. "github.com/AsheTheWings/cliapiproxy/internal/constant"
+	"github.com/AsheTheWings/cliapiproxy/internal/interfaces"
+	"github.com/AsheTheWings/cliapiproxy/internal/translator/translator"
 )
 
 // Register a no-op response translator and a request normalizer for Gemini→Gemini.

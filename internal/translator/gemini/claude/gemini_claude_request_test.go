@@ -5,11 +5,11 @@ package claude
 import (
 	"errors"
 	"fmt"
-	translatorcommon "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/common"
+	translatorcommon "github.com/AsheTheWings/cliapiproxy/internal/translator/common"
 	"strings"
 	"testing"
 
-	internalsignature "github.com/router-for-me/CLIProxyAPI/v8/internal/signature"
+	internalsignature "github.com/AsheTheWings/cliapiproxy/internal/signature"
 	"github.com/tidwall/gjson"
 )
 

@@ -7,7 +7,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
+	"github.com/AsheTheWings/cliapiproxy/internal/registry"
 )
 
 type toolSearchSupportExecutor struct {

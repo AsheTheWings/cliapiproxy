@@ -12,7 +12,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/misc"
+	"github.com/AsheTheWings/cliapiproxy/internal/misc"
 	log "github.com/sirupsen/logrus"
 )
 

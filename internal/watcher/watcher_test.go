@@ -16,14 +16,14 @@ import (
 	"testing/synctest"
 	"time"
 
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/redisqueue"
+	"github.com/AsheTheWings/cliapiproxy/internal/testsupport/wait"
+	"github.com/AsheTheWings/cliapiproxy/internal/watcher/diff"
+	"github.com/AsheTheWings/cliapiproxy/internal/watcher/synthesizer"
+	sdkAuth "github.com/AsheTheWings/cliapiproxy/sdk/auth"
+	coreauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
 	"github.com/fsnotify/fsnotify"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/redisqueue"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/watcher/diff"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/watcher/synthesizer"
-	sdkAuth "github.com/router-for-me/CLIProxyAPI/v8/sdk/auth"
-	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 	"gopkg.in/yaml.v3"
 )
 

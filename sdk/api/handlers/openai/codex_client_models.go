@@ -2,9 +2,9 @@ package openai
 
 import (
 	"context"
-	codexmodels "github.com/router-for-me/CLIProxyAPI/v8/internal/client/codex/models"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
-	responsesclaude "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/claude/openai/responses"
+	codexmodels "github.com/AsheTheWings/cliapiproxy/internal/client/codex/models"
+	"github.com/AsheTheWings/cliapiproxy/internal/registry"
+	responsesclaude "github.com/AsheTheWings/cliapiproxy/internal/translator/claude/openai/responses"
 )
 
 func (h *OpenAIAPIHandler) codexClientModelsResponse(clientVersion ...string) map[string]any {

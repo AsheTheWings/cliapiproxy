@@ -4,7 +4,7 @@ import (
 	"sort"
 	"strings"
 
-	sdkpluginstore "github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginstore"
+	sdkpluginstore "github.com/AsheTheWings/cliapiproxy/sdk/pluginstore"
 	log "github.com/sirupsen/logrus"
 )
 

@@ -2,13 +2,13 @@ package synthesizer
 
 import (
 	"fmt"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/commandcode"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/kiro"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/config"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/constant"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/util"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/watcher/diff"
-	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
+	"github.com/AsheTheWings/cliapiproxy/internal/auth/commandcode"
+	"github.com/AsheTheWings/cliapiproxy/internal/auth/kiro"
+	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/constant"
+	"github.com/AsheTheWings/cliapiproxy/internal/util"
+	"github.com/AsheTheWings/cliapiproxy/internal/watcher/diff"
+	coreauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
 	"strconv"
 	"strings"
 )

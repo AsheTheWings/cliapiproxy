@@ -5,7 +5,7 @@ package helps
 import (
 	"testing"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/usage"
+	"github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/usage"
 )
 
 func TestObservePluginExecutorStreamUsageKeepsTopLevelResponsesTokensWhenServiceTierPresent(t *testing.T) {

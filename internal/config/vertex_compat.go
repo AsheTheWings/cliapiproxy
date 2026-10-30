@@ -3,7 +3,7 @@ package config
 import (
 	"strings"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
+	"github.com/AsheTheWings/cliapiproxy/internal/registry"
 )
 
 // VertexCompatKey represents the configuration for Vertex AI-compatible API keys.

@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	sigcompat "github.com/router-for-me/CLIProxyAPI/v8/internal/signature"
-	translatorcommon "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/common"
+	sigcompat "github.com/AsheTheWings/cliapiproxy/internal/signature"
+	translatorcommon "github.com/AsheTheWings/cliapiproxy/internal/translator/common"
 	"github.com/tidwall/gjson"
 	"github.com/tidwall/sjson"
 )

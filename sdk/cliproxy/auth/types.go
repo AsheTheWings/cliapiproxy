@@ -17,9 +17,9 @@ import (
 	"sync"
 	"time"
 
+	baseauth "github.com/AsheTheWings/cliapiproxy/internal/auth"
+	"github.com/AsheTheWings/cliapiproxy/internal/auth/codex"
 	"github.com/gin-gonic/gin"
-	baseauth "github.com/router-for-me/CLIProxyAPI/v8/internal/auth"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/auth/codex"
 )
 
 // PostAuthHook defines a function that is called after an Auth record is created

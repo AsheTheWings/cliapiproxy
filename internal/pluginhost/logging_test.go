@@ -5,7 +5,7 @@ package pluginhost
 import (
 	"testing"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/pluginapi"
+	"github.com/AsheTheWings/cliapiproxy/sdk/pluginapi"
 )
 
 func TestPluginLogFieldsIncludesNameVersionAndPath(t *testing.T) {

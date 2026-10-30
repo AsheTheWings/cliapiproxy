@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/AsheTheWings/cliapiproxy/internal/clienterror"
 	"github.com/gin-gonic/gin"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/clienterror"
 )
 
 // Quota exceeded toggles

@@ -4,7 +4,7 @@
 // thinking configurations across various AI providers (Claude, Gemini, OpenAI, Codex, Antigravity, Kimi, xAI).
 package thinking
 
-import "github.com/router-for-me/CLIProxyAPI/v8/internal/registry"
+import "github.com/AsheTheWings/cliapiproxy/internal/registry"
 
 // ThinkingMode represents the type of thinking configuration mode.
 type ThinkingMode int

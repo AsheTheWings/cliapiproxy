@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
+	coreauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
 	"github.com/gin-gonic/gin"
-	coreauth "github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/auth"
 )
 
 type apiKeyUsageEntry struct {

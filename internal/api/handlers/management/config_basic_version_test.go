@@ -7,7 +7,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/githubauth"
+	"github.com/AsheTheWings/cliapiproxy/internal/githubauth"
 )
 
 func TestSetLatestReleaseRequestHeaders(t *testing.T) {

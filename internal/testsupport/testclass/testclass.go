@@ -204,7 +204,7 @@ var (
 	processEnvMethods = set("Setenv", "Chdir")
 )
 
-const waitPackage = "github.com/router-for-me/CLIProxyAPI/v8/internal/testsupport/wait"
+const waitPackage = "github.com/AsheTheWings/cliapiproxy/internal/testsupport/wait"
 
 func parseFile(path, rel string) (*File, error) {
 	fset := token.NewFileSet()

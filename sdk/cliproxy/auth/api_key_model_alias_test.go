@@ -6,7 +6,7 @@ import (
 	"context"
 	"testing"
 
-	internalconfig "github.com/router-for-me/CLIProxyAPI/v8/internal/config"
+	internalconfig "github.com/AsheTheWings/cliapiproxy/internal/config"
 )
 
 func TestLookupAPIKeyUpstreamModel(t *testing.T) {

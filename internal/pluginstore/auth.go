@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/githubauth"
+	"github.com/AsheTheWings/cliapiproxy/internal/githubauth"
 )
 
 const (

@@ -10,10 +10,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/home"
-	"github.com/router-for-me/CLIProxyAPI/v8/internal/homeplugins"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/cliproxy/executionregistry"
-	"github.com/router-for-me/CLIProxyAPI/v8/sdk/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/home"
+	"github.com/AsheTheWings/cliapiproxy/internal/homeplugins"
+	"github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/executionregistry"
+	"github.com/AsheTheWings/cliapiproxy/sdk/config"
 )
 
 func TestServicePlannedRebalanceSettlesDispatchBeforeCancelingPluginFinalization(t *testing.T) {

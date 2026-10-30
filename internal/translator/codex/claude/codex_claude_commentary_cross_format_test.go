@@ -6,10 +6,10 @@ import (
 	"strings"
 	"testing"
 
-	antigravityclaude "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/antigravity/claude"
-	geminiclaude "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/gemini/claude"
-	interactionsclaude "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/interactions/claude"
-	openaiclaude "github.com/router-for-me/CLIProxyAPI/v8/internal/translator/openai/claude"
+	antigravityclaude "github.com/AsheTheWings/cliapiproxy/internal/translator/antigravity/claude"
+	geminiclaude "github.com/AsheTheWings/cliapiproxy/internal/translator/gemini/claude"
+	interactionsclaude "github.com/AsheTheWings/cliapiproxy/internal/translator/interactions/claude"
+	openaiclaude "github.com/AsheTheWings/cliapiproxy/internal/translator/openai/claude"
 	"github.com/tidwall/gjson"
 )
 
