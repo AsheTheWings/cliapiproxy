@@ -45,7 +45,9 @@ provider's OAuth flow, writes the credential file, and exits; for example,
 to Grok Build. Adding, replacing, or removing a credential file takes effect
 without a restart. API-key credentials of OpenAI-compatible providers, Meta
 Muse, [Command Code](docs/commandcode.md), and [Kiro](docs/kiro.md) are
-[key state](docs/configuration.md#keys) the management API writes.
+[key state](docs/configuration.md#keys) the management API writes. The
+[management dashboard](docs/management.md#dashboard) at `/management.html`
+edits the upstream API keys and the credential files.
 
 The Go packages under `sdk/` embed the proxy in other programs:
 [usage](docs/sdk-usage.md), [executors and translators](docs/sdk-advanced.md),
@@ -62,4 +64,6 @@ The Go packages under `sdk/` embed the proxy in other programs:
 
 ## License
 
-This project is licensed under the MIT License; see [LICENSE](LICENSE).
+This project is licensed under the MIT License; see [LICENSE](LICENSE). The
+dashboard derives from the CLI Proxy API Management Center under the MIT
+License; see [dashboard/LICENSE](dashboard/LICENSE).

@@ -11,6 +11,13 @@ constraint. A plain `go test ./...` selects no class and runs nothing.
 | integration | Code that starts processes, such as plugin builds, or needs real network interfaces, such as WebRTC media | `scripts/test.sh integration` |
 | qualification | The built container image, run from its OCI layout with Podman | `scripts/test.sh qualification ./test/qualification` |
 
+The dashboard's Bun tests in `dashboard/tests` are unit tests and
+read-only conformance checks of its sources and locale files.
+[`scripts/dashboard.sh`](../scripts/dashboard.sh) runs them with its lint, type
+check, and build, and the image build runs that script, so every image build
+gates on them. One file runs with `bun test tests/<name>.test.ts` in
+`dashboard/`.
+
 The fast hermetic gate runs unit, component, and conformance:
 
 ```sh
@@ -30,7 +37,7 @@ named by `CLIPROXY_QUALIFICATION_LAYOUT`, and checks it carries the revision
 `CLIPROXY_QUALIFICATION_REVISION` names; those two values are its only inputs
 beyond the toolchain. It loads the image into a run-owned Podman store,
 serves it with production inputs against a run-owned OTLP endpoint, checks
-authentication, a clean exit on SIGTERM, and the exported traces and metrics,
+authentication, the embedded dashboard page, a clean exit on SIGTERM, and the exported traces and metrics,
 runs the telemetry probe, and removes the store.
 
 ```sh

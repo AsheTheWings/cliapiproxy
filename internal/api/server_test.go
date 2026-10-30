@@ -28,7 +28,6 @@ import (
 	proxyconfig "github.com/AsheTheWings/cliapiproxy/internal/config"
 	"github.com/AsheTheWings/cliapiproxy/internal/home"
 	internallogging "github.com/AsheTheWings/cliapiproxy/internal/logging"
-	"github.com/AsheTheWings/cliapiproxy/internal/managementasset"
 	"github.com/AsheTheWings/cliapiproxy/internal/pluginhost"
 	"github.com/AsheTheWings/cliapiproxy/internal/registry"
 	"github.com/AsheTheWings/cliapiproxy/internal/runtime/executor"
@@ -1732,15 +1731,28 @@ func TestHomeEnabledHidesManagementEndpointsAndControlPanel(t *testing.T) {
 	})
 }
 
+func TestDashboardFollowsTheManagementKey(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		cfg  *proxyconfig.Config
+		want int
+	}{
+		{"with a management key", newManagementTestServer(t, "test-management-key").cfg, http.StatusOK},
+		{"without a management key", &proxyconfig.Config{SDKConfig: sdkconfig.SDKConfig{APIKeys: []string{"test-key"}}}, http.StatusNotFound},
+	} {
+		server := newTestServerWithConfig(t, tc.cfg)
+		server.dashboardHTML = []byte("<html>management app</html>")
+		rr := httptest.NewRecorder()
+		server.engine.ServeHTTP(rr, httptest.NewRequest(http.MethodGet, "/management.html", nil))
+		if rr.Code != tc.want {
+			t.Errorf("%s: status %d, want %d", tc.name, rr.Code, tc.want)
+		}
+	}
+}
+
 func TestExampleAPIKeySafeModeShowsWarningAndKeepsManagement(t *testing.T) {
 	server := newManagementTestServer(t, "test-management-key", WithExampleAPIKeySafeMode())
-	staticDir := managementasset.StaticDir(server.configFilePath)
-	if err := os.MkdirAll(staticDir, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(staticDir, "management.html"), []byte("<html>management app</html>"), 0o600); err != nil {
-		t.Fatalf("failed to write management asset: %v", err)
-	}
+	server.dashboardHTML = []byte("<html>management app</html>")
 	cfg := *server.cfg
 	cfg.APIKeys = []string{"your-api-key-1"}
 	server.UpdateClients(&cfg)

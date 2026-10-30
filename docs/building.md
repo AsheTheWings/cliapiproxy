@@ -7,9 +7,28 @@ names:
 go build -o CLIProxyAPI ./cmd/server
 ```
 
+## Dashboard
+
+The management dashboard is a React application in `dashboard/`, built with
+Bun at the version its `package.json` names into one HTML page that the
+server embeds. [`scripts/dashboard.sh`](../scripts/dashboard.sh) installs its
+locked dependencies, runs its tests, lint, and type check, builds the page,
+and copies it to `internal/dashboard/dist/management.html`, which Git
+ignores. A `go build` after it embeds the page; one without it builds a server
+whose `/management.html` answers 404.
+
+```sh
+scripts/dashboard.sh
+go build -o CLIProxyAPI ./cmd/server
+```
+
+For working on the dashboard, `bun run dev` in `dashboard/` serves it with
+hot reload; it signs in to any running server by its URL and management key.
+
 ## Container image
 
 The image builds from the repository's `Dockerfile` on pinned base images: a
+Bun stage runs `scripts/dashboard.sh`, and the Go stage embeds its page into a
 static binary on distroless, run as the image's `nonroot` user (UID 65532),
 with `/data/auths` as its auth directory's mount point.
 [`scripts/image.sh`](../scripts/image.sh) builds it with Podman into an OCI

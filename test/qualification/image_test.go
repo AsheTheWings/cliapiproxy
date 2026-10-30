@@ -33,6 +33,8 @@ const (
 	// runPrefix starts the name of every container a run creates.
 	runPrefix = "cliapiproxy-qualification-"
 	clientKey = "qualification-client-key"
+	// managementKey turns the management API on, which the dashboard follows.
+	managementKey = "qualification-management-key"
 	// collectorAuthorization is the header the server must send its collector.
 	collectorAuthorization = "Basic cXVhbGlmaWNhdGlvbjpzZWNyZXQ="
 	readyTimeout           = 60 * time.Second
@@ -212,7 +214,8 @@ func TestImageServesAuthenticatedRequestsAndExportsTelemetry(t *testing.T) {
 	writeFile(t, filepath.Join(inputs, "overlay.yaml"), fmt.Sprintf(
 		"server: {port: %d}\noauth: {auth-dir: /data/auths}\nkeys: {state-file: /data/keys/keys.yaml}\n", port), 0o600)
 	writeFile(t, filepath.Join(inputs, "protected.env"), fmt.Sprintf(
-		"OTEL_EXPORTER_OTLP_HEADERS='Authorization=%s'\n", strings.ReplaceAll(collectorAuthorization, " ", "%20")), 0o600)
+		"CLIPROXY_MANAGEMENT_KEY='%s'\nOTEL_EXPORTER_OTLP_HEADERS='Authorization=%s'\n",
+		managementKey, strings.ReplaceAll(collectorAuthorization, " ", "%20")), 0o600)
 	// The server keeps its client keys as state.
 	writeFile(t, filepath.Join(root, "keys", "keys.yaml"), fmt.Sprintf("access: {api-keys: [%s]}\n", clientKey), 0o600)
 	containerArgs := func(extra ...string) []string {
@@ -254,6 +257,9 @@ func TestImageServesAuthenticatedRequestsAndExportsTelemetry(t *testing.T) {
 	}
 	if status := get("/v1/models", clientKey); status != http.StatusOK {
 		t.Fatalf("GET /v1/models with the client key = %d, want 200", status)
+	}
+	if status := get("/management.html", ""); status != http.StatusOK {
+		t.Fatalf("GET /management.html = %d, want 200 from the embedded dashboard", status)
 	}
 
 	p.run("stop", "--time", "30", name)
