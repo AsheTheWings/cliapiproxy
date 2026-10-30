@@ -44,9 +44,9 @@ func serveManagement(s *Server, method, target, remote, key string) *httptest.Re
 	return response
 }
 
-// The management API is exactly these routes, none of which writes the
-// configuration.
-func TestManagementRoutesAreTheReadOnlySet(t *testing.T) {
+// The management API is exactly these routes; the only one that writes
+// configuration replaces the provider groups the server keeps as state.
+func TestManagementRoutesAreTheExpectedSet(t *testing.T) {
 	s := newV8ManagementServer(t, "management: {secret-key: test-password}\n")
 	var got []string
 	for _, route := range s.engine.Routes() {
@@ -57,6 +57,7 @@ func TestManagementRoutesAreTheReadOnlySet(t *testing.T) {
 	want := []string{
 		"GET /v8/management/oauth/callback", "POST /v8/management/oauth/callback",
 		"GET /v8/management/config", "GET /v8/management/config/*path",
+		"PUT /v8/management/config/api-keys/:family",
 		"POST /v8/management/routing/cooldown/reset",
 		"GET /v8/management/routing/model-definitions/:channel",
 		"POST /v8/management/routing/model-definitions/refresh", "POST /v8/management/models/refresh",

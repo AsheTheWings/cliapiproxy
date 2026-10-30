@@ -33,6 +33,19 @@ func (h *Handler) ConfigV8Effective(c *gin.Context) {
 	if path != "" {
 		parts = strings.Split(path, "/")
 	}
+	// The provider store keeps each group's name and keys together, which
+	// the rendered layout loses for families of per-key entries.
+	if store := h.providerStore; store != nil {
+		groups, errGroups := providerGroupsNode(store)
+		if errGroups != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "render_failed"})
+			return
+		}
+		deleteConfigV8Path(root, []string{"api-keys"})
+		if len(groups.Content) > 0 {
+			root.Content = append(root.Content, &yaml.Node{Kind: yaml.ScalarNode, Value: "api-keys"}, groups)
+		}
+	}
 	// Auth indexes derive from the keys, so they are added before redaction.
 	h.injectV8APIKeyAuthIndexesLocked(root, data)
 	redactV8Secrets(root)
