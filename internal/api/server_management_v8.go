@@ -21,6 +21,7 @@ func (s *Server) registerManagementV8Routes() {
 	})
 	v8.GET("/config", s.mgmt.ConfigV8Effective)
 	v8.GET("/config/*path", s.mgmt.ConfigV8Effective)
+	v8.PUT("/config/access/api-keys", s.mgmt.PutClientKeys)
 	v8.PUT("/config/api-keys/:family", s.mgmt.PutProviderGroups)
 
 	v8.POST("/routing/cooldown/reset", s.mgmt.ResetQuota)

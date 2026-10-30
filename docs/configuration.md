@@ -35,10 +35,10 @@ server:
 `CLIPROXY_PROTECTED_FILE` names the protected file. It holds one
 `NAME='value'` line per protected input, named by the input's `secret` in the
 schema, with blank lines and `#` comments allowed. A value holds no quote or
-line break, and a list is comma-separated:
+line break:
 
 ```sh
-CLIPROXY_API_KEYS='<key>,<key>'
+CLIPROXY_MANAGEMENT_KEY='<key>'
 ```
 
 ## Validation
@@ -62,28 +62,19 @@ string counts as unset.
 inputs are valid, and otherwise reports the problems and exits 2, so a
 deploy can check a target's inputs before it starts the server.
 
-## Upstream API keys
+## Keys
 
-Each upstream API-key family the schema declares pairs two inputs: an
-`upstream-groups` input in the overlay files, keyed `api-keys.<family>`, and
-the `credential-list` input its `credentials` names in the protected file.
-A group has a `name` of lowercase letters, digits, and hyphens, and may set
-`base-url`, `prefix`, and `models`. A model has a `name` and may set `alias`,
-`display-name`, `max-context-length`, `thinking.levels`, and, for
-OpenAI-compatible groups, `input-modalities`. An OpenAI-compatible group
-requires `base-url` and at least one model, because the server offers only
-the models such a group lists. A group of another family without models
-offers its provider's catalog: the built-in Meta catalog, or for
-[Command Code](commandcode.md) and [Kiro](kiro.md), the catalog of each key's
-account. A group with models offers only those it lists, and a listed model
-takes every property it does not set from its catalog entry. A Command Code
-or Kiro group takes no `base-url`, and it offers a listed model only while
-the account's catalog has it; a model's `name` is its id in that catalog, as
-`/v1/models` lists it. Its `thinking.levels` change the levels it publishes,
-but a request still reaches the upstream with only an effort the catalog
-lists for the model:
+The server keeps every client API key and upstream API key as application
+state, in the file `keys.state-file` names; no input carries one. The
+[management API](management.md) and its dashboard change them, and the server
+serves each change without a restart. The file holds the keys in the
+configuration's v8 layout, readable by its owner alone: the server writes it
+so and refuses to start when others can read it. An absent file holds no
+keys, and a server without client keys refuses every proxy request.
 
 ```yaml
+access:
+  api-keys: [<client key>, <client key>]
 api-keys:
   openai-compatibility:
     - name: example
@@ -94,39 +85,38 @@ api-keys:
           max-context-length: 200000
           input-modalities: [text, image]
           thinking: {levels: [low, medium, high]}
+      keys: [{api-key: <key>}, {api-key: <key>}]
   meta:
     - name: muse
       models: [{name: muse-spark-1.3}]
+      keys: [{api-key: <key>}]
   commandcode:
     - name: cc
       models: [{name: commandcode/deepseek/deepseek-v4.1-flash}]
+      keys: [{api-key: <key>}]
 ```
 
-The keys are comma-separated `group=key` items, and a group with several
-keys balances requests across them:
+`access.api-keys` lists the keys clients present to use the proxy API. Under
+`api-keys`, each upstream family holds groups, and a group with several keys
+balances requests across them. A group has a `name` of lowercase letters,
+digits, and hyphens, at least one key, and may set `base-url`, `prefix`, and
+`models`. A model has a `name` and may set `alias`, `display-name`,
+`max-context-length`, `thinking.levels`, and, for OpenAI-compatible groups,
+`input-modalities`. An OpenAI-compatible group requires `base-url` and at
+least one model, because the server offers only the models such a group
+lists. A group of another family without models offers its provider's
+catalog: the built-in Meta catalog, or for [Command Code](commandcode.md)
+and [Kiro](kiro.md), the catalog of each key's account. A group with models
+offers only those it lists, and a listed model takes every property it does
+not set from its catalog entry. A Command Code or Kiro group takes no
+`base-url`, and it offers a listed model only while the account's catalog has
+it; a model's `name` is its id in that catalog, as `/v1/models` lists it. Its
+`thinking.levels` change the levels it publishes, but a request still reaches
+the upstream with only an effort the catalog lists for the model.
 
-```sh
-CLIPROXY_OPENAI_COMPATIBILITY_KEYS='example=<key>,example=<key>'
-CLIPROXY_META_KEYS='muse=<key>'
-CLIPROXY_COMMANDCODE_KEYS='cc=<key>'
-```
-
-A run fails when a group has no key or an overlay group holds a key or a
-field outside this list. A key of a group the overlay does not declare is
-unused, so keys can be delivered before the overlay that declares their
-group.
-
-## Provider state
-
-Groups can also be application state, which the
-[management API](management.md) writes: the file `providers.state-file`
-names holds them under `api-keys`, each group with its `keys`, in the form
-`GET /v8/management/config` shows them. The same rules apply as to overlay
-groups, and each group needs at least one key. The file holds keys, so the
-server writes it readable by its owner alone and refuses to start when others
-can read it; an absent file holds no groups. Its groups join the inputs'
-groups of the same family, after them, and a name the inputs already use in a
-family is refused.
+The server refuses to start, naming groups and positions but never keys, when
+the file holds a field outside this list, a group breaks its family's rules
+or has no key, or a key is empty or repeated within its list.
 
 ## OAuth models
 

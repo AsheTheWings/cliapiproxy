@@ -57,7 +57,7 @@ func TestManagementRoutesAreTheExpectedSet(t *testing.T) {
 	want := []string{
 		"GET /v8/management/oauth/callback", "POST /v8/management/oauth/callback",
 		"GET /v8/management/config", "GET /v8/management/config/*path",
-		"PUT /v8/management/config/api-keys/:family",
+		"PUT /v8/management/config/access/api-keys", "PUT /v8/management/config/api-keys/:family",
 		"POST /v8/management/routing/cooldown/reset",
 		"GET /v8/management/routing/model-definitions/:channel",
 		"POST /v8/management/routing/model-definitions/refresh", "POST /v8/management/models/refresh",

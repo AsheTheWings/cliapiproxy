@@ -13,7 +13,7 @@ import (
 var commandCodeRefreshLead = commandcode.RefreshLead
 
 // CommandCodeAuthenticator schedules the reloads of Command Code credentials.
-// Their API keys are inputs, so it has no login.
+// Their API keys are key state the management API writes, so it has no login.
 type CommandCodeAuthenticator struct{}
 
 // NewCommandCodeAuthenticator constructs a Command Code authenticator.
@@ -32,8 +32,7 @@ func (CommandCodeAuthenticator) RefreshLead() *time.Duration {
 	return &commandCodeRefreshLead
 }
 
-// Login fails: Command Code API keys come from the api-keys.commandcode-keys
-// input.
+// Login fails: Command Code API keys come from the key state.
 func (CommandCodeAuthenticator) Login(context.Context, *config.Config, *LoginOptions) (*coreauth.Auth, error) {
-	return nil, errors.New("commandcode: API keys come from the CLIPROXY_COMMANDCODE_KEYS input; there is no login")
+	return nil, errors.New("commandcode: API keys are added through the management API; there is no login")
 }

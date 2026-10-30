@@ -1,7 +1,7 @@
 # How does the server use Command Code accounts?
 
 Command Code is a provider like Codex or Kimi: a Command Code account is an
-API key in the server's inputs, and requests for `commandcode/<model id>` run
+API key the server keeps, and requests for `commandcode/<model id>` run
 on that account. The server speaks to the
 gateway's agent route (`/alpha/generate`) and converts its stream to a
 Responses stream, so every client API (Chat Completions, Responses, Claude
@@ -10,14 +10,12 @@ Messages, Gemini) reaches it through the usual translators.
 ## Accounts
 
 The gateway has no login the server can run; an account is the API key
-Command Code issues for it. The keys are the API-key family `commandcode`
-([configuration](configuration.md#upstream-api-keys)): an overlay declares
-groups under `api-keys.commandcode`, each with a `name` and an optional
-`prefix`, and the protected file's `CLIPROXY_COMMANDCODE_KEYS` holds their
-`group=key` items. A group takes no `base-url`, because the gateway is fixed
-and each key's account decides its models. A group's `models` select among
-them ([configuration](configuration.md#upstream-api-keys)). Several keys in
-one group balance requests across their accounts:
+Command Code issues for it. The keys are the API-key family `commandcode` of
+the [key state](configuration.md#keys): groups under `api-keys.commandcode`,
+each with a `name`, an optional `prefix`, and its keys. A group takes no
+`base-url`, because the gateway is fixed and each key's account decides its
+models. A group's `models` select among them. Several keys in one group
+balance requests across their accounts:
 
 ```yaml
 api-keys:
@@ -25,10 +23,7 @@ api-keys:
     - name: cc
       prefix: cc
       models: [{name: commandcode/deepseek/deepseek-v4.1-flash}]
-```
-
-```sh
-CLIPROXY_COMMANDCODE_KEYS='cc=<key>,cc=<key>'
+      keys: [{api-key: <key>}, {api-key: <key>}]
 ```
 
 Each key becomes a credential the server keeps in memory and never writes to
@@ -37,7 +32,7 @@ account's plan, credits, and model catalog, which also shows that the gateway
 still accepts the key; a reload that cannot load the catalog keeps the
 previous one, and without one it fails and runs again five minutes later. A
 key the gateway rejects with 401 fails the reload with that
-status. An API key has no expiry. Changing the keys takes a restart. An
+status. An API key has no expiry. A change to the keys takes effect without a restart. An
 auth-directory file of type `commandcode` holds no usable credential; the
 server ignores it with a warning.
 

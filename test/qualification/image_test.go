@@ -196,7 +196,7 @@ func TestImageServesAuthenticatedRequestsAndExportsTelemetry(t *testing.T) {
 			t.Errorf("remove the run directory %s: %v", root, errRemove)
 		}
 	})
-	for _, dir := range []string{"tmp", "inputs", "auths", "providers"} {
+	for _, dir := range []string{"tmp", "inputs", "auths", "keys"} {
 		if errMkdir := os.MkdirAll(filepath.Join(root, dir), 0o700); errMkdir != nil {
 			t.Fatal(errMkdir)
 		}
@@ -210,15 +210,16 @@ func TestImageServesAuthenticatedRequestsAndExportsTelemetry(t *testing.T) {
 	port := freePort(t)
 	inputs := filepath.Join(root, "inputs")
 	writeFile(t, filepath.Join(inputs, "overlay.yaml"), fmt.Sprintf(
-		"server: {port: %d}\noauth: {auth-dir: /data/auths}\nproviders: {state-file: /data/providers/providers.yaml}\n", port), 0o600)
+		"server: {port: %d}\noauth: {auth-dir: /data/auths}\nkeys: {state-file: /data/keys/keys.yaml}\n", port), 0o600)
 	writeFile(t, filepath.Join(inputs, "protected.env"), fmt.Sprintf(
-		"CLIPROXY_API_KEYS='%s'\nOTEL_EXPORTER_OTLP_HEADERS='Authorization=%s'\n",
-		clientKey, strings.ReplaceAll(collectorAuthorization, " ", "%20")), 0o600)
+		"OTEL_EXPORTER_OTLP_HEADERS='Authorization=%s'\n", strings.ReplaceAll(collectorAuthorization, " ", "%20")), 0o600)
+	// The server keeps its client keys as state.
+	writeFile(t, filepath.Join(root, "keys", "keys.yaml"), fmt.Sprintf("access: {api-keys: [%s]}\n", clientKey), 0o600)
 	containerArgs := func(extra ...string) []string {
 		args := []string{
 			"--network", "host", "--userns", "keep-id:uid=65532,gid=65532", "--read-only",
 			"--volume", inputs + ":/etc/cliapiproxy:ro", "--volume", filepath.Join(root, "auths") + ":/data/auths",
-			"--volume", filepath.Join(root, "providers") + ":/data/providers",
+			"--volume", filepath.Join(root, "keys") + ":/data/keys",
 			"--env", "CLIPROXY_PROFILE=production",
 			"--env", "CLIPROXY_OVERLAY_FILES=/etc/cliapiproxy/overlay.yaml",
 			"--env", "CLIPROXY_PROTECTED_FILE=/etc/cliapiproxy/protected.env",

@@ -19,15 +19,19 @@ container image, and [container](docs/container.md) how to run the image.
 The server reads its inputs from its environment, its command line, YAML
 overlay files, and a protected file; [configuration](docs/configuration.md)
 explains them. A
-development run needs only the client API keys in its protected file:
+development run needs only a management key in its protected file:
 
 ```sh
 mkdir -p "$XDG_RUNTIME_DIR/cliapiproxy"
 install -m 600 /dev/null "$XDG_RUNTIME_DIR/cliapiproxy/protected.env"
-printf "CLIPROXY_API_KEYS='%s'\n" "$(openssl rand -hex 24)" \
+printf "CLIPROXY_MANAGEMENT_KEY='%s'\n" "$(openssl rand -hex 24)" \
   > "$XDG_RUNTIME_DIR/cliapiproxy/protected.env"
 CLIPROXY_PROFILE=development ./CLIProxyAPI
 ```
+
+The server keeps the client and upstream API keys itself and starts with
+none, refusing every proxy request until the
+[management API](docs/management.md) adds a client key.
 
 ## Usage
 
@@ -40,10 +44,8 @@ provider's OAuth flow, writes the credential file, and exits; for example,
 `-codex-device-login` signs in to Codex with a device code and `-xai-login`
 to Grok Build. Adding, replacing, or removing a credential file takes effect
 without a restart. API-key credentials of OpenAI-compatible providers, Meta
-Muse, [Command Code](docs/commandcode.md), and [Kiro](docs/kiro.md) come
-from the inputs or from the [provider state](docs/configuration.md#provider-state)
-the management API writes; [configuration](docs/configuration.md#upstream-api-keys)
-describes them.
+Muse, [Command Code](docs/commandcode.md), and [Kiro](docs/kiro.md) are
+[key state](docs/configuration.md#keys) the management API writes.
 
 The Go packages under `sdk/` embed the proxy in other programs:
 [usage](docs/sdk-usage.md), [executors and translators](docs/sdk-advanced.md),

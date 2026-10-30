@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/keystate"
 	"github.com/AsheTheWings/cliapiproxy/internal/logging"
 	"github.com/AsheTheWings/cliapiproxy/internal/pluginhost"
-	"github.com/AsheTheWings/cliapiproxy/internal/providers"
 	"github.com/AsheTheWings/cliapiproxy/sdk/api/handlers"
 	"github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
 	"github.com/gin-gonic/gin"
@@ -27,7 +27,7 @@ type serverOptionConfig struct {
 	postAuthPersistHook   auth.PostAuthHook
 	pluginHost            *pluginhost.Host
 	configReloadHook      func(context.Context, *config.Config)
-	providerStore         *providers.Store
+	keyStore              *keystate.Store
 	exampleAPIKeySafeMode bool
 }
 
@@ -130,11 +130,11 @@ func WithConfigReloadHook(hook func(context.Context, *config.Config)) ServerOpti
 	}
 }
 
-// WithProviderStore lets the management API change the upstream groups the
-// server keeps as state.
-func WithProviderStore(store *providers.Store) ServerOption {
+// WithKeyStore lets the management API change the client keys and upstream
+// groups the server keeps as state.
+func WithKeyStore(store *keystate.Store) ServerOption {
 	return func(cfg *serverOptionConfig) {
-		cfg.providerStore = store
+		cfg.keyStore = store
 	}
 }
 

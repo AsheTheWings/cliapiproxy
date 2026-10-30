@@ -1,6 +1,6 @@
 //go:build component
 
-package upstream
+package keystate
 
 import (
 	"os"
@@ -8,19 +8,18 @@ import (
 	"testing"
 )
 
-func TestWriteStateFileReplacesTheFileForItsOwnerAlone(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "state", "providers.yaml")
+func TestWriteFileReplacesTheFileForItsOwnerAlone(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "state", "keys.yaml")
 	for _, key := range []string{"k1", "k2"} {
-		state := State{FamilyKiro: {{Spec: Spec{Name: "k"}, Keys: []Key{{APIKey: key}}}}}
-		if err := WriteStateFile(path, state); err != nil {
+		if err := WriteFile(path, State{ClientKeys: []string{key}}); err != nil {
 			t.Fatal(err)
 		}
 		data, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatal(err)
 		}
-		parsed, err := ParseState(data)
-		if err != nil || parsed[FamilyKiro][0].Keys[0].APIKey != key {
+		parsed, err := Parse(data)
+		if err != nil || len(parsed.ClientKeys) != 1 || parsed.ClientKeys[0] != key {
 			t.Fatalf("file holds %q (%v), want key %s", data, err, key)
 		}
 	}

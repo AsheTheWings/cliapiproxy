@@ -15,9 +15,9 @@ import (
 
 	"github.com/AsheTheWings/cliapiproxy/internal/buildinfo"
 	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/keystate"
 	"github.com/AsheTheWings/cliapiproxy/internal/pluginhost"
 	"github.com/AsheTheWings/cliapiproxy/internal/pluginstore"
-	"github.com/AsheTheWings/cliapiproxy/internal/providers"
 	sdkAuth "github.com/AsheTheWings/cliapiproxy/sdk/auth"
 	coreauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
 	"github.com/gin-gonic/gin"
@@ -56,7 +56,7 @@ type Handler struct {
 	postAuthPersistHook     coreauth.PostAuthHook
 	pluginHost              *pluginhost.Host
 	configReloadHook        func(context.Context, *config.Config)
-	providerStore           *providers.Store
+	keyStore                *keystate.Store
 	pluginStoreRegistryURL  string
 	pluginStoreHTTPClient   pluginstore.HTTPDoer
 	pluginStoreRateLimiter  *pluginstore.GitHubRateLimiter
@@ -213,14 +213,14 @@ func (h *Handler) SetConfigReloadHook(hook func(context.Context, *config.Config)
 	h.mu.Unlock()
 }
 
-// SetProviderStore sets the store of the upstream groups the server keeps as
-// state; without one, no route changes upstream groups.
-func (h *Handler) SetProviderStore(store *providers.Store) {
+// SetKeyStore sets the store of the client keys and upstream groups the
+// server keeps as state; without one, no route changes them.
+func (h *Handler) SetKeyStore(store *keystate.Store) {
 	if h == nil {
 		return
 	}
 	h.mu.Lock()
-	h.providerStore = store
+	h.keyStore = store
 	h.mu.Unlock()
 }
 

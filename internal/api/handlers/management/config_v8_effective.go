@@ -10,8 +10,8 @@ import (
 )
 
 // ConfigV8Effective serves the configuration the server runs with, in the v8
-// layout and read-only. The server's inputs own every value, so no route
-// changes it. Each protected value is redacted: client and upstream API keys
+// layout. The key state's client keys and upstream groups change through
+// their own routes; the server's inputs own every other value. Each protected value is redacted: client and upstream API keys
 // keep only a short suffix, and the management key, the proxy URL, and relay
 // credentials are left out.
 func (h *Handler) ConfigV8Effective(c *gin.Context) {
@@ -33,10 +33,10 @@ func (h *Handler) ConfigV8Effective(c *gin.Context) {
 	if path != "" {
 		parts = strings.Split(path, "/")
 	}
-	// The provider store keeps each group's name and keys together, which
-	// the rendered layout loses for families of per-key entries.
-	if store := h.providerStore; store != nil {
-		groups, errGroups := providerGroupsNode(store)
+	// The key state keeps each group's name and keys together, which the
+	// rendered layout loses for families of per-key entries.
+	if store := h.keyStore; store != nil {
+		groups, errGroups := keyStateGroupsNode(store)
 		if errGroups != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "render_failed"})
 			return
