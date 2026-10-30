@@ -89,7 +89,7 @@ func TestProfileIsRequired(t *testing.T) {
 
 func TestProductionRequiresWhatItOwns(t *testing.T) {
 	_, err := Resolve(mustSchema(t), Process{Environ: []string{"CLIPROXY_PROFILE=production"}}, memFiles{})
-	for _, name := range []string{"CLIPROXY_PROTECTED_FILE: required", "server.port: required", "oauth.auth-dir: required", "access.api-keys: required",
+	for _, name := range []string{"CLIPROXY_PROTECTED_FILE: required", "server.port: required", "oauth.auth-dir: required", "providers.state-file: required", "access.api-keys: required",
 		"OTEL_EXPORTER_OTLP_ENDPOINT: required", "CLIPROXY_DEPLOYMENT_ENVIRONMENT: required"} {
 		wantProblem(t, err, name)
 	}
@@ -98,7 +98,7 @@ func TestProductionRequiresWhatItOwns(t *testing.T) {
 func TestLaterOverlayOverridesEarlierAndDefaults(t *testing.T) {
 	files := memFiles{
 		protectedPath: validProtected(),
-		"/etc/a.yaml": {data: "server:\n  port: 9000\n  host: 0.0.0.0\noauth:\n  auth-dir: /var/lib/a\n", mode: 0o644},
+		"/etc/a.yaml": {data: "server:\n  port: 9000\n  host: 0.0.0.0\noauth:\n  auth-dir: /var/lib/a\nproviders: {state-file: /var/lib/a/providers.yaml}\n", mode: 0o644},
 		"/etc/b.yaml": {data: "server: {port: 9001}\n", mode: 0o644},
 	}
 	eff, err := Resolve(mustSchema(t), Process{Environ: production("CLIPROXY_OVERLAY_FILES=/etc/a.yaml:/etc/missing.yaml:/etc/b.yaml")}, files)
@@ -157,7 +157,7 @@ func TestEmptyEnvironmentVariableIsUnset(t *testing.T) {
 }
 
 func TestInputsNotInTheProfileAreIgnored(t *testing.T) {
-	files := memFiles{protectedPath: validProtected(), "/etc/a.yaml": {data: "server: {port: 9000}\noauth: {auth-dir: /var/lib/a}\n"}}
+	files := memFiles{protectedPath: validProtected(), "/etc/a.yaml": {data: "server: {port: 9000}\noauth: {auth-dir: /var/lib/a}\nproviders: {state-file: /var/lib/a/providers.yaml}\n"}}
 	eff, err := Resolve(mustSchema(t), Process{Environ: production("HOME=relative", "CLIPROXY_OVERLAY_FILES=/etc/a.yaml")}, files)
 	if err != nil {
 		t.Fatal(err)
@@ -275,7 +275,7 @@ func TestSchemaRejectsMalformedDeclarations(t *testing.T) {
 }
 
 func TestConfigDocumentNestsKeysUnderTheV8Layout(t *testing.T) {
-	files := memFiles{protectedPath: validProtected(), "/etc/a.yaml": {data: "server: {port: 9000}\noauth: {auth-dir: /var/lib/a}\n"}}
+	files := memFiles{protectedPath: validProtected(), "/etc/a.yaml": {data: "server: {port: 9000}\noauth: {auth-dir: /var/lib/a}\nproviders: {state-file: /var/lib/a/providers.yaml}\n"}}
 	eff, err := Resolve(mustSchema(t), Process{Environ: production("CLIPROXY_OVERLAY_FILES=/etc/a.yaml")}, files)
 	if err != nil {
 		t.Fatal(err)
@@ -315,7 +315,7 @@ const upstreamOverlay = `api-keys:
 func upstreamFiles(overlay, protected string) memFiles {
 	return memFiles{
 		protectedPath: {data: "CLIPROXY_API_KEYS='client-key-1'\n" + protected, mode: 0o600},
-		"/etc/a.yaml": {data: "server: {port: 9000}\noauth: {auth-dir: /var/lib/a}\n" + overlay},
+		"/etc/a.yaml": {data: "server: {port: 9000}\noauth: {auth-dir: /var/lib/a}\nproviders: {state-file: /var/lib/a/providers.yaml}\n" + overlay},
 	}
 }
 

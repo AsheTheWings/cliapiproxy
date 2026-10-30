@@ -21,6 +21,8 @@ The server takes its inputs as [configuration](configuration.md) describes:
 
 - The `auths` volume at `/data/auths` holds the credential files, which are
   state the server writes as it refreshes tokens.
+- The `providers` volume at `/data/providers` holds the provider state file,
+  `providers.yaml`, which the management API writes.
 
 A login command runs in the same container with its flag appended, for
 example `docker compose run --rm cliapiproxy -codex-device-login`.

@@ -116,6 +116,18 @@ field outside this list. A key of a group the overlay does not declare is
 unused, so keys can be delivered before the overlay that declares their
 group.
 
+## Provider state
+
+Groups can also be application state, which the
+[management API](management.md) writes: the file `providers.state-file`
+names holds them under `api-keys`, each group with its `keys`, in the form
+`GET /v8/management/config` shows them. The same rules apply as to overlay
+groups, and each group needs at least one key. The file holds keys, so the
+server writes it readable by its owner alone and refuses to start when others
+can read it; an absent file holds no groups. Its groups join the inputs'
+groups of the same family, after them, and a name the inputs already use in a
+family is refused.
+
 ## OAuth models
 
 `oauth.models.<provider>` lists, by catalog id, the models the OAuth

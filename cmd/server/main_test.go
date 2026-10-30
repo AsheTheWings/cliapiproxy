@@ -28,6 +28,20 @@ func (m memFiles) ReadFile(name string) ([]byte, fs.FileMode, error) {
 	return []byte(data), 0o600, nil
 }
 
+// sharedFiles serves one of its files readable by everyone.
+type sharedFiles struct {
+	files  memFiles
+	shared string
+}
+
+func (m sharedFiles) ReadFile(name string) ([]byte, fs.FileMode, error) {
+	data, mode, err := m.files.ReadFile(name)
+	if err == nil && name == m.shared {
+		mode = 0o644
+	}
+	return data, mode, err
+}
+
 const overlay = `server: {host: 0.0.0.0, port: 9100}
 oauth:
   auth-dir: /var/lib/cliapiproxy/auths
@@ -41,6 +55,7 @@ routing:
 client:
   codex: {enable-apply-patch: true, optimize-multi-agent-v2: true}
 management: {allow-remote: true}
+providers: {state-file: /var/lib/cliapiproxy/providers.yaml}
 api-keys:
   openai-compatibility:
     - name: alpha
@@ -171,7 +186,7 @@ func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
 
 // Without a management key the management API stays off.
 func TestManagementIsOffWithoutItsKey(t *testing.T) {
-	files := memFiles{"/etc/cliapiproxy/overlay.yaml": "server: {port: 9100}\noauth: {auth-dir: /var/lib/cliapiproxy/auths}\n",
+	files := memFiles{"/etc/cliapiproxy/overlay.yaml": "server: {port: 9100}\noauth: {auth-dir: /var/lib/cliapiproxy/auths}\nproviders: {state-file: /var/lib/cliapiproxy/providers.yaml}\n",
 		"/run/cliapiproxy/protected.env": "CLIPROXY_API_KEYS='client-key-a'\n"}
 	plan, err := resolveRun(productionProcess(), files)
 	if err != nil {
@@ -179,6 +194,27 @@ func TestManagementIsOffWithoutItsKey(t *testing.T) {
 	}
 	if got := plan.cfg.RemoteManagement; got.SecretKey != "" || got.AllowRemote {
 		t.Fatalf("management = %+v, want no key and loopback only", got)
+	}
+}
+
+// The provider state file's groups join the inputs' groups, and a state file
+// others can read is refused, since it holds keys.
+func TestProviderStateJoinsTheConfiguration(t *testing.T) {
+	const statePath = "/var/lib/cliapiproxy/providers.yaml"
+	files := memFiles{statePath: "api-keys:\n  kiro:\n    - {name: second, keys: [{api-key: state-key}]}\n"}
+	for name, content := range testFiles {
+		files[name] = content
+	}
+	plan, err := resolveRun(productionProcess(), files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := plan.cfg.KiroKey; len(got) != 2 || got[0].APIKey != "upstream-key-k" || got[1].APIKey != "state-key" {
+		t.Fatalf("kiro keys = %+v, want the inputs' key then the state's", got)
+	}
+	shared := sharedFiles{files: files, shared: statePath}
+	if _, err = resolveRun(productionProcess(), shared); err == nil || !strings.Contains(err.Error(), "readable by others") {
+		t.Fatalf("err = %v, want a refused state file", err)
 	}
 }
 

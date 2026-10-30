@@ -40,9 +40,10 @@ provider's OAuth flow, writes the credential file, and exits; for example,
 `-codex-device-login` signs in to Codex with a device code and `-xai-login`
 to Grok Build. Adding, replacing, or removing a credential file takes effect
 without a restart. API-key credentials of OpenAI-compatible providers, Meta
-Muse, [Command Code](docs/commandcode.md), and [Kiro](docs/kiro.md) are
-inputs; [configuration](docs/configuration.md#upstream-api-keys) describes
-them.
+Muse, [Command Code](docs/commandcode.md), and [Kiro](docs/kiro.md) come
+from the inputs or from the [provider state](docs/configuration.md#provider-state)
+the management API writes; [configuration](docs/configuration.md#upstream-api-keys)
+describes them.
 
 The Go packages under `sdk/` embed the proxy in other programs:
 [usage](docs/sdk-usage.md), [executors and translators](docs/sdk-advanced.md),
