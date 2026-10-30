@@ -3,7 +3,7 @@
 CLI Proxy API is a proxy server that serves OpenAI (Chat Completions and
 Responses), Gemini, Claude, and Codex compatible APIs backed by the accounts
 of CLI tools: Codex, Claude Code, Grok Build, Antigravity, Kimi, Devin, Meta
-Muse Code, and Kiro. Clients and SDKs built for those APIs use the accounts
+Muse Code, Kiro, and Command Code. Clients and SDKs built for those APIs use the accounts
 through it, with requests balanced across several accounts per provider.
 
 This repository is a fork of
@@ -40,8 +40,8 @@ provider's OAuth flow, writes the credential file, and exits; for example,
 to Grok Build; [Kiro](docs/kiro.md) signs in with `-kiro-login` or imports a
 refresh token with `-kiro-import`. Adding, replacing, or removing a credential
 file takes effect without a restart. API-key credentials of OpenAI-compatible
-providers and Meta Muse are inputs; [configuration](docs/configuration.md#upstream-api-keys)
-describes them.
+providers, Meta Muse, and [Command Code](docs/commandcode.md) are inputs;
+[configuration](docs/configuration.md#upstream-api-keys) describes them.
 
 The Go packages under `sdk/` embed the proxy in other programs:
 [usage](docs/sdk-usage.md), [executors and translators](docs/sdk-advanced.md),
