@@ -67,4 +67,6 @@ The Go packages under `sdk/` embed the proxy in other programs:
 
 This project is licensed under the MIT License; see [LICENSE](LICENSE). The
 dashboard derives from the CLI Proxy API Management Center under the MIT
-License; see [dashboard/LICENSE](dashboard/LICENSE).
+License; see [dashboard/LICENSE](dashboard/LICENSE). The dashboard embeds the
+Poppins typeface under the SIL Open Font License 1.1; see
+[dashboard/POPPINS-OFL.txt](dashboard/POPPINS-OFL.txt).
