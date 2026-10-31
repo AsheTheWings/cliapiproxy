@@ -3,13 +3,10 @@ import { Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
 import { SelectionCheckbox } from '@/components/ui/SelectionCheckbox';
 import { IconEye, IconEyeOff } from '@/components/ui/icons';
-import { useAuthStore, useLanguageStore, useNotificationStore } from '@/stores';
+import { useAuthStore, useNotificationStore } from '@/stores';
 import { detectApiBaseFromLocation, normalizeApiBase } from '@/utils/connection';
-import { LANGUAGE_LABEL_KEYS, LANGUAGE_ORDER } from '@/utils/constants';
-import { isSupportedLanguage } from '@/utils/language';
 import { INLINE_LOGO_JPEG } from '@/assets/logoInline';
 import type { ApiError } from '@/types';
 import styles from './LoginPage.module.scss';
@@ -86,8 +83,6 @@ export function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { showNotification } = useNotificationStore();
-  const language = useLanguageStore((state) => state.language);
-  const setLanguage = useLanguageStore((state) => state.setLanguage);
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const login = useAuthStore((state) => state.login);
   const restoreSession = useAuthStore((state) => state.restoreSession);
@@ -106,23 +101,6 @@ export function LoginPage() {
   const [error, setError] = useState('');
 
   const detectedBase = useMemo(() => detectApiBaseFromLocation(), []);
-  const languageOptions = useMemo(
-    () =>
-      LANGUAGE_ORDER.map((lang) => ({
-        value: lang,
-        label: t(LANGUAGE_LABEL_KEYS[lang]),
-      })),
-    [t]
-  );
-  const handleLanguageChange = useCallback(
-    (selectedLanguage: string) => {
-      if (!isSupportedLanguage(selectedLanguage)) {
-        return;
-      }
-      setLanguage(selectedLanguage);
-    },
-    [setLanguage]
-  );
 
   useEffect(() => {
     const init = async () => {
@@ -235,17 +213,7 @@ export function LoginPage() {
             {/* 登录表单卡片 */}
             <div className={styles.loginCard}>
               <div className={styles.loginHeader}>
-                <div className={styles.titleRow}>
-                  <div className={styles.title}>{t('title.login')}</div>
-                  <Select
-                    className={styles.languageSelect}
-                    value={language}
-                    options={languageOptions}
-                    onChange={handleLanguageChange}
-                    fullWidth={false}
-                    ariaLabel={t('language.switch')}
-                  />
-                </div>
+                <div className={styles.title}>{t('title.login')}</div>
                 <div className={styles.subtitle}>{t('login.subtitle')}</div>
               </div>
 

@@ -65,7 +65,7 @@ function getRelativeFormatter(locale?: string): Intl.RelativeTimeFormat {
   return formatter;
 }
 
-/** Localized relative phrase, e.g. `in 11 days` / `11 天后` / `11 days ago`. */
+/** Localized relative phrase, e.g. `in 11 days` / `11 days ago`. */
 export function formatRelativeInstant(targetMs: number, nowMs: number, locale?: string): string {
   const { value, unit } = relativeTimeParts(targetMs, nowMs);
   return getRelativeFormatter(locale).format(value, unit);

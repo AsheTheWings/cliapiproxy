@@ -765,15 +765,6 @@
     "copy_failed": "Copy failed",
     "link_copied": "Link copied to clipboard"
   },
-  "language": {
-    "switch": "Language",
-    "chinese": "中文",
-    "chinese_tw": "Traditional Chinese (Taiwan)",
-    "english": "English",
-    "russian": "Русский",
-    "vietnamese": "Tiếng Việt",
-    "korean": "한국어"
-  },
   "theme": {
     "switch": "Theme",
     "light": "Wool Paper",
