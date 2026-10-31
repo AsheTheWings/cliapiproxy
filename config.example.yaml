@@ -104,10 +104,6 @@ management:
   # Turn off the /management.html dashboard that the server embeds when true.
   disable-control-panel: false
 
-  # Base URL of remote management API when using TUI client mode (cliproxyapi --tui).
-  # Defaults to http://127.0.0.1:<port> if not set. Can also be set via --management-base-url.
-  # base-url: "https://proxy.example.com"
-
 # Client authentication for the proxy API. These are not upstream provider keys.
 access:
   # API keys for authentication
