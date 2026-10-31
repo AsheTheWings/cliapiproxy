@@ -198,15 +198,13 @@ describe('SIWC binding', () => {
       expect(source).toContain(contract);
     expect(source).not.toContain('startAuth(');
     expect(source).not.toContain('localStorage');
-    for (const locale of ['en', 'zh-CN', 'zh-TW', 'ru', 'vi', 'ko']) {
-      const messages = JSON.parse(
-        readFileSync(new URL(`../src/i18n/locales/${locale}.json`, import.meta.url), 'utf8')
-      ).siwc;
-      expect(Object.keys(messages)).toHaveLength(32);
-      expect(
-        Object.values(messages).every((value) => typeof value === 'string' && value.length > 0)
-      ).toBe(true);
-    }
+    const messages = JSON.parse(
+      readFileSync(new URL('../src/i18n/locales/en.json', import.meta.url), 'utf8')
+    ).siwc;
+    expect(Object.keys(messages)).toHaveLength(32);
+    expect(
+      Object.values(messages).every((value) => typeof value === 'string' && value.length > 0)
+    ).toBe(true);
   });
 });
 

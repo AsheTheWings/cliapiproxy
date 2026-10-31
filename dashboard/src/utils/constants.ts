@@ -2,12 +2,6 @@
  * 常量定义
  */
 
-import type { Language } from '@/types';
-
-const defineLanguageOrder = <T extends readonly Language[]>(
-  languages: T & ([Language] extends [T[number]] ? unknown : never)
-) => languages;
-
 // 缓存过期时间（毫秒）
 export const CACHE_EXPIRY_MS = 30 * 1000; // 与基线保持一致，减少管理端压力
 
@@ -29,26 +23,6 @@ export const MAX_AUTH_FILE_SIZE = 10 * 1024 * 1024;
 // 本地存储键名
 export const STORAGE_KEY_AUTH = 'cli-proxy-auth';
 export const STORAGE_KEY_THEME = 'cli-proxy-theme';
-export const STORAGE_KEY_LANGUAGE = 'cli-proxy-language';
-
-// 语言配置
-export const LANGUAGE_ORDER = defineLanguageOrder([
-  'zh-CN',
-  'zh-TW',
-  'en',
-  'ru',
-  'vi',
-  'ko',
-] as const);
-export const LANGUAGE_LABEL_KEYS: Record<Language, string> = {
-  'zh-CN': 'language.chinese',
-  'zh-TW': 'language.chinese_tw',
-  en: 'language.english',
-  ru: 'language.russian',
-  vi: 'language.vietnamese',
-  ko: 'language.korean',
-};
-export const SUPPORTED_LANGUAGES = LANGUAGE_ORDER;
 
 // 通知持续时间
 export const NOTIFICATION_DURATION_MS = 3000;

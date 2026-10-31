@@ -164,15 +164,6 @@
   text-align: center;
 }
 
-// 标题行
-.titleRow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: $spacing-sm;
-  flex-wrap: wrap;
-}
-
 // 标题
 .title {
   font-size: 22px;
@@ -184,12 +175,6 @@
 .subtitle {
   color: var(--text-secondary);
   font-size: 14px;
-}
-
-// 语言下拉选择
-.languageSelect {
-  min-width: 108px;
-  flex: 0 0 auto;
 }
 
 // 连接信息框
