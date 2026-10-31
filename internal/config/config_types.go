@@ -429,8 +429,6 @@ type RemoteManagement struct {
 	SecretKey string `yaml:"secret-key"`
 	// DisableControlPanel turns off the /management.html dashboard route when true.
 	DisableControlPanel bool `yaml:"disable-control-panel"`
-	// BaseURL specifies the base URL of the remote management API for TUI client mode (e.g. "https://proxy.example.com").
-	BaseURL string `yaml:"base-url,omitempty" json:"base-url,omitempty"`
 }
 
 // QuotaExceeded defines the behavior when API quota limits are exceeded.
