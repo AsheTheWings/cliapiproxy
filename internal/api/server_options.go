@@ -28,6 +28,7 @@ type serverOptionConfig struct {
 	pluginHost            *pluginhost.Host
 	configReloadHook      func(context.Context, *config.Config)
 	keyStore              *keystate.Store
+	authManagerHook       func(*auth.Manager)
 	exampleAPIKeySafeMode bool
 }
 
@@ -135,6 +136,14 @@ func WithConfigReloadHook(hook func(context.Context, *config.Config)) ServerOpti
 func WithKeyStore(store *keystate.Store) ServerOption {
 	return func(cfg *serverOptionConfig) {
 		cfg.keyStore = store
+	}
+}
+
+// WithAuthManagerHook calls hook with the server's credential manager once
+// the server is built.
+func WithAuthManagerHook(hook func(*auth.Manager)) ServerOption {
+	return func(cfg *serverOptionConfig) {
+		cfg.authManagerHook = hook
 	}
 }
 

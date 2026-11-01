@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/AsheTheWings/cliapiproxy/internal/generations/capture"
+	"github.com/AsheTheWings/cliapiproxy/internal/generations/snapshots"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -61,7 +62,7 @@ const insertGeneration = `INSERT INTO generations (
 	requested_service_tier, effective_service_tier, response_service_tier, stream,
 	input_uncached, input_cache_read, input_cache_write, output_non_reasoning, output_reasoning, unclassified, total,
 	token_quality, token_source, usage_raw, usage_amount, usage_unit,
-	duration_ms, first_token_ms, system_instruction_hash
+	duration_ms, first_token_ms, system_instruction_hash, response_snapshot_id, prior_snapshot_id
 ) VALUES (
 	$1, $2, $3, $4, $5,
 	$6, $7, $8,
@@ -70,7 +71,9 @@ const insertGeneration = `INSERT INTO generations (
 	$21, $22, $23, $24,
 	$25, $26, $27, $28, $29, $30, $31,
 	$32, $33, $34, $35::numeric, $36,
-	$37, $38, $39
+	$37, $38, $39, $40,
+	(SELECT snapshot_id FROM credential_usage_snapshots WHERE credential_id = $13 AND observed_at < $2
+		ORDER BY observed_at DESC, snapshot_id DESC LIMIT 1)
 ) ON CONFLICT (generation_id) DO NOTHING`
 
 const insertPayload = `INSERT INTO generation_payloads (
@@ -104,6 +107,26 @@ func (s *PGStore) Write(ctx context.Context, e *Entry) error {
 		usageRaw = text(string(g.UsageRaw))
 	}
 	t := g.Tokens
+	// A generation already stored was linked when it was stored; its
+	// header snapshot is written only with it.
+	var stored bool
+	if err = tx.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM generations WHERE generation_id = $1)", g.ID).Scan(&stored); err != nil {
+		return err
+	}
+	if stored {
+		return tx.Commit(ctx)
+	}
+	var responseSnapshot any
+	if reading, ok := headerReading(g); ok && g.Credential.ID != "" {
+		id, errSnapshot := insertHeaderSnapshot(ctx, tx, snapshots.Snapshot{Credential: snapshotCredential(g.Credential),
+			ObservedAt: g.Time.Add(g.Duration), Source: snapshots.SourceResponseHeaders, Reading: reading, Partial: true})
+		if errSnapshot != nil {
+			return errSnapshot
+		}
+		if id != 0 {
+			responseSnapshot = id
+		}
+	}
 	tag, err := tx.Exec(ctx, insertGeneration,
 		g.ID, g.Time, nullable(g.TraceID), nullable(g.ConversationID), g.Status,
 		nullable(g.ClientKeyLabel), nullable(g.ClientKeyFingerprint), nullable(g.ClientUserAgent),
@@ -114,7 +137,7 @@ func (s *PGStore) Write(ctx context.Context, e *Entry) error {
 		t.Input.UncachedTokens, t.Input.CacheReadTokens, t.Input.CacheWriteTokens, t.Output.NonReasoningTokens, t.Output.ReasoningTokens,
 		t.UnclassifiedTokens, t.TotalTokens,
 		string(t.Quality), g.TokenSource, usageRaw, nullable(g.UsageAmount), nullable(g.UsageUnit),
-		milliseconds(g.Duration), milliseconds(g.FirstToken), instruction)
+		milliseconds(g.Duration), milliseconds(g.FirstToken), instruction, responseSnapshot)
 	if err != nil {
 		return err
 	}
@@ -134,6 +157,58 @@ func (s *PGStore) Write(ctx context.Context, e *Entry) error {
 		return err
 	}
 	return s.failAt("commit")
+}
+
+// insertHeaderSnapshot writes a response's header snapshot inside a
+// savepoint, so a header value the store refuses costs the snapshot and
+// keeps the generation; a lost connection still fails the write.
+func insertHeaderSnapshot(ctx context.Context, tx pgx.Tx, s snapshots.Snapshot) (int64, error) {
+	savepoint, err := tx.Begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	id, err := snapshots.Insert(ctx, savepoint, s)
+	if err != nil {
+		if Retryable(err) {
+			return 0, err
+		}
+		return 0, savepoint.Rollback(ctx)
+	}
+	return id, savepoint.Commit(ctx)
+}
+
+// headerReading reads a Claude or Codex response's usage headers.
+func headerReading(g capture.Generation) (snapshots.Reading, bool) {
+	if len(g.QuotaHeaders) == 0 {
+		return snapshots.Reading{}, false
+	}
+	switch g.Credential.Provider {
+	case "claude":
+		return snapshots.FromClaudeHeaders(g.QuotaHeaders)
+	case "codex":
+		return snapshots.FromCodexHeaders(g.QuotaHeaders, g.Time.Add(g.Duration))
+	}
+	return snapshots.Reading{}, false
+}
+
+func snapshotCredential(c capture.Credential) snapshots.Credential {
+	return snapshots.Credential{ID: c.ID, Provider: c.Provider, Group: c.Group, AccountLabel: c.AccountLabel,
+		AccountScope: c.AccountScope, KeyFingerprint: c.KeyFingerprint}
+}
+
+// WriteSnapshot stores a polled snapshot and its meters in one transaction
+// when its readings changed, returning its ID or 0.
+func (s *PGStore) WriteSnapshot(ctx context.Context, snap snapshots.Snapshot) (int64, error) {
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
+	id, err := snapshots.Insert(ctx, tx, snap)
+	if err != nil {
+		return 0, err
+	}
+	return id, tx.Commit(ctx)
 }
 
 // Retryable reports a failure that a later attempt can overcome: a lost or

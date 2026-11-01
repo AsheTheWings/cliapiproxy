@@ -8,12 +8,14 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"net/http"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/AsheTheWings/cliapiproxy/internal/generations/capture"
 	"github.com/AsheTheWings/cliapiproxy/internal/generations/schema"
+	"github.com/AsheTheWings/cliapiproxy/internal/generations/snapshots"
 	"github.com/AsheTheWings/cliapiproxy/internal/testsupport/fakeexec"
 	"github.com/AsheTheWings/cliapiproxy/internal/testsupport/pgtest"
 	"github.com/AsheTheWings/cliapiproxy/internal/testsupport/telemetrytest"
@@ -287,10 +289,10 @@ func TestWritesAreAtomicAndRetriedExactlyOnce(t *testing.T) {
 	acknowledged := entry(t, w, "")
 	violating := entry(t, w, "not-a-trace-id")
 	next := entry(t, w, "")
-	// Text PostgreSQL refuses, which a client controls, still stores.
-	next.SystemInstruction, next.ClientUserAgent, next.UsageRaw = "keep\x00this", "agent\xff", []byte(`{"note":"\u0000"}`)
 	interrupted.SystemInstruction = "invalid\xffinstruction"
 	acknowledged.SystemInstruction = "ordinary instruction"
+	// Text PostgreSQL refuses, which a client controls, still stores.
+	next.SystemInstruction, next.ClientUserAgent, next.UsageRaw = "keep\x00this", "agent\xff", []byte(`{"note":"\u0000"}`)
 	w.Submit(interrupted)
 	wait.Until(t, storeTimeout, func() bool { return w.QueueEntries() == 0 }, "the first generation was not written")
 	failures["commit"] = 1
@@ -308,8 +310,6 @@ func TestWritesAreAtomicAndRetriedExactlyOnce(t *testing.T) {
 			g.ID).Scan(&rows, &payloads); err != nil || rows != 1 || payloads != 3 {
 			t.Errorf("generation %s: %d rows, %d payloads, %v; want one row and three payloads", g.ID, rows, payloads, err)
 		}
-	}
-	var stored int
 		var instruction []byte
 		var hash string
 		if err = pool.QueryRow(context.Background(), `SELECT s.content, s.hash FROM system_instructions s
@@ -320,6 +320,8 @@ func TestWritesAreAtomicAndRetriedExactlyOnce(t *testing.T) {
 		if string(instruction) != g.SystemInstruction || hash != hex.EncodeToString(sum[:]) {
 			t.Error("the stored instruction bytes and their hash do not match the original instruction")
 		}
+	}
+	var stored int
 	if err = pool.QueryRow(context.Background(), "SELECT count(*) FROM generations").Scan(&stored); err != nil || stored != 3 {
 		t.Fatalf("generations = %d, %v; want 3 and the violating one dropped", stored, err)
 	}
@@ -327,6 +329,63 @@ func TestWritesAreAtomicAndRetriedExactlyOnce(t *testing.T) {
 		t.Fatalf("terminal_write drops = %d, want 1", got)
 	}
 }
+
+func TestSnapshotsAreStoredOnChangeAndLinkedToGenerations(t *testing.T) {
+	ctx := context.Background()
+	pool := migratedPool(t)
+	store := NewPGStore(pool)
+	w, err := NewWriter(store, WriterOptions{PayloadLimit: 1 << 20, QueueBytes: 1 << 26})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { w.Close(storeTimeout) })
+	cred := snapshots.Credential{ID: "claude-account", Provider: "claude", AccountLabel: "work"}
+	polled := snapshots.Snapshot{Credential: cred, ObservedAt: time.Now().UTC().Add(-time.Minute), Source: snapshots.SourcePoll,
+		Reading: snapshots.Reading{Plan: "max", Meters: []snapshots.Meter{
+			{Meter: "five_hour", Unit: snapshots.UnitPercent, Used: ptr(10), WindowSeconds: 5 * 3600},
+			{Meter: "seven_day", Unit: snapshots.UnitPercent, Used: ptr(20), WindowSeconds: 7 * 86400},
+		}}}
+	first, err := store.WriteSnapshot(ctx, polled)
+	if err != nil || first == 0 {
+		t.Fatalf("first snapshot = %d, %v", first, err)
+	}
+	polled.ObservedAt = polled.ObservedAt.Add(time.Second)
+	if again, errAgain := store.WriteSnapshot(ctx, polled); errAgain != nil || again != 0 {
+		t.Fatalf("an unchanged reading stored snapshot %d, %v", again, errAgain)
+	}
+
+	g := entry(t, w, "")
+	g.Credential = capture.Credential{ID: cred.ID, Provider: "claude", AccountLabel: "work"}
+	g.Duration = time.Second
+	g.QuotaHeaders = http.Header{"Anthropic-Ratelimit-Unified-5h-Utilization": {"0.4"}}
+	w.Submit(g)
+	wait.Until(t, storeTimeout, func() bool { return w.QueueEntries() == 0 }, "the generation was not written")
+
+	var prior, response *int64
+	var source string
+	if err = pool.QueryRow(ctx, `SELECT g.prior_snapshot_id, g.response_snapshot_id, s.source FROM generations g
+		JOIN credential_usage_snapshots s ON s.snapshot_id = g.response_snapshot_id WHERE g.generation_id = $1`, g.ID).Scan(&prior, &response, &source); err != nil {
+		t.Fatal(err)
+	}
+	if prior == nil || *prior != first || response == nil || *response == first || source != snapshots.SourceResponseHeaders {
+		t.Fatalf("prior = %v, response = %v from %q; want prior %d and a new response_headers snapshot", prior, response, source, first)
+	}
+	// The header snapshot keeps the polled seven-day window it did not
+	// report, under the poll's meter names.
+	c := &captured{t: t, pool: pool}
+	if n := c.count(`SELECT count(*) FROM credential_usage_meters WHERE snapshot_id = $1
+		AND ((meter = 'five_hour' AND used = 40) OR (meter = 'seven_day' AND used = 20))`, *response); n != 2 {
+		t.Fatalf("the header snapshot has %d of the expected meters, want 2", n)
+	}
+	// A poll that reads the state the headers showed stores nothing.
+	polled.ObservedAt = time.Now().UTC()
+	polled.Reading.Meters[0].Used = ptr(40)
+	if again, errAgain := store.WriteSnapshot(ctx, polled); errAgain != nil || again != 0 {
+		t.Fatalf("a poll matching the header snapshot stored snapshot %d, %v", again, errAgain)
+	}
+}
+
+func ptr(v float64) *float64 { return &v }
 
 func terminalDrops(t *testing.T, rec *telemetrytest.Recorder) int64 {
 	t.Helper()
