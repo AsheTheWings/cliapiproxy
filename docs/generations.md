@@ -90,12 +90,52 @@ records the state. The generation's
 generation started, and `response_snapshot_id` names the snapshot from its
 own headers when they changed the readings.
 
+## Payload pruning
+
+Each turn of a conversation resends the turns before it, so most of an
+input repeats the conversation's next input. A pruning pass, run every
+`store.prune-interval-seconds` with the first run one interval after
+startup, replaces such an input with a residual that names the later input
+it is rebuilt from. An interval of 0 runs no pass. Passes apply to the
+`client_input` and `upstream_input` kinds of inputs that carry a
+conversation ID; responses are never pruned.
+
+An input becomes a residual when its item list equals the leading items of
+the newest later input of its conversation and kind that also starts with
+it, compared in RFC 8785 form. The item list is the request's `input`,
+`messages`, `contents`, `request.contents`, or `params.messages`. A
+residual holds how many leading items it shares, the SHA-256 of the
+original request's RFC 8785 serialization, and the request's other fields
+when they differ from the base's. Rebuilding a residual gives that RFC 8785
+serialization, which equals the original as JSON but not byte for byte.
+The content type of a residual is
+`application/vnd.cliapiproxy.transcript-ref+json`;
+`original_content_type`, `body_sha256`, and `original_bytes` keep
+describing the body as it was sent.
+
+The newest input of a conversation and kind stays full, as does an input
+no later input extends, a truncated input, an input whose item list is
+empty, and a body that is not JSON, holds a duplicate key, a lone
+surrogate, or a number RFC 8785 would change, or has no item list. When a
+base is itself pruned, its residuals move to the new base in the same
+transaction, with their own fields written in full where they differ from
+the new base's.
+
+Before each replacement commits, the pass rebuilds the input and every
+residual it moves and compares their SHA-256 with the originals'; a
+mismatch rolls the replacement back and leaves every body as it was. A
+pass takes `store.prune-batch-conversations` conversations at a time,
+oldest activity first, and only one pass runs at a time across servers.
+A conversation whose evaluation fails is skipped for the rest of the pass;
+after three consecutive failed passes its inputs are left full until it
+gains a new input or the evaluator's version changes.
+
 ## Tables and views
 
 | Relation | Holds |
 | --- | --- |
 | `generations` | One row per stored generation, keyed by `generation_id`: its time, trace ID, conversation, client key label and fingerprint, provider, group, account label, credential, models, reasoning effort, service tiers, token breakdown, usage amount, timing, and the usage snapshots before and after it. No process deletes a row. |
-| `generation_payloads` | A generation's `client_input`, `upstream_input`, and `upstream_response`, one row of each kind, zstd-compressed, with the SHA-256 and size of the uncompressed body. |
+| `generation_payloads` | A generation's `client_input`, `upstream_input`, and `upstream_response`, one row of each kind, zstd-compressed, with the SHA-256 and size of the uncompressed body as sent. A pruned input names its base in `base_payload_id`. |
 | `system_instructions` | Each distinct system instruction once, stored as bytes and keyed by their SHA-256. |
 | `credential_usage_snapshots` | A credential's plan and usage, one row per changed reading, from polling or from response headers. |
 | `credential_usage_meters` | Each snapshot's meters, each in its own unit: `credits`, `percent`, `usd`, or `requests`. |

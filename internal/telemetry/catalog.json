@@ -1,6 +1,6 @@
 {
   "schema_version": "opentelemetry.producer/signal-catalog/v1",
-  "catalog_version": 4,
+  "catalog_version": 5,
   "service_namespace": "cliapiproxy",
   "service_names": ["cliapiproxy"],
   "catalog": {
@@ -8,7 +8,8 @@
       "cliapiproxy.qualification",
       "cliapiproxy.execute",
       "cliapiproxy.codex.client_models",
-      "cliapiproxy.usage.poll"
+      "cliapiproxy.usage.poll",
+      "cliapiproxy.store.prune"
     ],
     "trace_name_patterns": [
       "^(GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS|CONNECT|TRACE|HTTP)( /[^ ]*)?$"
@@ -24,7 +25,11 @@
       "cliapiproxy.store.queue.bytes",
       "cliapiproxy.store.database.size",
       "cliapiproxy.usage.poll.duration",
-      "cliapiproxy.usage.remaining"
+      "cliapiproxy.usage.remaining",
+      "cliapiproxy.store.prune.duration",
+      "cliapiproxy.store.pruned",
+      "cliapiproxy.store.pruned.bytes",
+      "cliapiproxy.store.quarantined"
     ],
     "logs": [
       "cliapiproxy.qualification",
@@ -46,7 +51,8 @@
       "cliapiproxy.codex.synthesized_models",
       "cliapiproxy.codex.synthesized_multi_agent_v2",
       "cliapiproxy.codex.fallback_template",
-      "cliapiproxy.usage.poll_outcome"
+      "cliapiproxy.usage.poll_outcome",
+      "cliapiproxy.store.prune_outcome"
     ],
     "metrics": [
       "http.request.method",
@@ -59,7 +65,9 @@
       "cliapiproxy.store.drop_reason",
       "cliapiproxy.store.write_outcome",
       "cliapiproxy.usage.poll_outcome",
-      "cliapiproxy.usage.meter"
+      "cliapiproxy.usage.meter",
+      "cliapiproxy.store.prune_outcome",
+      "cliapiproxy.payload.kind"
     ],
     "logs": [
       "cliapiproxy.correlation.id",
@@ -76,7 +84,9 @@
     "cliapiproxy.store.drop_reason": ["queue_entries", "queue_bytes", "terminal_write", "shutdown"],
     "cliapiproxy.store.write_outcome": ["ok", "retryable", "terminal"],
     "cliapiproxy.usage.poll_outcome": ["ok", "timeout", "http_error", "unparseable", "unchanged"],
-    "cliapiproxy.usage.meter": ["five_hour", "daily", "weekly", "monthly", "balance", "other"]
+    "cliapiproxy.usage.meter": ["five_hour", "daily", "weekly", "monthly", "balance", "other"],
+    "cliapiproxy.store.prune_outcome": ["ok", "partial", "error"],
+    "cliapiproxy.payload.kind": ["client_input", "upstream_input"]
   },
   "metric_units": {
     "cliapiproxy.qualification": "{probe}",
@@ -89,7 +99,11 @@
     "cliapiproxy.store.queue.bytes": "By",
     "cliapiproxy.store.database.size": "By",
     "cliapiproxy.usage.poll.duration": "s",
-    "cliapiproxy.usage.remaining": "1"
+    "cliapiproxy.usage.remaining": "1",
+    "cliapiproxy.store.prune.duration": "s",
+    "cliapiproxy.store.pruned": "{input}",
+    "cliapiproxy.store.pruned.bytes": "By",
+    "cliapiproxy.store.quarantined": "{input}"
   },
   "error_classes": [
     "canceled",
@@ -100,7 +114,9 @@
     "upstream_error",
     "no_credential",
     "network",
-    "other"
+    "other",
+    "residual_mismatch",
+    "malformed_residual"
   ],
   "error_type_patterns": ["^5[0-9][0-9]$"],
   "qualification": {

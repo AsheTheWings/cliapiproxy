@@ -136,6 +136,10 @@ func run() int {
 		}
 		// Queued generations are written before telemetry shuts down.
 		defer store.Close()
+		if errPrune := store.StartPruning(plan.pruneInterval, plan.pruneBatch); errPrune != nil {
+			fmt.Fprintf(os.Stderr, "store: %v\n", errPrune)
+			return 1
+		}
 		serverOptions = append(serverOptions, api.WithAuthManagerHook(func(manager *coreauth.Manager) {
 			client := func(ctx context.Context, auth *coreauth.Auth) *http.Client {
 				return helps.NewProxyAwareHTTPClient(ctx, cfg, auth, snapshots.PollTimeout)
@@ -222,7 +226,10 @@ type runPlan struct {
 	// payloadLimit and queueBytes bound capture's payloads and write queue.
 	payloadLimit int
 	queueBytes   int64
-	telemetry    telemetry.Settings
+	// pruneInterval and pruneBatch schedule payload pruning.
+	pruneInterval time.Duration
+	pruneBatch    int
+	telemetry     telemetry.Settings
 	// telemetryProbe runs the telemetry probe instead of serving.
 	telemetryProbe bool
 	// validate stops once the inputs are valid, before any other work.
@@ -294,7 +301,9 @@ func resolveRun(process inputs.Process, files inputs.Files) (*runPlan, error) {
 	}
 	return &runPlan{profile: eff.Profile, cfg: cfg, keys: keyStore, store: store, telemetry: settings, telemetryProbe: eff.Bool("telemetry-probe"),
 		payloadLimit: int(eff.Int("store.payload-limit-bytes")), queueBytes: eff.Int("store.queue-bytes"),
-		validate: eff.Bool("validate"), migrate: eff.Bool("migrate"), migrateStatus: eff.Bool("migrate-status"),
+		pruneInterval: time.Duration(eff.Int("store.prune-interval-seconds")) * time.Second,
+		pruneBatch:    int(eff.Int("store.prune-batch-conversations")),
+		validate:      eff.Bool("validate"), migrate: eff.Bool("migrate"), migrateStatus: eff.Bool("migrate-status"),
 		localModel: eff.Bool("local-model"), command: command}, nil
 }
 
