@@ -8,7 +8,7 @@ constraint. A plain `go test ./...` selects no class and runs nothing.
 | unit | Pure code over in-memory values: no filesystem, sockets, processes, process configuration, or wall-clock waits | `scripts/test.sh unit` |
 | component | In-process code that may use run-owned temporary files, loopback sockets, the process environment, and bounded waits | `scripts/test.sh component` |
 | conformance | Read-only checks of the source tree, including that every test file's class covers what it does | `scripts/test.sh conformance` |
-| integration | Code that starts processes, such as plugin builds, or needs real network interfaces, such as WebRTC media | `scripts/test.sh integration` |
+| integration | Code that starts processes, such as plugin builds or a PostgreSQL server, or needs real network interfaces, such as WebRTC media | `scripts/test.sh integration` |
 | qualification | The built container image, run from its OCI layout with Podman | `scripts/test.sh qualification ./test/qualification` |
 
 The dashboard's Bun tests in `dashboard/tests` are unit tests and
@@ -44,6 +44,16 @@ runs the telemetry probe, and removes the store.
 CLIPROXY_QUALIFICATION_LAYOUT=image-layout CLIPROXY_QUALIFICATION_REVISION="$(git rev-parse HEAD)" \
   scripts/test.sh qualification ./test/qualification
 ```
+
+## The PostgreSQL store's tests
+
+Integration tests of the [store](generations.md) start one PostgreSQL 18
+container per test package with Podman, from the official image pinned by
+digest in [`internal/testsupport/pgtest`](../internal/testsupport/pgtest), in
+a Podman store the run creates and removes with the container. The server
+listens on a free loopback port with a random owner password. A package
+builds a migrated template database once, and each test clones it into a
+database of its own, which it drops when it ends.
 
 ## Classifying a test
 

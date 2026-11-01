@@ -59,6 +59,7 @@ The Go packages under `sdk/` embed the proxy in other programs:
 - [Building](docs/building.md)
 - [Container](docs/container.md)
 - [Configuration](docs/configuration.md)
+- [Generations](docs/generations.md)
 - [Management](docs/management.md)
 - [Observability](docs/observability.md)
 - [Testing](docs/testing.md)

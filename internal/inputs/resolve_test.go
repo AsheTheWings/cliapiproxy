@@ -87,15 +87,19 @@ func TestProfileIsRequired(t *testing.T) {
 func TestProductionRequiresWhatItOwns(t *testing.T) {
 	_, err := Resolve(mustSchema(t), Process{Environ: []string{"CLIPROXY_PROFILE=production"}}, memFiles{})
 	for _, name := range []string{"CLIPROXY_PROTECTED_FILE: required", "server.port: required", "oauth.auth-dir: required", "keys.state-file: required",
-		"OTEL_EXPORTER_OTLP_ENDPOINT: required", "CLIPROXY_DEPLOYMENT_ENVIRONMENT: required"} {
+		"OTEL_EXPORTER_OTLP_ENDPOINT: required", "CLIPROXY_DEPLOYMENT_ENVIRONMENT: required",
+		"store.host: required", "store.database: required", "store.user: required", "store.dump-directory: required"} {
 		wantProblem(t, err, name)
 	}
 }
 
+// storeOverlay names the store, which production requires.
+const storeOverlay = "store: {host: /run/pg, database: d, user: u, dump-directory: /var/lib/a/dumps}\n"
+
 func TestLaterOverlayOverridesEarlierAndDefaults(t *testing.T) {
 	files := memFiles{
 		protectedPath: validProtected(),
-		"/etc/a.yaml": {data: "server:\n  port: 9000\n  host: 0.0.0.0\noauth:\n  auth-dir: /var/lib/a\nkeys: {state-file: /var/lib/a/keys.yaml}\n", mode: 0o644},
+		"/etc/a.yaml": {data: "server:\n  port: 9000\n  host: 0.0.0.0\noauth:\n  auth-dir: /var/lib/a\nkeys: {state-file: /var/lib/a/keys.yaml}\n" + storeOverlay, mode: 0o644},
 		"/etc/b.yaml": {data: "server: {port: 9001}\n", mode: 0o644},
 	}
 	eff, err := Resolve(mustSchema(t), Process{Environ: production("CLIPROXY_OVERLAY_FILES=/etc/a.yaml:/etc/missing.yaml:/etc/b.yaml")}, files)
@@ -154,7 +158,7 @@ func TestEmptyEnvironmentVariableIsUnset(t *testing.T) {
 }
 
 func TestInputsNotInTheProfileAreIgnored(t *testing.T) {
-	files := memFiles{protectedPath: validProtected(), "/etc/a.yaml": {data: "server: {port: 9000}\noauth: {auth-dir: /var/lib/a}\nkeys: {state-file: /var/lib/a/keys.yaml}\n"}}
+	files := memFiles{protectedPath: validProtected(), "/etc/a.yaml": {data: "server: {port: 9000}\noauth: {auth-dir: /var/lib/a}\nkeys: {state-file: /var/lib/a/keys.yaml}\n" + storeOverlay}}
 	eff, err := Resolve(mustSchema(t), Process{Environ: production("HOME=relative", "CLIPROXY_OVERLAY_FILES=/etc/a.yaml")}, files)
 	if err != nil {
 		t.Fatal(err)
@@ -266,7 +270,7 @@ func TestSchemaRejectsMalformedDeclarations(t *testing.T) {
 }
 
 func TestConfigDocumentNestsKeysUnderTheV8Layout(t *testing.T) {
-	files := memFiles{protectedPath: validProtected(), "/etc/a.yaml": {data: "server: {port: 9000}\noauth: {auth-dir: /var/lib/a}\nkeys: {state-file: /var/lib/a/keys.yaml}\n"}}
+	files := memFiles{protectedPath: validProtected(), "/etc/a.yaml": {data: "server: {port: 9000}\noauth: {auth-dir: /var/lib/a}\nkeys: {state-file: /var/lib/a/keys.yaml}\n" + storeOverlay}}
 	eff, err := Resolve(mustSchema(t), Process{Environ: production("CLIPROXY_OVERLAY_FILES=/etc/a.yaml")}, files)
 	if err != nil {
 		t.Fatal(err)
