@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/upstream"
 	coreauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
 )
 
@@ -46,9 +47,16 @@ func TestKeyLabelsLeaveCredentialIDsUnchanged(t *testing.T) {
 			if got := labeled.Attributes[coreauth.AttributeKeyLabel]; got != label {
 				t.Errorf("%s: key label attribute = %q, want %q", family, got, label)
 			}
+			if got := labeled.Attributes[coreauth.AttributeAccountLabel]; got != label {
+				t.Errorf("%s: a labeled key's account label = %q, want %q", family, got, label)
+			}
 		}
 		if _, has := unlabeled.Attributes[coreauth.AttributeKeyLabel]; has {
 			t.Errorf("%s: an unlabeled key carries a label attribute", family)
+		}
+		want := "team-group " + upstream.Fingerprint("sk-synthetic-key")
+		if got := unlabeled.Attributes[coreauth.AttributeAccountLabel]; got != want {
+			t.Errorf("%s: an unlabeled key's account label = %q, want %q", family, got, want)
 		}
 	}
 }

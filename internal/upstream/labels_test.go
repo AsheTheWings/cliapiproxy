@@ -81,11 +81,8 @@ func TestAccountLabelsNameUnlabeledKeys(t *testing.T) {
 	if got := AccountLabel("alpha", key); got != "alpha ba7816bf8f01" {
 		t.Errorf("unlabeled upstream key = %q", got)
 	}
-	if got := ClientLabel(key); got != "ba7816bf8f01" {
-		t.Errorf("unlabeled client key = %q", got)
-	}
 	key.Label = "team"
-	if AccountLabel("alpha", key) != "team" || ClientLabel(key) != "team" {
+	if AccountLabel("alpha", key) != "team" {
 		t.Error("a label does not name its key")
 	}
 }

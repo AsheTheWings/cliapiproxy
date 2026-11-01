@@ -72,15 +72,6 @@ func AccountLabel(group string, key Key) string {
 	return group + " " + Fingerprint(key.APIKey)
 }
 
-// ClientLabel names a client key: its label, or for an unlabeled key
-// its fingerprint.
-func ClientLabel(key Key) string {
-	if key.Label != "" {
-		return key.Label
-	}
-	return Fingerprint(key.APIKey)
-}
-
 // ValidateKeyLabels checks each key's label and that no two keys share one.
 // Errors name keys by the position name returns, never by value.
 func ValidateKeyLabels(keys []Key, name func(int) string) error {

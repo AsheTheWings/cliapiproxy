@@ -24,7 +24,10 @@ const (
 	AttributeGroup = "group"
 	// AttributeKeyLabel is the operator's label of an API-key credential's
 	// key, absent for an unlabeled key.
-	AttributeKeyLabel      = "key_label"
+	AttributeKeyLabel = "key_label"
+	// AttributeAccountLabel names an API-key credential's account: its key's
+	// label, or for an unlabeled key its group name and key fingerprint.
+	AttributeAccountLabel  = "account_label"
 	AttributePath          = "path"
 	AttributeRuntimeOnly   = "runtime_only"
 	AttributeSource        = "source"

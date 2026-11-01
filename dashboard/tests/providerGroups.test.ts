@@ -5,6 +5,7 @@ import {
   emptyModel,
   emptyDraft,
   fromDraft,
+  keyAccountLabel,
   toDraft,
   validateDraft,
   withGroup,
@@ -109,13 +110,23 @@ describe('group form', () => {
       ],
       [{ keys: [{ value: ' ', label: '' }] }, 'provider_groups.error_keys_required'],
       [
-        { keys: [{ value: 'k1', label: '' }, { value: 'k1', label: '' }] },
+        {
+          keys: [
+            { value: 'k1', label: '' },
+            { value: 'k1', label: '' },
+          ],
+        },
         'provider_groups.error_key_repeated',
       ],
       [{ keys: [{ value: 'k1', label: 'n'.repeat(65) }] }, 'labels.error_long'],
       [{ keys: [{ value: 'k1', label: 'a\tb' }] }, 'labels.error_control'],
       [
-        { keys: [{ value: 'k1', label: 'x' }, { value: 'k2', label: ' x ' }] },
+        {
+          keys: [
+            { value: 'k1', label: 'x' },
+            { value: 'k2', label: ' x ' },
+          ],
+        },
         'labels.error_repeated',
       ],
     ];
@@ -123,6 +134,26 @@ describe('group form', () => {
       expect(validateDraft({ ...valid, ...patch }, openai, taken ?? [])?.key).toBe(key);
     }
     expect(validateDraft({ ...valid, baseUrl: '', models: [] }, kiro, [])).toBeNull();
+  });
+
+  test('an unlabeled stored key shows as its group name and fingerprint', () => {
+    expect(
+      keyAccountLabel('team', {
+        stored: '****abcd',
+        fingerprint: '0123456789ab',
+        value: '',
+        label: '',
+      })
+    ).toBe('team 0123456789ab');
+    expect(
+      keyAccountLabel('team', {
+        stored: '****abcd',
+        fingerprint: '0123456789ab',
+        value: '',
+        label: ' Alice ',
+      })
+    ).toBe('Alice');
+    expect(keyAccountLabel('team', { value: 'new-key', label: '' })).toBe('');
   });
 
   test('edits a family list by position', () => {

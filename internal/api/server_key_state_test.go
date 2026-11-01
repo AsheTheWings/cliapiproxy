@@ -178,12 +178,29 @@ func TestManagementRefusesChangesItCannotKeep(t *testing.T) {
 		{"blank group key label", "api-keys/kiro", `[{"name":"kiro","keys":[{"api-key":"k","label":""}]}]`, http.StatusBadRequest},
 		{"group key label with a newline", "api-keys/kiro", `[{"name":"kiro","keys":[{"api-key":"k","label":"a\nb"}]}]`, http.StatusBadRequest},
 		{"group key label not a string", "api-keys/kiro", `[{"name":"kiro","keys":[{"api-key":"k","label":{"x":1}}]}]`, http.StatusBadRequest},
+		{"group key label a number", "api-keys/kiro", `[{"name":"kiro","keys":[{"api-key":"k","label":123}]}]`, http.StatusBadRequest},
+		{"group key label a boolean", "api-keys/kiro", `[{"name":"kiro","keys":[{"api-key":"k","label":true}]}]`, http.StatusBadRequest},
 		{"label repeated across groups", "api-keys/kiro", `[{"name":"a","keys":[{"api-key":"k1","label":"x"}]},{"name":"b","keys":[{"api-key":"k2","label":"x"}]}]`, http.StatusBadRequest},
 		{"unknown family", "api-keys/gemini", `[]`, http.StatusNotFound},
 	} {
 		if got := putKeys(s, tc.route, tc.body); got.Code != tc.want {
 			t.Errorf("%s: status %d, want %d; body %s", tc.name, got.Code, tc.want, got.Body)
 		}
+	}
+	// Label errors name the key's position and never its value.
+	for body, position := range map[string]string{
+		`[{"api-key":"secret-a"},{"api-key":"secret-b","label":123}]`:   "access.api-keys: key 2: label must be a string",
+		`[{"api-key":"secret-a"},{"api-key":"secret-b","label":false}]`: "access.api-keys: key 2: label must be a string",
+		`[{"api-key":"secret-a"},{"api-key":"secret-b","label":" "}]`:   "access.api-keys: key 2: label is empty",
+		`[{"api-key":"secret-a"},"secret-b"]`:                           "access.api-keys: key 2: want an object",
+	} {
+		got := putKeys(s, "access/api-keys", body)
+		if got.Code != http.StatusBadRequest || !strings.Contains(got.Body.String(), position) || strings.Contains(got.Body.String(), "secret-") {
+			t.Errorf("PUT %s: status %d, body %s; want 400 naming %q without a key", body, got.Code, got.Body, position)
+		}
+	}
+	if got := putKeys(s, "api-keys/kiro", `[{"name":"kiro","keys":[{"api-key":"secret-a"},{"api-key":"secret-b","label":7}]}]`); !strings.Contains(got.Body.String(), "api-keys.kiro: group kiro key 2: label must be a string") || strings.Contains(got.Body.String(), "secret-") {
+		t.Errorf("PUT a numeric group key label: body %s; want the key's position without a key", got.Body)
 	}
 	if _, err := os.Stat(path); !os.IsNotExist(err) {
 		t.Fatalf("a refused change wrote the state file: %v", err)

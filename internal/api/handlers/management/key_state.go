@@ -138,17 +138,25 @@ func decodeClientKeys(body []byte) ([]upstream.Key, error) {
 	}
 	keys := make([]upstream.Key, len(items))
 	for i, raw := range items {
+		position := fmt.Sprintf("access.api-keys: key %d", i+1)
+		if !bytes.HasPrefix(bytes.TrimSpace(raw), []byte("{")) {
+			return nil, fmt.Errorf("%s: want an object of api-key and label", position)
+		}
 		decoder := json.NewDecoder(bytes.NewReader(raw))
 		decoder.DisallowUnknownFields()
 		var item clientKeyItem
-		if err := decoder.Decode(&item); err != nil || !bytes.HasPrefix(bytes.TrimSpace(raw), []byte("{")) {
-			return nil, errShape
+		if err := decoder.Decode(&item); err != nil {
+			var typeErr *json.UnmarshalTypeError
+			if errors.As(err, &typeErr) && typeErr.Field != "" {
+				return nil, fmt.Errorf("%s: %s must be a string", position, typeErr.Field)
+			}
+			return nil, fmt.Errorf("%s: want an object of api-key and label", position)
 		}
 		keys[i].APIKey = item.APIKey
 		if item.Label != nil {
 			label, err := upstream.NormalizeLabel(*item.Label)
 			if err != nil {
-				return nil, fmt.Errorf("access.api-keys: key %d: %v", i+1, err)
+				return nil, fmt.Errorf("%s: %v", position, err)
 			}
 			keys[i].Label = label
 		}
@@ -225,7 +233,7 @@ func decodeProviderGroups(family string, body []byte) ([]upstream.Group, error) 
 					deleteConfigV8Path(key, []string{"label"})
 					continue
 				}
-				if label.Kind != yaml.ScalarNode {
+				if label.Kind != yaml.ScalarNode || label.Tag != "!!str" {
 					return nil, fmt.Errorf("api-keys.%s: group %s key %d: label must be a string", family, name, k+1)
 				}
 				trimmed, err := upstream.NormalizeLabel(label.Value)

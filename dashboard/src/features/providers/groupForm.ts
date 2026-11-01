@@ -57,6 +57,14 @@ export const labelProblem = (label: string): string | null => {
   return null;
 };
 
+/**
+ * The name a group's key shows under: its label, or for an unlabeled stored
+ * key the group name followed by its fingerprint, as the server names the
+ * key's account. A new key has no fingerprint until it is saved.
+ */
+export const keyAccountLabel = (group: string, key: KeyDraft): string =>
+  key.label.trim() || (key.fingerprint ? `${group.trim()} ${key.fingerprint}` : '');
+
 export const emptyModel = (): ModelDraft => ({
   name: '',
   alias: '',

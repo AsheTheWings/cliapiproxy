@@ -9,6 +9,7 @@ import type { FamilyDescriptor } from './families';
 import {
   MAX_LABEL_LENGTH,
   emptyModel,
+  keyAccountLabel,
   validateDraft,
   type DraftError,
   type GroupDraft,
@@ -164,7 +165,9 @@ export function GroupSheet({
                 className={`input ${styles.keyLabel}`}
                 autoComplete="off"
                 maxLength={MAX_LABEL_LENGTH}
-                placeholder={t('labels.placeholder')}
+                placeholder={
+                  keyAccountLabel(draft.name, { ...key, label: '' }) || t('labels.placeholder')
+                }
                 aria-label={t('labels.label')}
                 value={key.label}
                 disabled={disabled}
