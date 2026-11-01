@@ -48,7 +48,7 @@ func production(env ...string) []string {
 }
 
 func validProtected() memFile {
-	return memFile{data: "# upstream proxy\nCLIPROXY_PROXY_URL='http://proxy.invalid:3128'\n\n", mode: 0o600}
+	return memFile{data: "# upstream proxy\nCLIPROXY_PROXY_URL='http://proxy.invalid:3128'\n\nCLIPROXY_POSTGRES_PASSWORD='store-password'\n", mode: 0o600}
 }
 
 func problems(t *testing.T, err error) []string {
@@ -88,7 +88,8 @@ func TestProductionRequiresWhatItOwns(t *testing.T) {
 	_, err := Resolve(mustSchema(t), Process{Environ: []string{"CLIPROXY_PROFILE=production"}}, memFiles{})
 	for _, name := range []string{"CLIPROXY_PROTECTED_FILE: required", "server.port: required", "oauth.auth-dir: required", "keys.state-file: required",
 		"OTEL_EXPORTER_OTLP_ENDPOINT: required", "CLIPROXY_DEPLOYMENT_ENVIRONMENT: required",
-		"store.host: required", "store.database: required", "store.user: required", "store.dump-directory: required"} {
+		"store.host: required", "store.database: required", "store.user: required", "store.dump-directory: required",
+		"store.password: required"} {
 		wantProblem(t, err, name)
 	}
 }

@@ -15,6 +15,7 @@ import (
 	"github.com/AsheTheWings/cliapiproxy/internal/generations/schema"
 	"github.com/AsheTheWings/cliapiproxy/internal/testsupport/pgtest"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -219,10 +220,14 @@ func TestReaderRoleOnlyReads(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = reader.Close(ctx) }()
+	// Only an insufficient-privilege error shows the reader was refused;
+	// a constraint or rewrite error could hide a granted privilege.
 	refused := func(statement string) {
 		t.Helper()
-		if _, err := reader.Exec(ctx, statement); err == nil {
-			t.Errorf("the reader ran %s", statement)
+		_, err := reader.Exec(ctx, statement)
+		var pgErr *pgconn.PgError
+		if !errors.As(err, &pgErr) || pgErr.Code != "42501" {
+			t.Errorf("%s: err = %v, want insufficient privilege (42501)", statement, err)
 		}
 	}
 	for relation, kind := range relations {
@@ -230,12 +235,21 @@ func TestReaderRoleOnlyReads(t *testing.T) {
 		if _, err = reader.Exec(ctx, "SELECT * FROM "+quoted+" LIMIT 1"); err != nil {
 			t.Errorf("the reader cannot select %s: %v", relation, err)
 		}
-		refused("INSERT INTO " + quoted + " DEFAULT VALUES")
-		refused("UPDATE " + quoted + " SET " + firstColumn(t, owner, relation) + " = NULL")
-		refused("DELETE FROM " + quoted)
-		refused("TRUNCATE " + quoted)
+		var writable bool
+		if err = owner.QueryRow(ctx, "SELECT has_table_privilege('cliapiproxy_reader', $1::regclass, 'INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER')",
+			quoted).Scan(&writable); err != nil || writable {
+			t.Errorf("the reader holds a write privilege on %s: %v, %v", relation, writable, err)
+		}
+		if kind != "v" {
+			// PostgreSQL rejects writes to a view before it checks privileges,
+			// so the privilege check above covers views.
+			refused("INSERT INTO " + quoted + " DEFAULT VALUES")
+			refused("UPDATE " + quoted + " SET " + firstColumn(t, owner, relation) + " = NULL")
+			refused("DELETE FROM " + quoted)
+		}
 		switch kind {
 		case "r":
+			refused("TRUNCATE " + quoted)
 			refused("ALTER TABLE " + quoted + " ADD COLUMN reader_column int")
 			refused("DROP TABLE " + quoted)
 		case "v":
@@ -253,7 +267,7 @@ func firstColumn(t *testing.T, pool *pgxpool.Pool, relation string) string {
 	t.Helper()
 	var column string
 	if err := pool.QueryRow(context.Background(), `SELECT attname FROM pg_attribute
-		WHERE attrelid = $1::regclass AND attnum > 0 AND NOT attisdropped ORDER BY attnum LIMIT 1`, relation).Scan(&column); err != nil {
+		WHERE attrelid = $1::regclass AND attnum > 0 AND NOT attisdropped AND attidentity = '' ORDER BY attnum LIMIT 1`, relation).Scan(&column); err != nil {
 		t.Fatal(fmt.Errorf("first column of %s: %w", relation, err))
 	}
 	return pgx.Identifier{column}.Sanitize()

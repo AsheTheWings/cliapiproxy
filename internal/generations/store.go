@@ -36,7 +36,8 @@ func Open(ctx context.Context, s Settings) (*pgxpool.Pool, error) {
 	if !s.Enabled() {
 		return nil, errors.New("the store is not configured: store.host is empty")
 	}
-	cfg, err := pgxpool.ParseConfig("")
+	// An empty passfile keeps pgx from reading a .pgpass file.
+	cfg, err := pgxpool.ParseConfig("passfile=")
 	if err != nil {
 		return nil, fmt.Errorf("store connection: %w", err)
 	}
@@ -71,7 +72,7 @@ func CheckSchema(ctx context.Context, pool *pgxpool.Pool) error {
 		return err
 	}
 	if !report.Clean() {
-		return fmt.Errorf("the store's schema does not match this build; run -migrate-status, then -migrate:\n%s", strings.Join(report.Lines()[len(report.Applied):], "\n"))
+		return fmt.Errorf("the store's schema does not match this build; run -migrate-status, then -migrate:\n%s", strings.Join(report.Problems(), "\n"))
 	}
 	return nil
 }

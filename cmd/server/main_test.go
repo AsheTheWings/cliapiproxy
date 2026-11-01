@@ -179,7 +179,8 @@ func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
 
 // Without a management key the management API stays off.
 func TestManagementIsOffWithoutItsKey(t *testing.T) {
-	files := memFiles{"/etc/cliapiproxy/overlay.yaml": "server: {port: 9100}\noauth: {auth-dir: /var/lib/cliapiproxy/auths}\nkeys: {state-file: /var/lib/cliapiproxy/keys.yaml}\nstore: {host: /run/pg, database: d, user: u, dump-directory: /d}\n"}
+	files := memFiles{"/etc/cliapiproxy/overlay.yaml": "server: {port: 9100}\noauth: {auth-dir: /var/lib/cliapiproxy/auths}\nkeys: {state-file: /var/lib/cliapiproxy/keys.yaml}\nstore: {host: /run/pg, database: d, user: u, dump-directory: /d}\n",
+		"/run/cliapiproxy/protected.env": "CLIPROXY_POSTGRES_PASSWORD='store-password'\n"}
 	plan, err := resolveRun(productionProcess(), files)
 	if err != nil {
 		t.Fatal(err)

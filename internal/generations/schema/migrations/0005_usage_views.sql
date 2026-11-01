@@ -33,7 +33,7 @@ CREATE UNIQUE INDEX generation_usage_daily_key ON generation_usage_daily (
 
 -- Each snapshot's meters with their change in their own unit since the
 -- credential's previous snapshot of the same meter, and the generations the
--- credential served between the two.
+-- credential served between the two, which are null for the first snapshot.
 CREATE VIEW credential_usage_timeline AS
 WITH readings AS (
 	SELECT
@@ -101,7 +101,6 @@ LEFT JOIN LATERAL (
 		coalesce(sum(total), 0) AS total
 	FROM generations g
 	WHERE g.credential_id = r.credential_id
-		AND r.previous_observed_at IS NOT NULL
 		AND g.time > r.previous_observed_at
 		AND g.time <= r.observed_at
-) g ON true;
+) g ON r.previous_observed_at IS NOT NULL;

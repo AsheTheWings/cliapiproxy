@@ -113,6 +113,12 @@ func (r Report) Lines() []string {
 	for _, a := range r.Applied {
 		out = append(out, fmt.Sprintf("applied %s", a.Name))
 	}
+	return append(out, r.Problems()...)
+}
+
+// Problems renders the pending and drifted migrations, one per line.
+func (r Report) Problems() []string {
+	var out []string
 	for _, m := range r.Pending {
 		out = append(out, fmt.Sprintf("pending %s", m.Name))
 	}
