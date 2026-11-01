@@ -7,6 +7,7 @@ COPY dashboard/package.json dashboard/bun.lock dashboard/
 RUN cd dashboard && bun install --frozen-lockfile
 
 COPY dashboard/ dashboard/
+COPY internal/generations/capture/testdata/events.json internal/generations/capture/testdata/events.json
 COPY scripts/dashboard.sh scripts/
 RUN mkdir -p internal/dashboard/dist
 
