@@ -64,6 +64,13 @@ built from [`dashboard/`](../dashboard) into the binary. It signs in with the
 management key and works through the API above. Its pages give an overview of
 the keys and credentials, add, label, edit, and revoke client API keys, edit
 each family's upstream groups and their keys' labels, manage credential files, run OAuth logins, and
-show the server's version and connection. The page answers 404 while the
+show the server's version and connection. While the store is on, its Quota
+page shows each credential's plan and meters, polls one on request, and charts
+its usage over time against the generations between snapshots. Its Generations
+page lists generations with the filters above, opens each one's columns,
+payloads, and trace link, and follows a conversation oldest first; its
+Insights tab charts daily tokens by model, effort, or client, cache and
+reasoning shares, time to first token, and usage per client, account, and
+model. The page answers 404 while the
 management API is off, and when the binary was built without it, as a plain
 `go build` is; [building](building.md#dashboard) describes building it in.

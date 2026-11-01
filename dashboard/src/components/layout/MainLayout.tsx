@@ -20,8 +20,10 @@ import {
   IconKey,
   IconSidebarAuthFiles,
   IconSidebarDashboard,
+  IconSidebarLogs,
   IconSidebarOauth,
   IconSidebarProviders,
+  IconSidebarQuota,
   IconSidebarSystem,
 } from '@/components/ui/icons';
 import { INLINE_LOGO_JPEG } from '@/assets/logoInline';
@@ -43,6 +45,8 @@ const sidebarIcons: Record<string, ReactNode> = {
   aiProviders: <IconSidebarProviders size={18} />,
   authFiles: <IconSidebarAuthFiles size={18} />,
   oauth: <IconSidebarOauth size={18} />,
+  quota: <IconSidebarQuota size={18} />,
+  generations: <IconSidebarLogs size={18} />,
   system: <IconSidebarSystem size={18} />,
 };
 
@@ -443,6 +447,24 @@ export function MainLayout() {
           labelKey: 'nav.oauth',
           metaKey: 'nav_meta.oauth',
           icon: sidebarIcons.oauth,
+        },
+      ],
+    },
+    {
+      id: 'observe',
+      labelKey: 'nav_groups.observe',
+      items: [
+        {
+          path: '/quota',
+          labelKey: 'nav.quota',
+          metaKey: 'nav_meta.quota',
+          icon: sidebarIcons.quota,
+        },
+        {
+          path: '/generations',
+          labelKey: 'nav.generations',
+          metaKey: 'nav_meta.generations',
+          icon: sidebarIcons.generations,
         },
       ],
     },
