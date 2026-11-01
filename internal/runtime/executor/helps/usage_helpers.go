@@ -14,8 +14,10 @@ import (
 	"time"
 
 	"github.com/AsheTheWings/cliapiproxy/internal/clienterror"
+	"github.com/AsheTheWings/cliapiproxy/internal/generations/capture"
 	internallogging "github.com/AsheTheWings/cliapiproxy/internal/logging"
 	"github.com/AsheTheWings/cliapiproxy/internal/thinking"
+	"github.com/AsheTheWings/cliapiproxy/internal/upstream"
 	cliproxyauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
 	cliproxyexecutor "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/executor"
 	"github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/usage"
@@ -26,25 +28,27 @@ import (
 )
 
 type UsageReporter struct {
-	requestID            string
-	traceID              string
-	selectionID          string
-	provider             string
-	baseURL              string
-	executorType         string
-	model                string
-	alias                string
-	authID               string
-	authIndex            string
-	authMu               sync.RWMutex
-	accessTokenHash      string
-	authType             string
-	apiKey               string
-	accessProvider       string
-	isNativeKey          bool
-	sessionID            string
-	parentSessionID      string
-	source               string
+	requestID       string
+	traceID         string
+	selectionID     string
+	provider        string
+	baseURL         string
+	executorType    string
+	model           string
+	alias           string
+	authID          string
+	authIndex       string
+	authMu          sync.RWMutex
+	accessTokenHash string
+	authType        string
+	apiKey          string
+	accessProvider  string
+	isNativeKey     bool
+	sessionID       string
+	parentSessionID string
+	source          string
+	// auth is the attempt's credential, described to capture without secrets.
+	auth                 *cliproxyauth.Auth
 	reasoning            string
 	serviceTier          string
 	effectiveServiceTier string
@@ -146,6 +150,7 @@ func NewUsageReporter(ctx context.Context, provider, model string, auth *cliprox
 		stream:          usage.StreamFromContext(ctx),
 	}
 	if auth != nil {
+		reporter.auth = auth
 		reporter.authID = auth.ID
 		reporter.authIndex = auth.EnsureIndex()
 		reporter.accessTokenHash = authAccessTokenSHA256(auth)
@@ -600,8 +605,68 @@ func (r *UsageReporter) EnsurePublished(ctx context.Context) {
 // publishAttemptRecord emits the record for one upstream attempt and the
 // observability warnings that belong to the attempt rather than to a single event.
 func (r *UsageReporter) publishAttemptRecord(ctx context.Context, record usage.Record) {
+	if r != nil {
+		capture.Attempt(ctx, record, captureCredential(r.auth, r.provider))
+	}
 	r.publishRecord(ctx, record)
 	r.warnModelSubstitution(ctx)
+}
+
+// captureCredential describes an attempt's credential for its stored
+// generation: its provider family, group, account, and key fingerprint, and
+// the secret values the server sends, which capture removes from the body.
+func captureCredential(auth *cliproxyauth.Auth, provider string) capture.Credential {
+	cred := capture.Credential{Provider: strings.ToLower(strings.TrimSpace(provider))}
+	if auth == nil {
+		return cred
+	}
+	cred.ID = auth.ID
+	cred.AuthType = auth.AuthKind()
+	if p := strings.ToLower(strings.TrimSpace(auth.Provider)); p != "" {
+		cred.Provider = p
+	}
+	attr := func(name string) string {
+		if auth.Attributes == nil {
+			return ""
+		}
+		return strings.TrimSpace(auth.Attributes[name])
+	}
+	meta := func(name string) string {
+		if auth.Metadata == nil {
+			return ""
+		}
+		v, _ := auth.Metadata[name].(string)
+		return strings.TrimSpace(v)
+	}
+	if attr("compat_name") != "" {
+		cred.Provider = "openai-compatibility"
+	}
+	cred.Group = attr(cliproxyauth.AttributeGroup)
+	cred.AccountLabel = attr(cliproxyauth.AttributeAccountLabel)
+	if cred.AccountLabel == "" {
+		cred.AccountLabel = strings.TrimSpace(auth.Label)
+	}
+	if cred.AccountLabel == "" {
+		_, cred.AccountLabel = auth.AccountInfo()
+	}
+	if key := attr(cliproxyauth.AttributeAPIKey); key != "" {
+		cred.KeyFingerprint = upstream.Fingerprint(key)
+		cred.Secrets = append(cred.Secrets, key)
+		if cred.AccountLabel == key {
+			cred.AccountLabel = ""
+		}
+	}
+	// A Codex login's workspace, or a Claude login's organization.
+	cred.AccountScope = meta("account_id")
+	if cred.AccountScope == "" {
+		cred.AccountScope = meta("organization_uuid")
+	}
+	for _, name := range []string{"access_token", "refresh_token", "id_token", "api_key"} {
+		if v := meta(name); v != "" {
+			cred.Secrets = append(cred.Secrets, v)
+		}
+	}
+	return cred
 }
 
 func (r *UsageReporter) publishRecord(ctx context.Context, record usage.Record) {

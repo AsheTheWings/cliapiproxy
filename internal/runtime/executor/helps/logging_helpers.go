@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/generations/capture"
 	"github.com/AsheTheWings/cliapiproxy/internal/logging"
 	"github.com/AsheTheWings/cliapiproxy/internal/util"
 	"github.com/gin-gonic/gin"
@@ -63,6 +64,7 @@ func requestLogCaptureEnabled(cfg *config.Config) bool {
 
 // RecordAPIRequest stores the upstream request metadata in Gin context for request logging.
 func RecordAPIRequest(ctx context.Context, cfg *config.Config, info UpstreamRequestLog) {
+	capture.UpstreamRequest(ctx, info.Body, info.Headers.Get("Content-Type"))
 	if cfg == nil || cfg.CommercialMode {
 		return
 	}
@@ -190,6 +192,7 @@ func newAPIRequestLogBuilder(index int, info UpstreamRequestLog, timestamp time.
 // RecordAPIResponseMetadata captures upstream response status/header information for the latest attempt.
 func RecordAPIResponseMetadata(ctx context.Context, cfg *config.Config, status int, headers http.Header) {
 	logging.SetResponseHeaders(ctx, headers)
+	capture.UpstreamResponseType(ctx, headers.Get("Content-Type"))
 	if !requestLogCaptureEnabled(cfg) {
 		return
 	}
@@ -243,6 +246,7 @@ func RecordAPIResponseError(ctx context.Context, cfg *config.Config, err error) 
 
 // AppendAPIResponseChunk appends an upstream response chunk to Gin context for request logging.
 func AppendAPIResponseChunk(ctx context.Context, cfg *config.Config, chunk []byte) {
+	capture.UpstreamResponse(ctx, chunk)
 	if !requestLogCaptureEnabled(cfg) {
 		return
 	}
@@ -287,6 +291,7 @@ func AppendAPIResponseChunk(ctx context.Context, cfg *config.Config, chunk []byt
 
 // RecordAPIWebsocketRequest stores an upstream websocket request event in Gin context.
 func RecordAPIWebsocketRequest(ctx context.Context, cfg *config.Config, info UpstreamRequestLog) {
+	capture.UpstreamWebsocketRequest(ctx, info.Body)
 	if !requestLogCaptureEnabled(cfg) {
 		return
 	}
@@ -378,6 +383,7 @@ func WebsocketUpgradeRequestURL(rawURL string) string {
 
 // AppendAPIWebsocketResponse stores an upstream websocket response frame in Gin context.
 func AppendAPIWebsocketResponse(ctx context.Context, cfg *config.Config, payload []byte) {
+	capture.UpstreamWebsocketResponse(ctx, payload)
 	if !requestLogCaptureEnabled(cfg) {
 		return
 	}
