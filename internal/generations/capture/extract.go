@@ -2,6 +2,7 @@ package capture
 
 import (
 	"bytes"
+	"encoding/json"
 	"strings"
 
 	"github.com/tidwall/gjson"
@@ -78,17 +79,27 @@ func anyEquals(list gjson.Result, want string) bool {
 // usagePaths locate a provider's usage object in a response document.
 var usagePaths = []string{"usage", "response.usage", "usageMetadata", "response.usageMetadata", "message.usage", "totalUsage"}
 
-// providerUsage returns the last usage object the response reported and the
-// cost it carries: Kiro's kiro:credits value and OpenRouter's usage.cost in
-// credits, and Command Code's gateway cost in dollars.
-func providerUsage(docs []gjson.Result) (raw []byte, amount, unit string) {
+// providerUsage returns the response's usage, its usage objects merged in
+// order so a later field replaces an earlier one, as a Claude stream's
+// message_delta completes its message_start, and the cost it carries:
+// Kiro's kiro:credits value and, from OpenRouter, usage.cost in credits,
+// and Command Code's gateway cost in dollars.
+func providerUsage(docs []gjson.Result, openRouter bool) (raw []byte, amount, unit string) {
+	merged := map[string]json.RawMessage{}
+	var order []string
 	for _, doc := range docs {
 		for _, path := range usagePaths {
 			if u := doc.Get(path); u.IsObject() {
-				raw = []byte(u.Raw)
+				u.ForEach(func(key, value gjson.Result) bool {
+					if _, seen := merged[key.String()]; !seen {
+						order = append(order, key.String())
+					}
+					merged[key.String()] = json.RawMessage(value.Raw)
+					return true
+				})
 				if v := u.Get(`kiro:credits.value`); v.Type == gjson.Number {
 					amount, unit = v.Raw, "credits"
-				} else if v = u.Get("cost"); v.Type == gjson.Number {
+				} else if v = u.Get("cost"); openRouter && v.Type == gjson.Number {
 					amount, unit = v.Raw, "credits"
 				}
 				break
@@ -100,7 +111,27 @@ func providerUsage(docs []gjson.Result) (raw []byte, amount, unit string) {
 			}
 		}
 	}
+	if len(order) > 0 {
+		var b bytes.Buffer
+		b.WriteByte('{')
+		for i, key := range order {
+			if i > 0 {
+				b.WriteByte(',')
+			}
+			name, _ := json.Marshal(key)
+			b.Write(name)
+			b.WriteByte(':')
+			b.Write(merged[key])
+		}
+		b.WriteByte('}')
+		raw = b.Bytes()
+	}
 	return raw, amount, unit
+}
+
+// isOpenRouter reports an upstream base URL on OpenRouter.
+func isOpenRouter(baseURL string) bool {
+	return strings.Contains(strings.ToLower(baseURL), "openrouter.ai")
 }
 
 func numeric(s string) bool {

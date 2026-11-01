@@ -169,6 +169,9 @@ func TestCompletedGenerationsAreStoredAndFailuresAreNot(t *testing.T) {
 	if n := c.count("SELECT count(*) FROM generation_payloads"); n != 9 {
 		t.Fatalf("payloads = %d, want three per generation", n)
 	}
+	if n := c.count("SELECT count(*) FROM generation_payloads WHERE octet_length(body) <> stored_bytes"); n != 0 {
+		t.Fatalf("%d payloads record a stored_bytes other than their stored body's length", n)
+	}
 	rows, err := c.pool.Query(context.Background(), "SELECT generation_id, upstream_model, status, provider, provider_group, account_label, key_fingerprint, client_key_label, total, token_source FROM generations")
 	if err != nil {
 		t.Fatal(err)
@@ -280,6 +283,8 @@ func TestWritesAreAtomicAndRetriedExactlyOnce(t *testing.T) {
 	acknowledged := entry(t, w, "")
 	violating := entry(t, w, "not-a-trace-id")
 	next := entry(t, w, "")
+	// Text PostgreSQL refuses, which a client controls, still stores.
+	next.SystemInstruction, next.ClientUserAgent, next.UsageRaw = "keep\x00this", "agent\xff", []byte(`{"note":"\u0000"}`)
 	w.Submit(interrupted)
 	wait.Until(t, storeTimeout, func() bool { return w.QueueEntries() == 0 }, "the first generation was not written")
 	w.Submit(acknowledged)

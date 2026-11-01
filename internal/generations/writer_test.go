@@ -131,22 +131,22 @@ func TestQueueDropsWhatExceedsEitherBound(t *testing.T) {
 	store.gate = make(chan struct{})
 	w := newTestWriter(t, store, 1<<20)
 
-	// The writer holds the first generation in a write; the queue then
-	// takes MaxQueueEntries more and drops the next.
+	// The writer holds the first generation in a write; with it the queue
+	// holds MaxQueueEntries and drops the next.
 	w.Submit(generation("first"))
 	wait.Receive(t, store.started, deadline, "the writer never started a write")
-	for range MaxQueueEntries {
+	for range MaxQueueEntries - 1 {
 		w.Submit(generation("queued"))
 	}
 	w.Submit(generation("one too many"))
-	if got := w.QueueEntries(); got != MaxQueueEntries+1 {
-		t.Fatalf("queue entries = %d, want %d", got, MaxQueueEntries+1)
+	if got := w.QueueEntries(); got != MaxQueueEntries {
+		t.Fatalf("queue entries = %d, want %d", got, MaxQueueEntries)
 	}
 	if got := dropped(t, rec)["queue_entries"]; got != 1 {
 		t.Fatalf("queue_entries drops = %d, want 1", got)
 	}
 	close(store.gate)
-	wait.Until(t, deadline, func() bool { return len(store.storedIDs()) == MaxQueueEntries+1 }, "the queue was not written")
+	wait.Until(t, deadline, func() bool { return len(store.storedIDs()) == MaxQueueEntries }, "the queue was not written")
 	wait.Until(t, deadline, func() bool { return w.QueueEntries() == 0 && w.QueueBytes() == 0 }, "the queue kept counts after writing")
 
 	// A byte budget smaller than a generation's compressed payloads drops it.

@@ -404,7 +404,7 @@ func (c *Capture) build(record *usage.Record, cred Credential, traceID string, i
 	if incomplete(docs) {
 		g.Status = StatusIncomplete
 	}
-	g.UsageRaw, g.UsageAmount, g.UsageUnit = providerUsage(docs)
+	g.UsageRaw, g.UsageAmount, g.UsageUnit = providerUsage(docs, isOpenRouter(record.BaseURL))
 	redact(input, cred.Secrets)
 	g.Payloads = []Payload{c.client.payload(KindClientInput), input.payload(KindUpstreamInput), response.payload(KindUpstreamResponse)}
 	return g

@@ -33,10 +33,17 @@ func (s *PGStore) failAt(stage string) error {
 }
 
 func nullable(s string) any {
+	s = text(s)
 	if strings.TrimSpace(s) == "" {
 		return nil
 	}
 	return s
+}
+
+// text drops what PostgreSQL text refuses, NUL bytes and invalid UTF-8, so
+// content a client controls cannot fail a generation's write.
+func text(s string) string {
+	return strings.ReplaceAll(strings.ToValidUTF8(s, "\uFFFD"), "\x00", "")
 }
 
 func milliseconds(d time.Duration) any {
@@ -87,13 +94,14 @@ func (s *PGStore) Write(ctx context.Context, e *Entry) error {
 		hash := hex.EncodeToString(sum[:])
 		instruction = hash
 		if _, err = tx.Exec(ctx, `INSERT INTO system_instructions (hash, content, first_seen_at) VALUES ($1, $2, $3)
-			ON CONFLICT (hash) DO NOTHING`, hash, g.SystemInstruction, g.Time); err != nil {
+			ON CONFLICT (hash) DO NOTHING`, hash, text(g.SystemInstruction), g.Time); err != nil {
 			return err
 		}
 	}
 	var usageRaw any
-	if len(g.UsageRaw) > 0 {
-		usageRaw = string(g.UsageRaw)
+	// jsonb refuses a \u0000 escape; such a usage object is left out.
+	if len(g.UsageRaw) > 0 && !strings.Contains(string(g.UsageRaw), `\u0000`) {
+		usageRaw = text(string(g.UsageRaw))
 	}
 	t := g.Tokens
 	tag, err := tx.Exec(ctx, insertGeneration,
@@ -117,8 +125,8 @@ func (s *PGStore) Write(ctx context.Context, e *Entry) error {
 		return err
 	}
 	for _, p := range e.Payloads {
-		if _, err = tx.Exec(ctx, insertPayload, g.ID, p.Kind, g.Time, nullable(g.ConversationID), p.Compressed, p.ContentType,
-			hex.EncodeToString(p.SHA256), p.OriginalBytes, int64(len(p.Body)), p.Truncated); err != nil {
+		if _, err = tx.Exec(ctx, insertPayload, g.ID, p.Kind, g.Time, nullable(g.ConversationID), p.Compressed, text(p.ContentType),
+			hex.EncodeToString(p.SHA256), p.OriginalBytes, int64(len(p.Compressed)), p.Truncated); err != nil {
 			return err
 		}
 	}

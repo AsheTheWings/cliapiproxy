@@ -144,10 +144,18 @@ func (w *Writer) enqueue(e *Entry) {
 		telemetry.RecordGenerationDropped(ctx, telemetry.DropQueueBytes, 1)
 		return
 	}
+	// The count includes the generation being written, so the queue holds
+	// at most MaxQueueEntries in all.
+	if w.entries.Add(1) > MaxQueueEntries {
+		w.entries.Add(-1)
+		w.bytes.Add(-e.Bytes)
+		telemetry.RecordGenerationDropped(ctx, telemetry.DropQueueEntries, 1)
+		return
+	}
 	select {
 	case w.queue <- e:
-		w.entries.Add(1)
 	default:
+		w.entries.Add(-1)
 		w.bytes.Add(-e.Bytes)
 		telemetry.RecordGenerationDropped(ctx, telemetry.DropQueueEntries, 1)
 	}

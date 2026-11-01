@@ -46,15 +46,21 @@ func TestIncompleteStopsOfEachProtocol(t *testing.T) {
 }
 
 func TestProviderUsageAndCost(t *testing.T) {
-	for name, tc := range map[string]struct{ body, raw, amount, unit string }{
+	for name, tc := range map[string]struct {
+		body, raw, amount, unit string
+		openRouter              bool
+	}{
 		"kiro": {"data: {\"type\":\"response.completed\",\"response\":{\"usage\":{\"kiro:credits\":{\"value\":0.0283}}}}",
-			`{"kiro:credits":{"value":0.0283}}`, "0.0283", "credits"},
-		"openrouter": {`{"usage":{"prompt_tokens":3,"cost":0.0012}}`, `{"prompt_tokens":3,"cost":0.0012}`, "0.0012", "credits"},
+			`{"kiro:credits":{"value":0.0283}}`, "0.0283", "credits", false},
+		"openrouter":         {`{"usage":{"prompt_tokens":3,"cost":0.0012}}`, `{"prompt_tokens":3,"cost":0.0012}`, "0.0012", "credits", true},
+		"other gateway cost": {`{"usage":{"prompt_tokens":3,"cost":0.0012}}`, `{"prompt_tokens":3,"cost":0.0012}`, "", "", false},
 		"command code": {"data: {\"type\":\"finish\",\"totalUsage\":{\"inputTokens\":5}}\ndata: {\"type\":\"provider-metadata\",\"providerMetadata\":{\"gateway\":{\"cost\":\"0.000296728\"}}}",
-			`{"inputTokens":5}`, "0.000296728", "usd"},
-		"no cost": {`{"usage":{"input_tokens":4}}`, `{"input_tokens":4}`, "", ""},
+			`{"inputTokens":5}`, "0.000296728", "usd", false},
+		"claude stream": {"data: {\"type\":\"message_start\",\"message\":{\"usage\":{\"input_tokens\":9,\"output_tokens\":1}}}\ndata: {\"type\":\"message_delta\",\"usage\":{\"output_tokens\":7}}",
+			`{"input_tokens":9,"output_tokens":7}`, "", "", false},
+		"no cost": {`{"usage":{"input_tokens":4}}`, `{"input_tokens":4}`, "", "", false},
 	} {
-		raw, amount, unit := providerUsage(documents([]byte(tc.body), false))
+		raw, amount, unit := providerUsage(documents([]byte(tc.body), false), tc.openRouter)
 		if string(raw) != tc.raw || amount != tc.amount || unit != tc.unit {
 			t.Errorf("%s: %s %q %q, want %s %q %q", name, raw, amount, unit, tc.raw, tc.amount, tc.unit)
 		}
