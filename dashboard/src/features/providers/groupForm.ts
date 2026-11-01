@@ -17,8 +17,12 @@ export interface ModelDraft {
 export interface KeyDraft {
   /** A stored key as the server shows it, masked; sent back unchanged it keeps the key. */
   stored?: string;
+  /** The stored key's fingerprint, shown beside it. */
+  fingerprint?: string;
   /** A key entered in this form. */
   value: string;
+  /** The key's label as entered; blank leaves the key unlabeled. */
+  label: string;
 }
 
 export interface GroupDraft {
@@ -37,6 +41,22 @@ export interface DraftError {
 /** The server's form of group names and prefixes. */
 export const NAME_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 
+/** The server's limit on a key's label, in characters. */
+export const MAX_LABEL_LENGTH = 64;
+
+/**
+ * The problem with a label as entered, as a translation key, or null. The
+ * server trims labels and refuses one longer than the limit or holding a
+ * line break or other control character.
+ */
+export const labelProblem = (label: string): string | null => {
+  const trimmed = label.trim();
+  if ([...trimmed].length > MAX_LABEL_LENGTH) return 'labels.error_long';
+  // eslint-disable-next-line no-control-regex
+  if (/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/.test(trimmed)) return 'labels.error_control';
+  return null;
+};
+
 export const emptyModel = (): ModelDraft => ({
   name: '',
   alias: '',
@@ -51,7 +71,7 @@ export const emptyDraft = (): GroupDraft => ({
   baseUrl: '',
   prefix: '',
   models: [],
-  keys: [{ value: '' }],
+  keys: [{ value: '', label: '' }],
 });
 
 export const toDraft = (group: UpstreamGroup): GroupDraft => ({
@@ -67,7 +87,12 @@ export const toDraft = (group: UpstreamGroup): GroupDraft => ({
     inputModalities: (model['input-modalities'] ?? []).join(', '),
     thinkingLevels: model.thinking?.levels ?? [],
   })),
-  keys: group.keys.map((key) => ({ stored: key['api-key'], value: '' })),
+  keys: group.keys.map((key) => ({
+    stored: key['api-key'],
+    ...(key.fingerprint ? { fingerprint: key.fingerprint } : {}),
+    value: '',
+    label: key.label ?? '',
+  })),
 });
 
 const splitList = (value: string): string[] =>
@@ -94,7 +119,10 @@ const usedKeys = (draft: GroupDraft) => draft.keys.filter((key) => key.stored ||
 export const fromDraft = (draft: GroupDraft, family: FamilyDescriptor): UpstreamGroup => {
   const group: UpstreamGroup = {
     name: draft.name.trim(),
-    keys: usedKeys(draft).map((key) => ({ 'api-key': key.stored ?? key.value.trim() })),
+    keys: usedKeys(draft).map((key) => ({
+      'api-key': key.stored ?? key.value.trim(),
+      ...(key.label.trim() ? { label: key.label.trim() } : {}),
+    })),
   };
   if (family.baseUrl !== 'none' && draft.baseUrl.trim()) group['base-url'] = draft.baseUrl.trim();
   if (draft.prefix.trim()) group.prefix = draft.prefix.trim();
@@ -150,6 +178,13 @@ export const validateDraft = (
   const entered = keys.filter((key) => !key.stored).map((key) => key.value.trim());
   if (new Set(entered).size !== entered.length)
     return { key: 'provider_groups.error_key_repeated' };
+  for (const key of keys) {
+    const problem = labelProblem(key.label);
+    if (problem) return { key: problem, values: { max: MAX_LABEL_LENGTH } };
+  }
+  const labels = keys.map((key) => key.label.trim()).filter(Boolean);
+  const repeated = labels.find((label, i) => labels.indexOf(label) !== i);
+  if (repeated) return { key: 'labels.error_repeated', values: { label: repeated } };
   return null;
 };
 

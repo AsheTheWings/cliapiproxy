@@ -14,14 +14,19 @@ import {
   TableRow,
 } from '@/components/ui/Table';
 import { useHeaderRefresh } from '@/hooks/useHeaderRefresh';
-import { clientKeysApi, parseClientKeys, type ClientKey } from '@/services/api/clientKeys';
+import {
+  clientKeyDisplay,
+  clientKeysApi,
+  parseClientKeys,
+  type ClientKey,
+} from '@/services/api/clientKeys';
 import { useConfigStore, useNotificationStore } from '@/stores';
 import { generateSecureApiKey } from '@/utils/apiKey';
 import { copyToClipboard } from '@/utils/clipboard';
 import {
-  MAX_NAME_LENGTH,
+  MAX_LABEL_LENGTH,
+  clientLabelProblem,
   clientKeyProblem,
-  nameProblem,
   withClientKey,
   withoutClientKey,
 } from './clientKeyForm';
@@ -39,19 +44,21 @@ interface KeySheetProps {
   open: boolean;
   /** The key being edited, or null for a new key. */
   editing: ClientKey | null;
+  /** The other client keys, whose labels this key may not take. */
+  others: ClientKey[];
   saving: boolean;
   onClose: () => void;
   onSave: (item: ClientKey) => void;
 }
 
 /** Mounted per opening; a new key starts from a fresh generated key. */
-function KeySheet({ open, editing, saving, onClose, onSave }: KeySheetProps) {
+function KeySheet({ open, editing, others, saving, onClose, onSave }: KeySheetProps) {
   const { t } = useTranslation();
   const { showNotification } = useNotificationStore();
-  const [name, setName] = useState(editing?.name ?? '');
+  const [label, setLabel] = useState(editing?.label ?? '');
   const [key, setKey] = useState(() => editing?.key ?? generateSecureApiKey());
   const [keyError, setKeyError] = useState<string | null>(null);
-  const [nameError, setNameError] = useState<string | null>(null);
+  const [labelError, setLabelError] = useState<string | null>(null);
   const trimmed = key.trim();
   // The stored key stays masked; only a key entered here can be copied or scored.
   const entered = editing === null || trimmed !== editing.key;
@@ -65,10 +72,14 @@ function KeySheet({ open, editing, saving, onClose, onSave }: KeySheetProps) {
   };
   const submit = () => {
     const nextKeyError = clientKeyProblem(trimmed, editing?.key);
-    const nextNameError = nameProblem(name.trim());
+    const nextLabelError = clientLabelProblem(label, others);
     setKeyError(nextKeyError);
-    setNameError(nextNameError);
-    if (!nextKeyError && !nextNameError) onSave({ key: trimmed, name: name.trim() });
+    setLabelError(nextLabelError);
+    if (!nextKeyError && !nextLabelError) {
+      // A replaced key gets its fingerprint from the server once saved.
+      const fingerprint = editing && trimmed === editing.key ? editing.fingerprint : '';
+      onSave({ key: trimmed, label: label.trim(), fingerprint });
+    }
   };
 
   return (
@@ -92,16 +103,16 @@ function KeySheet({ open, editing, saving, onClose, onSave }: KeySheetProps) {
     >
       <div className={styles.form}>
         <Input
-          label={t('client_keys.name')}
-          placeholder={t('client_keys.name_placeholder')}
-          hint={t('client_keys.name_hint')}
-          maxLength={MAX_NAME_LENGTH}
-          value={name}
+          label={t('labels.label')}
+          placeholder={t('client_keys.label_placeholder')}
+          hint={t('client_keys.label_hint')}
+          maxLength={MAX_LABEL_LENGTH}
+          value={label}
           disabled={saving}
-          error={nameError ? t(nameError, { max: MAX_NAME_LENGTH }) : undefined}
+          error={labelError ? t(labelError, { max: MAX_LABEL_LENGTH }) : undefined}
           onChange={(event) => {
-            setNameError(null);
-            setName(event.target.value);
+            setLabelError(null);
+            setLabel(event.target.value);
           }}
         />
         <Input
@@ -186,14 +197,14 @@ export function ClientKeysPage() {
     }
   };
 
-  const label = (item: ClientKey) => (item.name ? `${item.name} (${item.key})` : item.key);
+  const describe = (item: ClientKey) => `${clientKeyDisplay(item)} (${item.key})`;
 
   const remove = (index: number) => {
     const last = keys.length === 1;
     showConfirmation({
       title: t('client_keys.revoke'),
       message: t(last ? 'client_keys.revoke_last_confirm' : 'client_keys.revoke_confirm', {
-        key: label(keys[index]),
+        key: describe(keys[index]),
       }),
       variant: 'danger',
       confirmText: t('client_keys.revoke'),
@@ -239,7 +250,7 @@ export function ClientKeysPage() {
           <TableHeader>
             <TableRow>
               <TableHead>#</TableHead>
-              <TableHead>{t('client_keys.name')}</TableHead>
+              <TableHead>{t('labels.label')}</TableHead>
               <TableHead>{t('client_keys.key')}</TableHead>
               <TableHead alignRight>{t('common.action')}</TableHead>
             </TableRow>
@@ -251,10 +262,12 @@ export function ClientKeysPage() {
                   <span className={styles.index}>{index + 1}</span>
                 </TableCell>
                 <TableCell>
-                  {item.name ? (
-                    <span className={styles.name}>{item.name}</span>
+                  {item.label ? (
+                    <span className={styles.name}>{item.label}</span>
                   ) : (
-                    <span className={styles.unnamed}>{t('client_keys.unnamed')}</span>
+                    <code className={styles.unnamed} title={t('labels.unlabeled')}>
+                      {item.fingerprint}
+                    </code>
                   )}
                 </TableCell>
                 <TableCell>
@@ -291,6 +304,7 @@ export function ClientKeysPage() {
           key={sheet.key}
           open={sheetOpen}
           editing={sheet.index === null ? null : (keys[sheet.index] ?? null)}
+          others={keys.filter((_, i) => i !== sheet.index)}
           saving={saving}
           onClose={() => setSheetOpen(false)}
           onSave={save}
