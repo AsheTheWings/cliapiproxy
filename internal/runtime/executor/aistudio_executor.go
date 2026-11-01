@@ -286,7 +286,7 @@ func (e *AIStudioExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth
 		var body bytes.Buffer
 		if len(firstEvent.Payload) > 0 {
 			reporter.MarkFirstResponseByte()
-			helps.AppendAPIResponseChunk(ctx, e.cfg, firstEvent.Payload)
+			helps.AppendAPIResponseFragment(ctx, e.cfg, firstEvent.Payload)
 			body.Write(firstEvent.Payload)
 		}
 		if firstEvent.Type == wsrelay.MessageTypeStreamEnd {
@@ -307,7 +307,7 @@ func (e *AIStudioExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth
 			}
 			if len(event.Payload) > 0 {
 				reporter.MarkFirstResponseByte()
-				helps.AppendAPIResponseChunk(ctx, e.cfg, event.Payload)
+				helps.AppendAPIResponseFragment(ctx, e.cfg, event.Payload)
 				body.Write(event.Payload)
 			}
 			if event.Type == wsrelay.MessageTypeStreamEnd {
@@ -384,7 +384,7 @@ func (e *AIStudioExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth
 			case wsrelay.MessageTypeStreamChunk:
 				if len(event.Payload) > 0 {
 					reporter.MarkFirstResponseByte()
-					helps.AppendAPIResponseChunk(ctx, e.cfg, event.Payload)
+					helps.AppendAPIResponseFragment(ctx, e.cfg, event.Payload)
 					// A relay chunk may hold several SSE frames; the translators read one frame per call (gjson parses the first
 					// JSON object only), so each frame goes through the whole per-frame path: model, usage, translation, errors.
 					for _, frame := range splitRelayFrames(event.Payload) {
@@ -422,7 +422,7 @@ func (e *AIStudioExecutor) ExecuteStream(ctx context.Context, auth *cliproxyauth
 				}
 				if len(event.Payload) > 0 {
 					reporter.MarkFirstResponseByte()
-					helps.AppendAPIResponseChunk(ctx, e.cfg, event.Payload)
+					helps.AppendAPIResponseFragment(ctx, e.cfg, event.Payload)
 				}
 				if event.Status < http.StatusOK || event.Status >= http.StatusMultipleChoices {
 					errResponse := statusErr{code: event.Status, msg: string(event.Payload)}

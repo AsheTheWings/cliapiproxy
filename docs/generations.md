@@ -3,6 +3,48 @@
 The server keeps its durable record in a PostgreSQL 18 database, the store,
 which the `store.*` inputs name ([configuration](configuration.md#store)).
 
+## Which requests are stored
+
+A generation is one model execution that completed: a 2xx response whose
+stream reached its terminal event, a complete non-stream body, or one turn
+of a Responses WebSocket session that reached its terminal response event.
+An execution that stopped at the output limit, such as a Responses
+`response.incomplete` event or a `max_tokens` or `length` stop, is stored
+with status `incomplete`, and every other one with status `completed`. A
+failed request, a failed attempt, and a request whose client went away
+before the end are not stored; their failures are in
+[telemetry](observability.md). Token-counting requests are not
+generations.
+
+When retries move a request across credentials, the generation describes
+the attempt that completed. Its three payloads hold bodies only, never
+headers: the client's request body, the body sent upstream, and the
+upstream response as it arrived, a stream or WebSocket session one event or
+frame per line. A credential value the server put into the upstream body is
+replaced with `[credential]`; what the client put into its own body is kept.
+A body larger than `store.payload-limit-bytes` is kept up to that size and
+marked truncated, and its size and SHA-256 describe the whole body.
+
+Generations reach the store through a queue that one writer drains, so the
+store never delays or fails a response. The queue holds at most 1,000
+generations, counting those still being compressed after their execution
+ended, and `store.queue-bytes` of compressed payloads; a generation that
+does not fit is dropped. The writer retries a lost connection or a
+serialization failure until the store answers, drops a generation whose
+write fails three times with any other error, and at shutdown waits up to
+10 seconds for the queue, compression included, before it drops what
+remains. Every drop is counted in telemetry; a crash loses the queue
+uncounted.
+
+`account_label` is an API key's label, or its group name and fingerprint,
+and an OAuth credential's label, email, or project ID. `client_key_label`
+is the client key's label, or its fingerprint. The server estimates Kiro's
+token counts, so its generations have `token_source` `estimated`. `usage_raw`
+merges the response's usage objects in order, so a Claude stream keeps both
+its input usage and its final output usage. `usage_amount` holds Kiro's
+`kiro:credits` and, from an OpenRouter base URL, `usage.cost` in `credits`,
+and Command Code's gateway cost in `usd`.
+
 ## Tables and views
 
 | Relation | Holds |

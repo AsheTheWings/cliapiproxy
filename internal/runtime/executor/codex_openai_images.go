@@ -491,7 +491,7 @@ func (e *CodexExecutor) executeDirectOpenAIImageStream(ctx context.Context, auth
 			n, errRead := httpResp.Body.Read(buffer)
 			if n > 0 {
 				chunk := bytes.Clone(buffer[:n])
-				helps.AppendAPIResponseChunk(ctx, e.cfg, chunk)
+				helps.AppendAPIResponseFragment(ctx, e.cfg, chunk)
 				for _, line := range bytes.Split(chunk, []byte("\n")) {
 					streamUsage.ObserveOpenAIStream(bytes.TrimSpace(line))
 				}
