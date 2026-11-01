@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/AsheTheWings/cliapiproxy/internal/generations/capture"
+	"github.com/AsheTheWings/cliapiproxy/internal/generations/pruning"
 	"github.com/AsheTheWings/cliapiproxy/internal/generations/snapshots"
 	"github.com/AsheTheWings/cliapiproxy/internal/telemetry"
 	cliproxyauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
@@ -23,6 +24,7 @@ type Service struct {
 	writer     *Writer
 	store      *PGStore
 	poller     *snapshots.Poller
+	pruning    *pruning.Schedule
 	unregister func()
 	stopSize   context.CancelFunc
 	size       atomic.Int64
@@ -76,6 +78,22 @@ func (s *Service) StartPolling(list func() []*cliproxyauth.Auth, client func(con
 	return nil
 }
 
+// StartPruning runs a pruning pass every interval, evaluating batch
+// conversations at a time, until Close; an interval of 0 runs none.
+func (s *Service) StartPruning(interval time.Duration, batch int) error {
+	if interval <= 0 {
+		return nil
+	}
+	store, err := NewPruneStore(s.Pool)
+	if err != nil {
+		return err
+	}
+	s.pruning, err = pruning.StartSchedule(interval, pruning.NewTimeTicker, func(ctx context.Context) {
+		pruning.Run(ctx, store, batch)
+	})
+	return err
+}
+
 func (s *Service) measureSize(ctx context.Context) {
 	ticker := time.NewTicker(sizeInterval)
 	defer ticker.Stop()
@@ -97,6 +115,7 @@ func (s *Service) measureSize(ctx context.Context) {
 // Close stops capture, writes queued generations for up to ShutdownDrain,
 // and closes the pool.
 func (s *Service) Close() {
+	s.pruning.Stop()
 	capture.SetSink(nil)
 	if s.poller != nil {
 		capture.SetActivity(nil)

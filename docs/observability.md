@@ -51,6 +51,19 @@ from `CLIPROXY_DEPLOYMENT_ENVIRONMENT`.
   `cliapiproxy.store.drop_reason` `queue_entries`, `queue_bytes`,
   `terminal_write`, or `shutdown`. `cliapiproxy.store.database.size` is the
   database's size, measured each minute.
+- Each [pruning pass](generations.md#payload-pruning) is a
+  `cliapiproxy.store.prune` span, and its duration is
+  `cliapiproxy.store.prune.duration`, both with
+  `cliapiproxy.store.prune_outcome` `ok`, `partial` when a conversation's
+  evaluation failed, or `error` when the pass stopped. The span of a
+  `partial` or `error` pass carries the `error.type` of its first failure:
+  `residual_mismatch` when a rebuild did not match its digest,
+  `malformed_residual` when a stored residual could not be read, or a
+  general class such as `timeout` or `other`. By
+  `cliapiproxy.payload.kind`, `cliapiproxy.store.pruned` counts inputs
+  replaced with residuals, `cliapiproxy.store.pruned.bytes` the stored bytes
+  they released, and `cliapiproxy.store.quarantined` the inputs left full
+  after three failed evaluations.
 - Each poll of a credential's [usage source](generations.md#usage-snapshots)
   is a `cliapiproxy.usage.poll` span, and its duration is
   `cliapiproxy.usage.poll.duration`, both with the provider and
