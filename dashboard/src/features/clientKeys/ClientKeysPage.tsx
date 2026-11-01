@@ -106,7 +106,6 @@ function KeySheet({ open, editing, others, saving, onClose, onSave }: KeySheetPr
           label={t('labels.label')}
           placeholder={t('client_keys.label_placeholder')}
           hint={t('client_keys.label_hint')}
-          maxLength={MAX_LABEL_LENGTH}
           value={label}
           disabled={saving}
           error={labelError ? t(labelError, { max: MAX_LABEL_LENGTH }) : undefined}

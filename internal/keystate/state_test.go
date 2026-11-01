@@ -60,6 +60,11 @@ func TestParseRejectsBrokenKeysWithoutNamingThem(t *testing.T) {
 		"label too long":      {data: "access: {api-keys: [{api-key: secret-c, label: " + strings.Repeat("n", upstream.MaxLabelLength+1) + "}]}", position: "access.api-keys: key 1"},
 		"label with newline":  {data: "api-keys: {kiro: [{name: k, keys: [{api-key: secret-x, label: \"a\\nb\"}]}]}", position: "api-keys.kiro: group k key 1"},
 		"label padded":        {data: "access: {api-keys: [{api-key: secret-c, label: ' a'}]}", position: "access.api-keys: key 1"},
+		"client label number": {data: "access: {api-keys: [{api-key: secret-c}, {api-key: secret-d, label: 123}]}", position: "access.api-keys: key 2: label must be a string"},
+		"client label bool":   {data: "access: {api-keys: [{api-key: secret-c, label: true}]}", position: "access.api-keys: key 1: label must be a string"},
+		"client label map":    {data: "access: {api-keys: [{api-key: secret-c, label: {x: 1}}]}", position: "access.api-keys: key 1: label must be a string"},
+		"group label list":    {data: "api-keys: {kiro: [{name: k, keys: [{api-key: secret-x}, {api-key: secret-y, label: [a]}]}]}", position: "api-keys.kiro: group k key 2: label must be a string"},
+		"group label number":  {data: "api-keys: {kiro: [{name: k, keys: [{api-key: secret-x, label: 7}]}]}", position: "api-keys.kiro: group k key 1: label must be a string"},
 		"client label repeated": {
 			data:     "access: {api-keys: [{api-key: secret-c, label: a}, {api-key: secret-d, label: a}]}",
 			position: "access.api-keys: key 2: label repeats the label of key 1",

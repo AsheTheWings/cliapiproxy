@@ -35,16 +35,13 @@ func addWeightToAttrs(weight *int, attrs map[string]string) {
 	attrs[coreauth.AttributeWeight] = strconv.Itoa(normalized)
 }
 
-// addKeyIdentityToAttrs records the key-state group, the key's label, and the
-// account label they give the key. The credential ID never derives from
-// them, so relabeling keeps the ID.
+// addKeyIdentityToAttrs records the key-state group and the account label
+// the key's label, or its group and fingerprint, give it. The credential ID
+// never derives from them, so relabeling keeps the ID.
 func addKeyIdentityToAttrs(group, key, label string, attrs map[string]string) {
 	group = strings.TrimSpace(group)
 	if group != "" {
 		attrs[coreauth.AttributeGroup] = group
-	}
-	if label != "" {
-		attrs[coreauth.AttributeKeyLabel] = label
 	}
 	if group != "" && key != "" {
 		attrs[coreauth.AttributeAccountLabel] = upstream.AccountLabel(group, upstream.Key{APIKey: key, Label: label})

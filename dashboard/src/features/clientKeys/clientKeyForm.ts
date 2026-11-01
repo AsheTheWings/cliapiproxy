@@ -1,10 +1,10 @@
 import type { ClientKey } from '@/services/api/clientKeys';
-import { labelProblem } from '@/features/providers/groupForm';
+import { labelProblem } from '@/utils/keyLabels';
 
 /** Visible ASCII, the characters a bearer token can carry unquoted. */
 const KEY_PATTERN = /^[\x21-\x7E]+$/;
 
-export { MAX_LABEL_LENGTH } from '@/features/providers/groupForm';
+export { MAX_LABEL_LENGTH } from '@/utils/keyLabels';
 
 /**
  * The problem with a key entered in the editor, as a translation key, or

@@ -3,6 +3,7 @@
  * server's group. React-free, so tests use it directly.
  */
 import type { UpstreamGroup, UpstreamModel } from '@/services/api/providerGroups';
+import { MAX_LABEL_LENGTH, labelProblem } from '@/utils/keyLabels';
 import type { FamilyDescriptor } from './families';
 
 export interface ModelDraft {
@@ -40,22 +41,6 @@ export interface DraftError {
 
 /** The server's form of group names and prefixes. */
 export const NAME_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
-
-/** The server's limit on a key's label, in characters. */
-export const MAX_LABEL_LENGTH = 64;
-
-/**
- * The problem with a label as entered, as a translation key, or null. The
- * server trims labels and refuses one longer than the limit or holding a
- * line break or other control character.
- */
-export const labelProblem = (label: string): string | null => {
-  const trimmed = label.trim();
-  if ([...trimmed].length > MAX_LABEL_LENGTH) return 'labels.error_long';
-  // eslint-disable-next-line no-control-regex
-  if (/[\u0000-\u001f\u007f-\u009f\u2028\u2029]/.test(trimmed)) return 'labels.error_control';
-  return null;
-};
 
 /**
  * The name a group's key shows under: its label, or for an unlabeled stored

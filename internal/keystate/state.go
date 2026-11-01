@@ -48,6 +48,9 @@ func Parse(data []byte) (State, error) {
 	if len(bytes.TrimSpace(data)) == 0 {
 		return State{}, nil
 	}
+	if err := checkLabelTypes(data); err != nil {
+		return State{}, err
+	}
 	decoder := yaml.NewDecoder(bytes.NewReader(data))
 	decoder.KnownFields(true)
 	var doc stateDocument
@@ -59,6 +62,58 @@ func Parse(data []byte) (State, error) {
 		s.ClientKeys = doc.Access.APIKeys
 	}
 	return s, s.Validate()
+}
+
+// checkLabelTypes refuses a label that is not a string, naming its key's
+// position, before decoding would read a number or boolean as text.
+func checkLabelTypes(data []byte) error {
+	var root yaml.Node
+	if err := yaml.Unmarshal(data, &root); err != nil || len(root.Content) == 0 {
+		return nil // decoding reports the malformed document
+	}
+	check := func(keys *yaml.Node, position func(int) string) error {
+		if keys == nil || keys.Kind != yaml.SequenceNode {
+			return nil
+		}
+		for i, key := range keys.Content {
+			label := child(key, "label")
+			if label == nil || (label.Kind == yaml.ScalarNode && label.Tag == "!!null") {
+				continue
+			}
+			if label.Kind != yaml.ScalarNode || label.Tag != "!!str" {
+				return fmt.Errorf("%s: label must be a string", position(i))
+			}
+		}
+		return nil
+	}
+	top := root.Content[0]
+	if err := check(child(child(top, "access"), "api-keys"), func(i int) string {
+		return fmt.Sprintf("access.api-keys: key %d", i+1)
+	}); err != nil {
+		return err
+	}
+	families := child(top, "api-keys")
+	if families == nil || families.Kind != yaml.MappingNode {
+		return nil
+	}
+	for f := 0; f+1 < len(families.Content); f += 2 {
+		family, groups := families.Content[f].Value, families.Content[f+1]
+		if groups.Kind != yaml.SequenceNode {
+			continue
+		}
+		for g, group := range groups.Content {
+			name := fmt.Sprintf("%d", g+1)
+			if n := child(group, "name"); n != nil && n.Kind == yaml.ScalarNode {
+				name = n.Value
+			}
+			if err := check(child(group, "keys"), func(i int) string {
+				return fmt.Sprintf("api-keys.%s: group %s key %d", family, name, i+1)
+			}); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 // Validate checks the client keys and each family's groups: no key is blank,

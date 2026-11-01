@@ -7,7 +7,6 @@ import { IconPlus, IconTrash2 } from '@/components/ui/icons';
 import { THINKING_LEVELS } from './thinkingLevels';
 import type { FamilyDescriptor } from './families';
 import {
-  MAX_LABEL_LENGTH,
   emptyModel,
   keyAccountLabel,
   validateDraft,
@@ -164,7 +163,6 @@ export function GroupSheet({
               <input
                 className={`input ${styles.keyLabel}`}
                 autoComplete="off"
-                maxLength={MAX_LABEL_LENGTH}
                 placeholder={
                   keyAccountLabel(draft.name, { ...key, label: '' }) || t('labels.placeholder')
                 }
