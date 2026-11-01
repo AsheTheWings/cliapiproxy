@@ -15,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/AsheTheWings/cliapiproxy/internal/generations/capture"
 	"github.com/AsheTheWings/cliapiproxy/internal/logging"
 	"github.com/AsheTheWings/cliapiproxy/internal/telemetry"
 	"github.com/AsheTheWings/cliapiproxy/internal/util"
@@ -125,6 +126,8 @@ func (m *Manager) Execute(ctx context.Context, providers []string, req cliproxye
 	defer func() { finish(errResult) }()
 	ctx = cliproxyexecutor.WithRequestProxyURL(ctx, opts.ProxyURL)
 	req, opts = cliproxysession.Enrich(req, opts)
+	ctx, generation := capture.Begin(ctx, capture.ClientInput(req, opts), "", opts.Headers.Get("User-Agent"), false)
+	defer func() { generation.Finish(ctx, errResult) }()
 	ctx = WithCodexClientRequest(ctx, IsCodexClientRequest(ctx, opts.Headers))
 	ctx = coreusage.CaptureIdentity(ctx)
 	normalized := m.normalizeProviders(providers)
@@ -241,12 +244,21 @@ func (m *Manager) ExecuteCount(ctx context.Context, providers []string, req clip
 
 // ExecuteStream performs a streaming execution using the configured selector and executor.
 // It supports multiple providers for the same model and round-robins the starting provider per model.
-func (m *Manager) ExecuteStream(ctx context.Context, providers []string, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (_ *cliproxyexecutor.StreamResult, errResult error) {
+func (m *Manager) ExecuteStream(ctx context.Context, providers []string, req cliproxyexecutor.Request, opts cliproxyexecutor.Options) (streamResult *cliproxyexecutor.StreamResult, errResult error) {
 	// The span covers selecting a credential and opening the stream.
 	ctx, finish := telemetry.StartExecution(ctx, "stream", m.normalizeProviders(providers))
 	defer func() { finish(errResult) }()
 	ctx = cliproxyexecutor.WithRequestProxyURL(ctx, opts.ProxyURL)
 	req, opts = cliproxysession.Enrich(req, opts)
+	ctx, generation := capture.Begin(ctx, capture.ClientInput(req, opts), "", opts.Headers.Get("User-Agent"), true)
+	defer func() {
+		if errResult != nil || streamResult == nil {
+			generation.Finish(ctx, errResult)
+			return
+		}
+		// The generation completes when its stream does.
+		streamResult = generation.Stream(ctx, streamResult)
+	}()
 	ctx = WithCodexClientRequest(ctx, IsCodexClientRequest(ctx, opts.Headers))
 	ctx = coreusage.CaptureIdentity(ctx)
 	if m.HomeEnabled() {
