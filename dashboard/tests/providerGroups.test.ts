@@ -5,6 +5,7 @@ import {
   emptyModel,
   emptyDraft,
   fromDraft,
+  keyAccountLabel,
   toDraft,
   validateDraft,
   withGroup,
@@ -63,7 +64,7 @@ describe('group form', () => {
           thinking: { levels: ['low', 'custom-level'] },
         },
       ],
-      keys: [{ 'api-key': '****abcd' }],
+      keys: [{ 'api-key': '****abcd', label: 'team account' }, { 'api-key': '****efgh' }],
     };
     expect(fromDraft(toDraft(group), openai)).toEqual(group);
   });
@@ -73,12 +74,16 @@ describe('group form', () => {
       ...emptyDraft(),
       name: 'kiro',
       baseUrl: 'https://ignored.example',
-      keys: [{ stored: '****1234', value: '' }, { value: ' new-key ' }, { value: '' }],
+      keys: [
+        { stored: '****1234', value: '', label: '' },
+        { value: ' new-key ', label: '  laptop ' },
+        { value: '', label: '' },
+      ],
       models: [emptyModel()],
     };
     expect(fromDraft(draft, kiro)).toEqual({
       name: 'kiro',
-      keys: [{ 'api-key': '****1234' }, { 'api-key': 'new-key' }],
+      keys: [{ 'api-key': '****1234' }, { 'api-key': 'new-key', label: 'laptop' }],
     });
   });
 
@@ -88,7 +93,7 @@ describe('group form', () => {
       name: 'example',
       baseUrl: 'https://api.example.com/v1',
       models: [{ ...emptyModel(), name: 'm' }],
-      keys: [{ value: 'k1' }],
+      keys: [{ value: 'k1', label: '' }],
     };
     expect(validateDraft(valid, openai, [])).toBeNull();
     const cases: Array<[Partial<typeof valid>, string, string[]?]> = [
@@ -103,13 +108,52 @@ describe('group form', () => {
         { models: [{ ...valid.models[0], maxContextLength: '1.5' }] },
         'provider_groups.error_context',
       ],
-      [{ keys: [{ value: ' ' }] }, 'provider_groups.error_keys_required'],
-      [{ keys: [{ value: 'k1' }, { value: 'k1' }] }, 'provider_groups.error_key_repeated'],
+      [{ keys: [{ value: ' ', label: '' }] }, 'provider_groups.error_keys_required'],
+      [
+        {
+          keys: [
+            { value: 'k1', label: '' },
+            { value: 'k1', label: '' },
+          ],
+        },
+        'provider_groups.error_key_repeated',
+      ],
+      [{ keys: [{ value: 'k1', label: 'n'.repeat(65) }] }, 'labels.error_long'],
+      [{ keys: [{ value: 'k1', label: 'a\tb' }] }, 'labels.error_control'],
+      [
+        {
+          keys: [
+            { value: 'k1', label: 'x' },
+            { value: 'k2', label: ' x ' },
+          ],
+        },
+        'labels.error_repeated',
+      ],
     ];
     for (const [patch, key, taken] of cases) {
       expect(validateDraft({ ...valid, ...patch }, openai, taken ?? [])?.key).toBe(key);
     }
     expect(validateDraft({ ...valid, baseUrl: '', models: [] }, kiro, [])).toBeNull();
+  });
+
+  test('an unlabeled stored key shows as its group name and fingerprint', () => {
+    expect(
+      keyAccountLabel('team', {
+        stored: '****abcd',
+        fingerprint: '0123456789ab',
+        value: '',
+        label: '',
+      })
+    ).toBe('team 0123456789ab');
+    expect(
+      keyAccountLabel('team', {
+        stored: '****abcd',
+        fingerprint: '0123456789ab',
+        value: '',
+        label: ' Alice ',
+      })
+    ).toBe('Alice');
+    expect(keyAccountLabel('team', { value: 'new-key', label: '' })).toBe('');
   });
 
   test('edits a family list by position', () => {

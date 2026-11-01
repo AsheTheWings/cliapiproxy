@@ -20,6 +20,10 @@ export interface UpstreamModel {
 export interface UpstreamKey {
   /** Masked as `****` plus the last four characters, or `****` for short keys. */
   'api-key': string;
+  /** The operator's name for the key's account; absent for an unlabeled key. */
+  label?: string;
+  /** The first 12 hexadecimal characters of the key's SHA-256, as the server shows it. */
+  fingerprint?: string;
   authIndex?: string;
 }
 
@@ -62,7 +66,16 @@ const parseGroup = (raw: unknown): UpstreamGroup | null => {
     keys: raw.keys.flatMap((key) => {
       if (!isRecord(key) || typeof key['api-key'] !== 'string') return [];
       const index = text(key.auth_index) ?? text(key['auth-index']);
-      return [{ 'api-key': key['api-key'], ...(index ? { authIndex: index } : {}) }];
+      const label = text(key.label);
+      const fingerprint = text(key.fingerprint);
+      return [
+        {
+          'api-key': key['api-key'],
+          ...(label ? { label } : {}),
+          ...(fingerprint ? { fingerprint } : {}),
+          ...(index ? { authIndex: index } : {}),
+        },
+      ];
     }),
   };
   if (text(raw['base-url'])) group['base-url'] = String(raw['base-url']);
@@ -86,13 +99,16 @@ export const parseProviderGroups = (apiKeys: unknown): ProviderGroups => {
   ) as ProviderGroups;
 };
 
-/** The body PUT takes: the group without the view's auth indexes. */
+/** The body PUT takes: the group without the view's auth indexes and fingerprints. */
 export const serializeGroup = (group: UpstreamGroup): Record<string, unknown> => {
   const body: Record<string, unknown> = { name: group.name };
   if (group['base-url']) body['base-url'] = group['base-url'];
   if (group.prefix) body.prefix = group.prefix;
   if (group.models?.length) body.models = group.models;
-  body.keys = group.keys.map((key) => ({ 'api-key': key['api-key'] }));
+  body.keys = group.keys.map((key) => ({
+    'api-key': key['api-key'],
+    ...(key.label ? { label: key.label } : {}),
+  }));
   return body;
 };
 

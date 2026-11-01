@@ -3,16 +3,16 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import i18n from '@/i18n';
 import {
-  MAX_NAME_LENGTH,
+  MAX_LABEL_LENGTH,
   SEGMENT_STAGGER_MS,
+  clientLabelProblem,
   clientKeyProblem,
-  nameProblem,
   segmentFillDelayMs,
   withClientKey,
   withoutClientKey,
 } from '@/features/clientKeys/clientKeyForm';
 import { StrengthMeter } from '@/features/clientKeys/StrengthMeter';
-import { parseClientKeys } from '@/services/api/clientKeys';
+import { clientKeyDisplay, parseClientKeys } from '@/services/api/clientKeys';
 import { generateSecureApiKey } from '@/utils/apiKey';
 
 describe('client key form', () => {
@@ -29,23 +29,35 @@ describe('client key form', () => {
     expect(clientKeyProblem('****5678', '****1234')).toBe('client_keys.error_masked');
   });
 
-  test('names are optional and bounded in characters', () => {
-    expect(nameProblem('')).toBeNull();
-    expect(nameProblem('ж'.repeat(MAX_NAME_LENGTH))).toBeNull();
-    expect(nameProblem('n'.repeat(MAX_NAME_LENGTH + 1))).toBe('client_keys.error_name_long');
+  test('labels are optional, bounded, one line, and unique among client keys', () => {
+    const others = [{ key: '****aaaa', label: 'ci', fingerprint: 'aaaaaaaaaaaa' }];
+    expect(clientLabelProblem('', others)).toBeNull();
+    expect(clientLabelProblem('ж'.repeat(MAX_LABEL_LENGTH), others)).toBeNull();
+    expect(clientLabelProblem(` ${'n'.repeat(MAX_LABEL_LENGTH)} `, others)).toBeNull();
+    expect(clientLabelProblem('n'.repeat(MAX_LABEL_LENGTH + 1), others)).toBe('labels.error_long');
+    expect(clientLabelProblem('a\nb', others)).toBe('labels.error_control');
+    expect(clientLabelProblem(' ci ', others)).toBe('labels.error_taken');
   });
 
-  test('edits the list by position and pairs keys with their names', () => {
-    const a = { key: '****aaaa', name: 'a' };
-    const b = { key: '****bbbb', name: '' };
-    const c = { key: 'new-key', name: 'c' };
+  test('edits the list by position and reads keys with their labels', () => {
+    const a = { key: '****aaaa', label: 'a', fingerprint: 'aaaaaaaaaaaa' };
+    const b = { key: '****bbbb', label: '', fingerprint: 'bbbbbbbbbbbb' };
+    const c = { key: 'new-key', label: 'c', fingerprint: '' };
     expect(withClientKey([a, b], null, c)).toEqual([a, b, c]);
     expect(withClientKey([a, b], 0, c)).toEqual([c, b]);
     expect(withoutClientKey([a, b, c], 1)).toEqual([a, c]);
     expect(
-      parseClientKeys({ 'api-keys': ['****aaaa', '****bbbb'], 'api-key-names': ['a'] })
+      parseClientKeys({
+        'api-keys': [
+          { 'api-key': '****aaaa', label: 'a', fingerprint: 'aaaaaaaaaaaa' },
+          { 'api-key': '****bbbb', fingerprint: 'bbbbbbbbbbbb' },
+          '****cccc',
+        ],
+      })
     ).toEqual([a, b]);
     expect(parseClientKeys(undefined)).toEqual([]);
+    expect(clientKeyDisplay(a)).toBe('a');
+    expect(clientKeyDisplay(b)).toBe('bbbbbbbbbbbb');
   });
 });
 

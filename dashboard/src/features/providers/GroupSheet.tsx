@@ -8,6 +8,7 @@ import { THINKING_LEVELS } from './thinkingLevels';
 import type { FamilyDescriptor } from './families';
 import {
   emptyModel,
+  keyAccountLabel,
   validateDraft,
   type DraftError,
   type GroupDraft,
@@ -136,7 +137,7 @@ export function GroupSheet({
               variant="ghost"
               size="sm"
               disabled={saving}
-              onClick={() => update({ keys: [...draft.keys, { value: '' }] })}
+              onClick={() => update({ keys: [...draft.keys, { value: '', label: '' }] })}
             >
               <IconPlus size={14} /> {t('provider_groups.add_key')}
             </Button>
@@ -144,7 +145,9 @@ export function GroupSheet({
           {draft.keys.map((key, index) => (
             <div className={styles.listRow} key={index}>
               {key.stored ? (
-                <code className={styles.storedKey}>{key.stored}</code>
+                <code className={styles.storedKey} title={key.fingerprint}>
+                  {key.stored}
+                </code>
               ) : (
                 <input
                   className="input"
@@ -157,6 +160,17 @@ export function GroupSheet({
                   onChange={(event) => updateKey(index, { value: event.target.value })}
                 />
               )}
+              <input
+                className={`input ${styles.keyLabel}`}
+                autoComplete="off"
+                placeholder={
+                  keyAccountLabel(draft.name, { ...key, label: '' }) || t('labels.placeholder')
+                }
+                aria-label={t('labels.label')}
+                value={key.label}
+                disabled={disabled}
+                onChange={(event) => updateKey(index, { label: event.target.value })}
+              />
               <Button
                 variant="ghost"
                 size="sm"

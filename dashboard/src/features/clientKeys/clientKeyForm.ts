@@ -1,10 +1,10 @@
 import type { ClientKey } from '@/services/api/clientKeys';
+import { labelProblem } from '@/utils/keyLabels';
 
 /** Visible ASCII, the characters a bearer token can carry unquoted. */
 const KEY_PATTERN = /^[\x21-\x7E]+$/;
 
-/** The server's limit on a client key's name, in characters. */
-export const MAX_NAME_LENGTH = 64;
+export { MAX_LABEL_LENGTH } from '@/utils/keyLabels';
 
 /**
  * The problem with a key entered in the editor, as a translation key, or
@@ -20,8 +20,16 @@ export const clientKeyProblem = (key: string, stored?: string): string | null =>
   return null;
 };
 
-export const nameProblem = (name: string): string | null =>
-  [...name].length > MAX_NAME_LENGTH ? 'client_keys.error_name_long' : null;
+/**
+ * The problem with a client key's label, as a translation key, or null:
+ * the server's label rules, and no other key of `others` may hold it.
+ */
+export const clientLabelProblem = (label: string, others: ClientKey[]): string | null => {
+  const problem = labelProblem(label);
+  if (problem) return problem;
+  const trimmed = label.trim();
+  return trimmed && others.some((item) => item.label === trimmed) ? 'labels.error_taken' : null;
+};
 
 /** Replace the key at index, or append it when index is null. */
 export const withClientKey = (keys: ClientKey[], index: number | null, item: ClientKey) =>
