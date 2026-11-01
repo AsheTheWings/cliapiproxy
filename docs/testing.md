@@ -8,7 +8,7 @@ constraint. A plain `go test ./...` selects no class and runs nothing.
 | unit | Pure code over in-memory values: no filesystem, sockets, processes, process configuration, or wall-clock waits | `scripts/test.sh unit` |
 | component | In-process code that may use run-owned temporary files, loopback sockets, the process environment, and bounded waits | `scripts/test.sh component` |
 | conformance | Read-only checks of the source tree, including that every test file's class covers what it does | `scripts/test.sh conformance` |
-| integration | Code that starts processes, such as plugin builds, or needs real network interfaces, such as WebRTC media | `scripts/test.sh integration` |
+| integration | Code that starts processes, such as plugin builds or a PostgreSQL server, or needs real network interfaces, such as WebRTC media | `scripts/test.sh integration` |
 | qualification | The built container image, run from its OCI layout with Podman | `scripts/test.sh qualification ./test/qualification` |
 
 The dashboard's Bun tests in `dashboard/tests` are unit tests and
@@ -36,14 +36,27 @@ Qualification runs the exact image layout [building](building.md) produces,
 named by `CLIPROXY_QUALIFICATION_LAYOUT`, and checks it carries the revision
 `CLIPROXY_QUALIFICATION_REVISION` names; those two values are its only inputs
 beyond the toolchain. It loads the image into a run-owned Podman store,
-serves it with production inputs against a run-owned OTLP endpoint, checks
-authentication, the embedded dashboard page, a clean exit on SIGTERM, and the exported traces and metrics,
-runs the telemetry probe, and removes the store.
+starts a run-owned PostgreSQL store, and runs the image's `-migrate-status`,
+`-migrate`, a second `-migrate` that applies nothing, and `-migrate-status`
+again. It then serves the image with production inputs against the store and
+a run-owned OTLP endpoint, checks authentication, the embedded dashboard
+page, a clean exit on SIGTERM, and the exported traces and metrics, runs the
+telemetry probe, and removes both stores.
 
 ```sh
 CLIPROXY_QUALIFICATION_LAYOUT=image-layout CLIPROXY_QUALIFICATION_REVISION="$(git rev-parse HEAD)" \
   scripts/test.sh qualification ./test/qualification
 ```
+
+## The PostgreSQL store's tests
+
+Integration tests of the [store](generations.md) start one PostgreSQL 18
+container per test package with Podman, from the official image pinned by
+digest in [`internal/testsupport/pgtest`](../internal/testsupport/pgtest), in
+a Podman store the run creates and removes with the container. The server
+listens on a free loopback port with a random owner password. A package
+builds a migrated template database once, and each test clones it into a
+database of its own, which it drops when it ends.
 
 ## Classifying a test
 

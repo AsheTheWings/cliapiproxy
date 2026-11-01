@@ -13,6 +13,7 @@ import (
 
 	"github.com/AsheTheWings/cliapiproxy/internal/api/handlers/management"
 	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/generations"
 	"github.com/AsheTheWings/cliapiproxy/internal/inputs"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -56,6 +57,7 @@ client:
   codex: {enable-apply-patch: true, optimize-multi-agent-v2: true}
 management: {allow-remote: true}
 keys: {state-file: /var/lib/cliapiproxy/keys.yaml}
+store: {host: /run/cliapiproxy/postgres, database: cliapiproxy, user: cliapiproxy, dump-directory: /var/lib/cliapiproxy/dumps}
 `
 
 // keyState holds every key the server uses: the client keys and each
@@ -87,6 +89,7 @@ api-keys:
 const protected = `CLIPROXY_PROXY_URL='http://proxy.invalid:3128'
 CLIPROXY_MANAGEMENT_KEY='management-key'
 OTEL_EXPORTER_OTLP_HEADERS='authorization=Basic%20c2VjcmV0'
+CLIPROXY_POSTGRES_PASSWORD='store-password'
 `
 
 func productionProcess(args ...string) inputs.Process {
@@ -176,13 +179,50 @@ func TestEveryKeyedInputReachesTheConfiguration(t *testing.T) {
 
 // Without a management key the management API stays off.
 func TestManagementIsOffWithoutItsKey(t *testing.T) {
-	files := memFiles{"/etc/cliapiproxy/overlay.yaml": "server: {port: 9100}\noauth: {auth-dir: /var/lib/cliapiproxy/auths}\nkeys: {state-file: /var/lib/cliapiproxy/keys.yaml}\n"}
+	files := memFiles{"/etc/cliapiproxy/overlay.yaml": "server: {port: 9100}\noauth: {auth-dir: /var/lib/cliapiproxy/auths}\nkeys: {state-file: /var/lib/cliapiproxy/keys.yaml}\nstore: {host: /run/pg, database: d, user: u, dump-directory: /d}\n",
+		"/run/cliapiproxy/protected.env": "CLIPROXY_POSTGRES_PASSWORD='store-password'\n"}
 	plan, err := resolveRun(productionProcess(), files)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got := plan.cfg.RemoteManagement; got.SecretKey != "" || got.AllowRemote {
 		t.Fatalf("management = %+v, want no key and loopback only", got)
+	}
+}
+
+// Production needs a store and names its connection; development without a
+// store host runs without one, and the migrate commands need a store.
+func TestStoreInputsNameTheStore(t *testing.T) {
+	plan, err := resolveRun(productionProcess(), testFiles)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := generations.Settings{Host: "/run/cliapiproxy/postgres", Port: 5432, Database: "cliapiproxy", User: "cliapiproxy", Password: "store-password"}
+	if plan.store != want {
+		t.Fatalf("store = %+v, want %+v", plan.store, want)
+	}
+	for missing, field := range map[string]string{"host": "host: /run/cliapiproxy/postgres, ", "database": "database: cliapiproxy, ", "user": "user: cliapiproxy, "} {
+		trimmed := strings.Replace(overlay, field, "", 1)
+		files := memFiles{"/etc/cliapiproxy/overlay.yaml": trimmed, "/run/cliapiproxy/protected.env": protected, keyStatePath: keyState}
+		if _, err = resolveRun(productionProcess(), files); err == nil || !strings.Contains(err.Error(), "store."+missing) {
+			t.Errorf("production without store.%s: err = %v", missing, err)
+		}
+	}
+	empty := memFiles{"/etc/cliapiproxy/overlay.yaml": strings.Replace(overlay, "host: /run/cliapiproxy/postgres", "host: ''", 1), "/run/cliapiproxy/protected.env": protected, keyStatePath: keyState}
+	if _, err = resolveRun(productionProcess(), empty); err == nil || !strings.Contains(err.Error(), "store.host is empty") {
+		t.Errorf("production with an empty store.host: err = %v", err)
+	}
+	development := inputs.Process{Environ: []string{"CLIPROXY_PROFILE=development", "HOME=/home/dev", "XDG_RUNTIME_DIR=/run/user/1000"}}
+	devPlan, err := resolveRun(development, memFiles{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if devPlan.store.Enabled() {
+		t.Fatalf("development store = %+v, want it off", devPlan.store)
+	}
+	development.Args = []string{"-migrate"}
+	if _, err = resolveRun(development, memFiles{}); err == nil || !strings.Contains(err.Error(), "need the store") {
+		t.Errorf("-migrate without a store: err = %v", err)
 	}
 }
 

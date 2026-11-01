@@ -133,6 +133,16 @@ or has no key, a key is blank, has surrounding spaces, or repeats within its
 list, a client key is a bare string, or a label is invalid or repeated within
 its scope.
 
+## Store
+
+The `store.*` inputs connect the server to the PostgreSQL store of its
+[generations](generations.md). `store.host` is a host name or the directory
+of the store's Unix socket, and `store.password`, the protected value
+`CLIPROXY_POSTGRES_PASSWORD`, is the only credential the connection uses; the
+server reads no `PG*` environment variable or password file. Production
+requires the store. In development an empty `store.host`, the default, runs
+the server without it.
+
 ## OAuth models
 
 `oauth.models.<provider>` lists, by catalog id, the models the OAuth
