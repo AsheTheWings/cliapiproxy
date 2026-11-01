@@ -39,6 +39,21 @@ from `CLIPROXY_DEPLOYMENT_ENVIRONMENT`.
   other fields are never exported, since they are unbounded and can hold
   credentials or payloads; the statement at the reported revision says what
   happened. Info and debug statements produce no records.
+- `cliapiproxy.generation.tokens` counts the tokens of each generation the
+  [store](generations.md) keeps, by provider and `cliapiproxy.token.type`:
+  `input_uncached`, `input_cache_read`, `input_cache_write`,
+  `output_non_reasoning`, `output_reasoning`, or `unclassified`.
+- The store's write queue reports its depth as
+  `cliapiproxy.store.queue.entries` and `cliapiproxy.store.queue.bytes`, each
+  write attempt's duration as `cliapiproxy.store.write.duration` with
+  `cliapiproxy.store.write_outcome` `ok`, `retryable`, or `terminal`, and
+  each generation it did not keep in `cliapiproxy.store.dropped` with
+  `cliapiproxy.store.drop_reason` `queue_entries`, `queue_bytes`,
+  `terminal_write`, or `shutdown`. `cliapiproxy.store.database.size` is the
+  database's size, measured each minute.
+
+No signal carries a model, a credential, a key or its label or fingerprint,
+or a payload; the store keeps those.
 
 ## Probe
 

@@ -64,6 +64,22 @@ func (s *Store) ClientKeys() []upstream.Key {
 	return slices.Clone(s.state.ClientKeys)
 }
 
+// ClientKeyLabel returns how a client key shows: its label, or for an
+// unlabeled key its fingerprint. It returns "" for a key the state lacks.
+func (s *Store) ClientKeyLabel(key string) string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, k := range s.state.ClientKeys {
+		if k.APIKey == key {
+			if k.Label != "" {
+				return k.Label
+			}
+			return upstream.Fingerprint(key)
+		}
+	}
+	return ""
+}
+
 // ReplaceGroups makes groups a family's groups, writes the state file, and
 // returns the configuration built from it. A change the rules reject wraps
 // ErrInvalid and leaves the state as it was.

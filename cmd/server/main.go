@@ -115,17 +115,19 @@ func run() int {
 		return 0
 	}
 	if plan.store.Enabled() {
-		ctxCheck, cancel := context.WithTimeout(context.Background(), storeCheckTimeout)
-		pool, errOpen := generations.Open(ctxCheck, plan.store)
-		if errOpen == nil {
-			errOpen = generations.CheckSchema(ctxCheck, pool)
-			pool.Close()
-		}
+		ctxStart, cancel := context.WithTimeout(context.Background(), storeCheckTimeout)
+		store, errStart := generations.Start(ctxStart, plan.store, generations.WriterOptions{
+			PayloadLimit:   plan.payloadLimit,
+			QueueBytes:     plan.queueBytes,
+			ClientKeyLabel: plan.keys.ClientKeyLabel,
+		})
 		cancel()
-		if errOpen != nil {
-			fmt.Fprintf(os.Stderr, "store: %v\n", errOpen)
+		if errStart != nil {
+			fmt.Fprintf(os.Stderr, "store: %v\n", errStart)
 			return 1
 		}
+		// Queued generations are written before telemetry shuts down.
+		defer store.Close()
 	}
 	// Request and error-request files would be a second diagnostics sink.
 	serverOptions := []api.ServerOption{
@@ -149,8 +151,8 @@ func run() int {
 // telemetryShutdownTimeout bounds the final flush of every signal.
 const telemetryShutdownTimeout = 10 * time.Second
 
-// storeCheckTimeout bounds connecting to the store and reading its ledger at
-// startup.
+// storeCheckTimeout bounds connecting to the store and checking its schema
+// at startup.
 const storeCheckTimeout = 30 * time.Second
 
 // migrationTimeout bounds one -migrate or -migrate-status run.
@@ -202,11 +204,14 @@ func runMigrations(plan *runPlan) int {
 
 // runPlan is what one run does: serve, or run one command and exit.
 type runPlan struct {
-	profile   string
-	cfg       *config.Config
-	keys      *keystate.Store
-	store     generations.Settings
-	telemetry telemetry.Settings
+	profile string
+	cfg     *config.Config
+	keys    *keystate.Store
+	store   generations.Settings
+	// payloadLimit and queueBytes bound capture's payloads and write queue.
+	payloadLimit int
+	queueBytes   int64
+	telemetry    telemetry.Settings
 	// telemetryProbe runs the telemetry probe instead of serving.
 	telemetryProbe bool
 	// validate stops once the inputs are valid, before any other work.
@@ -277,6 +282,7 @@ func resolveRun(process inputs.Process, files inputs.Files) (*runPlan, error) {
 		Console:        os.Stdout,
 	}
 	return &runPlan{profile: eff.Profile, cfg: cfg, keys: keyStore, store: store, telemetry: settings, telemetryProbe: eff.Bool("telemetry-probe"),
+		payloadLimit: int(eff.Int("store.payload-limit-bytes")), queueBytes: eff.Int("store.queue-bytes"),
 		validate: eff.Bool("validate"), migrate: eff.Bool("migrate"), migrateStatus: eff.Bool("migrate-status"),
 		localModel: eff.Bool("local-model"), command: command}, nil
 }

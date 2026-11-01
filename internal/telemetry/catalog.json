@@ -1,6 +1,6 @@
 {
   "schema_version": "opentelemetry.producer/signal-catalog/v1",
-  "catalog_version": 2,
+  "catalog_version": 3,
   "service_namespace": "cliapiproxy",
   "service_names": ["cliapiproxy"],
   "catalog": {
@@ -15,7 +15,13 @@
     "metrics": [
       "cliapiproxy.qualification",
       "http.server.request.duration",
-      "cliapiproxy.execute.duration"
+      "cliapiproxy.execute.duration",
+      "cliapiproxy.generation.tokens",
+      "cliapiproxy.store.dropped",
+      "cliapiproxy.store.write.duration",
+      "cliapiproxy.store.queue.entries",
+      "cliapiproxy.store.queue.bytes",
+      "cliapiproxy.store.database.size"
     ],
     "logs": [
       "cliapiproxy.qualification",
@@ -44,7 +50,10 @@
       "http.response.status_code",
       "error.type",
       "cliapiproxy.operation",
-      "cliapiproxy.provider"
+      "cliapiproxy.provider",
+      "cliapiproxy.token.type",
+      "cliapiproxy.store.drop_reason",
+      "cliapiproxy.store.write_outcome"
     ],
     "logs": [
       "cliapiproxy.correlation.id",
@@ -56,12 +65,21 @@
   },
   "metric_dimensions": {
     "http.request.method": ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "CONNECT", "TRACE", "_OTHER"],
-    "cliapiproxy.operation": ["execute", "count", "stream"]
+    "cliapiproxy.operation": ["execute", "count", "stream"],
+    "cliapiproxy.token.type": ["input_uncached", "input_cache_read", "input_cache_write", "output_non_reasoning", "output_reasoning", "unclassified"],
+    "cliapiproxy.store.drop_reason": ["queue_entries", "queue_bytes", "terminal_write", "shutdown"],
+    "cliapiproxy.store.write_outcome": ["ok", "retryable", "terminal"]
   },
   "metric_units": {
     "cliapiproxy.qualification": "{probe}",
     "http.server.request.duration": "s",
-    "cliapiproxy.execute.duration": "s"
+    "cliapiproxy.execute.duration": "s",
+    "cliapiproxy.generation.tokens": "{token}",
+    "cliapiproxy.store.dropped": "{generation}",
+    "cliapiproxy.store.write.duration": "s",
+    "cliapiproxy.store.queue.entries": "{generation}",
+    "cliapiproxy.store.queue.bytes": "By",
+    "cliapiproxy.store.database.size": "By"
   },
   "error_classes": [
     "canceled",
