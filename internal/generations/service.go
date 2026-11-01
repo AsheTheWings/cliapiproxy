@@ -2,7 +2,9 @@ package generations
 
 import (
 	"context"
+	"errors"
 	"net/http"
+	"sort"
 	"sync/atomic"
 	"time"
 
@@ -12,14 +14,23 @@ import (
 	"github.com/AsheTheWings/cliapiproxy/internal/telemetry"
 	cliproxyauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
 	"github.com/jackc/pgx/v5/pgxpool"
+	log "github.com/sirupsen/logrus"
 )
 
 // sizeInterval is how often the service measures the database's size.
 const sizeInterval = time.Minute
 
+// DailyRefreshInterval is how often the service refreshes
+// generation_usage_daily.
+const DailyRefreshInterval = 15 * time.Minute
+
+// dailyRefreshTimeout bounds one refresh of generation_usage_daily.
+const dailyRefreshTimeout = 10 * time.Minute
+
 // Service is the running store: its connection pool, the capture writer,
-// and the store's gauges.
+// the store's gauges, and the reads the management API answers from.
 type Service struct {
+	*Reader
 	Pool       *pgxpool.Pool
 	writer     *Writer
 	store      *PGStore
@@ -47,7 +58,13 @@ func Start(ctx context.Context, s Settings, opts WriterOptions) (*Service, error
 		pool.Close()
 		return nil, err
 	}
-	svc := &Service{Pool: pool, writer: writer, store: store}
+	reader, err := NewReader(pool)
+	if err != nil {
+		writer.Close(0)
+		pool.Close()
+		return nil, err
+	}
+	svc := &Service{Pool: pool, Reader: reader, writer: writer, store: store}
 	svc.size.Store(-1)
 	svc.unregister, err = telemetry.RegisterStoreGauges(telemetry.StoreGauges{
 		QueueEntries: writer.QueueEntries,
@@ -62,6 +79,7 @@ func Start(ctx context.Context, s Settings, opts WriterOptions) (*Service, error
 	sizeCtx, stopSize := context.WithCancel(context.Background())
 	svc.stopSize = stopSize
 	go svc.measureSize(sizeCtx)
+	go svc.refreshDaily(sizeCtx)
 	capture.SetSink(writer)
 	return svc, nil
 }
@@ -110,6 +128,99 @@ func (s *Service) measureSize(ctx context.Context) {
 		case <-ticker.C:
 		}
 	}
+}
+
+// RefreshDaily refreshes generation_usage_daily without blocking its
+// readers.
+func RefreshDaily(ctx context.Context, pool *pgxpool.Pool) error {
+	_, err := pool.Exec(ctx, "REFRESH MATERIALIZED VIEW CONCURRENTLY generation_usage_daily")
+	return err
+}
+
+// refreshDaily refreshes generation_usage_daily at start and every
+// DailyRefreshInterval until ctx ends.
+func (s *Service) refreshDaily(ctx context.Context) {
+	ticker := time.NewTicker(DailyRefreshInterval)
+	defer ticker.Stop()
+	for {
+		qctx, cancel := context.WithTimeout(ctx, dailyRefreshTimeout)
+		if err := RefreshDaily(qctx, s.Pool); err != nil && ctx.Err() == nil {
+			log.WithError(err).Warn("refreshing generation_usage_daily failed")
+		}
+		cancel()
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+	}
+}
+
+// Quota returns every credential the server has, with its latest usage
+// snapshot, followed by stored credentials the server no longer has.
+func (s *Service) Quota(ctx context.Context) ([]CredentialUsage, error) {
+	latest, err := s.LatestUsage(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := []CredentialUsage{}
+	if s.poller != nil {
+		for _, auth := range s.poller.Credentials() {
+			if auth == nil {
+				continue
+			}
+			c := snapshots.CredentialOf(auth)
+			usage := CredentialUsage{CredentialID: c.ID, Provider: c.Provider, ProviderGroup: c.Group, AccountLabel: c.AccountLabel,
+				Configured: true, UsageSource: s.poller.Pollable(auth)}
+			if stored, ok := latest[c.ID]; ok {
+				usage.Latest = stored.Latest
+				delete(latest, c.ID)
+			}
+			out = append(out, usage)
+		}
+	}
+	for _, stored := range latest {
+		out = append(out, stored)
+	}
+	sort.SliceStable(out, func(i, j int) bool {
+		a, b := out[i], out[j]
+		if a.Configured != b.Configured {
+			return a.Configured
+		}
+		if a.Provider != b.Provider {
+			return a.Provider < b.Provider
+		}
+		if a.AccountLabel != b.AccountLabel {
+			return a.AccountLabel < b.AccountLabel
+		}
+		return a.CredentialID < b.CredentialID
+	})
+	return out, nil
+}
+
+// ErrNoPoller marks a refresh before usage polling has started.
+var ErrNoPoller = errors.New("usage polling has not started")
+
+// RefreshUsage polls one credential's usage source now and returns the
+// poll's outcome and the credential's latest usage.
+func (s *Service) RefreshUsage(ctx context.Context, credentialID string) (string, CredentialUsage, error) {
+	if s.poller == nil {
+		return "", CredentialUsage{}, ErrNoPoller
+	}
+	outcome, err := s.poller.Refresh(ctx, credentialID)
+	if err != nil {
+		return "", CredentialUsage{}, err
+	}
+	all, err := s.Quota(ctx)
+	if err != nil {
+		return outcome, CredentialUsage{}, err
+	}
+	for _, c := range all {
+		if c.CredentialID == credentialID {
+			return outcome, c, nil
+		}
+	}
+	return outcome, CredentialUsage{}, snapshots.ErrUnknownCredential
 }
 
 // Close stops capture, writes queued generations for up to ShutdownDrain,

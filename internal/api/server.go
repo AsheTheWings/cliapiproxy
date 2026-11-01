@@ -220,6 +220,9 @@ func NewServer(cfg *config.Config, authManager *auth.Manager, accessManager *sdk
 	s.mgmt.SetPluginHost(optionState.pluginHost)
 	s.mgmt.SetConfigReloadHook(optionState.configReloadHook)
 	s.mgmt.SetKeyStore(optionState.keyStore)
+	if optionState.store != nil {
+		s.mgmt.SetStore(optionState.store, optionState.traceURLTemplate)
+	}
 	if optionState.authManagerHook != nil {
 		optionState.authManagerHook(authManager)
 	}

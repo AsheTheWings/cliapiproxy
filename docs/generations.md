@@ -139,7 +139,7 @@ gains a new input or the evaluator's version changes.
 | `system_instructions` | Each distinct system instruction once, stored as bytes and keyed by their SHA-256. |
 | `credential_usage_snapshots` | A credential's plan and usage, one row per changed reading, from polling or from response headers. |
 | `credential_usage_meters` | Each snapshot's meters, each in its own unit: `credits`, `percent`, `usd`, or `requests`. |
-| `generation_usage_daily` | A materialized view of generations, token sums, and usage amounts per UTC day, provider, group, credential, account label, upstream model, reasoning effort, and client key. |
+| `generation_usage_daily` | A materialized view of generations, token sums, and usage amounts per UTC day, provider, group, credential, account label, upstream model, reasoning effort, and client key, refreshed by the server at startup and every 15 minutes. |
 | `credential_usage_timeline` | A view of each meter's change since the credential's previous snapshot, in the meter's unit, with the generations and tokens between the two snapshots. |
 | `schema_migrations` | The migration ledger. |
 
@@ -169,6 +169,10 @@ A server with the store on refuses to start while a migration is pending or
 drifted, so a deploy runs `-migrate` before it starts the new binary.
 
 ## Reading the store
+
+The [management API](management.md#usage-and-generations) lists
+generations, returns their payloads, rebuilding pruned inputs, and
+summarizes usage.
 
 The role `cliapiproxy_reader` can log in and select every table and view of
 the store, including those later migrations add, and has no other privilege.
