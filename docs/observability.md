@@ -51,6 +51,17 @@ from `CLIPROXY_DEPLOYMENT_ENVIRONMENT`.
   `cliapiproxy.store.drop_reason` `queue_entries`, `queue_bytes`,
   `terminal_write`, or `shutdown`. `cliapiproxy.store.database.size` is the
   database's size, measured each minute.
+- Each poll of a credential's [usage source](generations.md#usage-snapshots)
+  is a `cliapiproxy.usage.poll` span, and its duration is
+  `cliapiproxy.usage.poll.duration`, both with the provider and
+  `cliapiproxy.usage.poll_outcome` `ok`, `timeout`, `http_error`,
+  `unparseable`, or `unchanged`. A poll whose snapshot the store fails to
+  write reports `ok` with an error status on its span.
+- `cliapiproxy.usage.remaining` is the lowest remaining share, from 0 to 1,
+  of each meter across a provider's polled credentials, by provider and
+  `cliapiproxy.usage.meter`: `five_hour`, `daily`, `weekly`, `monthly`,
+  `balance`, or `other`, named by the meter's window. An alert on it fires
+  when any credential runs low.
 
 No signal carries a model, a credential, a key or its label or fingerprint,
 or a payload; the store keeps those.

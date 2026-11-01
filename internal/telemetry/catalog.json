@@ -1,13 +1,14 @@
 {
   "schema_version": "opentelemetry.producer/signal-catalog/v1",
-  "catalog_version": 3,
+  "catalog_version": 4,
   "service_namespace": "cliapiproxy",
   "service_names": ["cliapiproxy"],
   "catalog": {
     "traces": [
       "cliapiproxy.qualification",
       "cliapiproxy.execute",
-      "cliapiproxy.codex.client_models"
+      "cliapiproxy.codex.client_models",
+      "cliapiproxy.usage.poll"
     ],
     "trace_name_patterns": [
       "^(GET|HEAD|POST|PUT|PATCH|DELETE|OPTIONS|CONNECT|TRACE|HTTP)( /[^ ]*)?$"
@@ -21,7 +22,9 @@
       "cliapiproxy.store.write.duration",
       "cliapiproxy.store.queue.entries",
       "cliapiproxy.store.queue.bytes",
-      "cliapiproxy.store.database.size"
+      "cliapiproxy.store.database.size",
+      "cliapiproxy.usage.poll.duration",
+      "cliapiproxy.usage.remaining"
     ],
     "logs": [
       "cliapiproxy.qualification",
@@ -42,7 +45,8 @@
       "cliapiproxy.codex.template_models",
       "cliapiproxy.codex.synthesized_models",
       "cliapiproxy.codex.synthesized_multi_agent_v2",
-      "cliapiproxy.codex.fallback_template"
+      "cliapiproxy.codex.fallback_template",
+      "cliapiproxy.usage.poll_outcome"
     ],
     "metrics": [
       "http.request.method",
@@ -53,7 +57,9 @@
       "cliapiproxy.provider",
       "cliapiproxy.token.type",
       "cliapiproxy.store.drop_reason",
-      "cliapiproxy.store.write_outcome"
+      "cliapiproxy.store.write_outcome",
+      "cliapiproxy.usage.poll_outcome",
+      "cliapiproxy.usage.meter"
     ],
     "logs": [
       "cliapiproxy.correlation.id",
@@ -68,7 +74,9 @@
     "cliapiproxy.operation": ["execute", "count", "stream"],
     "cliapiproxy.token.type": ["input_uncached", "input_cache_read", "input_cache_write", "output_non_reasoning", "output_reasoning", "unclassified"],
     "cliapiproxy.store.drop_reason": ["queue_entries", "queue_bytes", "terminal_write", "shutdown"],
-    "cliapiproxy.store.write_outcome": ["ok", "retryable", "terminal"]
+    "cliapiproxy.store.write_outcome": ["ok", "retryable", "terminal"],
+    "cliapiproxy.usage.poll_outcome": ["ok", "timeout", "http_error", "unparseable", "unchanged"],
+    "cliapiproxy.usage.meter": ["five_hour", "daily", "weekly", "monthly", "balance", "other"]
   },
   "metric_units": {
     "cliapiproxy.qualification": "{probe}",
@@ -79,7 +87,9 @@
     "cliapiproxy.store.write.duration": "s",
     "cliapiproxy.store.queue.entries": "{generation}",
     "cliapiproxy.store.queue.bytes": "By",
-    "cliapiproxy.store.database.size": "By"
+    "cliapiproxy.store.database.size": "By",
+    "cliapiproxy.usage.poll.duration": "s",
+    "cliapiproxy.usage.remaining": "1"
   },
   "error_classes": [
     "canceled",

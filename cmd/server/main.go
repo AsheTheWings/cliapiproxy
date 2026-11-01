@@ -10,6 +10,7 @@ import (
 	"flag"
 	"fmt"
 	"io/fs"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -21,6 +22,7 @@ import (
 	"github.com/AsheTheWings/cliapiproxy/internal/config"
 	"github.com/AsheTheWings/cliapiproxy/internal/generations"
 	"github.com/AsheTheWings/cliapiproxy/internal/generations/schema"
+	"github.com/AsheTheWings/cliapiproxy/internal/generations/snapshots"
 	"github.com/AsheTheWings/cliapiproxy/internal/githubauth"
 	"github.com/AsheTheWings/cliapiproxy/internal/inputs"
 	"github.com/AsheTheWings/cliapiproxy/internal/keystate"
@@ -28,6 +30,7 @@ import (
 	"github.com/AsheTheWings/cliapiproxy/internal/misc"
 	"github.com/AsheTheWings/cliapiproxy/internal/redisqueue"
 	"github.com/AsheTheWings/cliapiproxy/internal/registry"
+	"github.com/AsheTheWings/cliapiproxy/internal/runtime/executor/helps"
 	"github.com/AsheTheWings/cliapiproxy/internal/safemode"
 	"github.com/AsheTheWings/cliapiproxy/internal/telemetry"
 	_ "github.com/AsheTheWings/cliapiproxy/internal/translator"
@@ -114,6 +117,11 @@ func run() int {
 		plan.command(cfg)
 		return 0
 	}
+	// Request and error-request files would be a second diagnostics sink.
+	serverOptions := []api.ServerOption{
+		api.WithRequestLoggerFactory(func(*config.Config, string) logging.RequestLogger { return nil }),
+		api.WithKeyStore(plan.keys),
+	}
 	if plan.store.Enabled() {
 		ctxStart, cancel := context.WithTimeout(context.Background(), storeCheckTimeout)
 		store, errStart := generations.Start(ctxStart, plan.store, generations.WriterOptions{
@@ -128,11 +136,14 @@ func run() int {
 		}
 		// Queued generations are written before telemetry shuts down.
 		defer store.Close()
-	}
-	// Request and error-request files would be a second diagnostics sink.
-	serverOptions := []api.ServerOption{
-		api.WithRequestLoggerFactory(func(*config.Config, string) logging.RequestLogger { return nil }),
-		api.WithKeyStore(plan.keys),
+		serverOptions = append(serverOptions, api.WithAuthManagerHook(func(manager *coreauth.Manager) {
+			client := func(ctx context.Context, auth *coreauth.Auth) *http.Client {
+				return helps.NewProxyAwareHTTPClient(ctx, cfg, auth, snapshots.PollTimeout)
+			}
+			if errPoll := store.StartPolling(manager.List, client); errPoll != nil {
+				log.WithError(errPoll).Error("usage polling did not start")
+			}
+		}))
 	}
 	if safemode.HasExampleAPIKeys(cfg.APIKeys) {
 		matches := safemode.ExampleAPIKeys(cfg.APIKeys)
