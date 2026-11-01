@@ -388,6 +388,10 @@ var sharedKeyFields = map[string]bool{
 	"request-retry": true, "request-scoped-errors": true,
 }
 
+// groupedKeyFamilies are the per-key families of the key state, whose key
+// entries record the name of their group.
+var groupedKeyFamilies = map[string]bool{"meta": true, "commandcode": true, "kiro": true}
+
 func expandV8Groups(groups *yaml.Node, provider string) (*yaml.Node, error) {
 	if groups.Kind != yaml.SequenceNode {
 		return nil, fmt.Errorf("api-keys.%s must be a list", provider)
@@ -439,12 +443,16 @@ func expandV8Groups(groups *yaml.Node, provider string) (*yaml.Node, error) {
 				}
 			}
 			for i := 0; i < len(key.Content); i += 2 {
-				if key.Content[i].Value == "auth_index" || key.Content[i].Value == "auth-index" {
+				if field := key.Content[i].Value; field == "auth_index" || field == "auth-index" || field == "group" {
 					continue
 				}
 				if key.Content[i+1].Tag != "!!null" {
 					setYAMLPath(item, key.Content[i].Value, key.Content[i+1])
 				}
+			}
+			// The key-state families keep the name of the group each key came from.
+			if name := yamlPath(group, "name"); groupedKeyFamilies[provider] && name != nil && name.Kind == yaml.ScalarNode && name.Value != "" {
+				setYAMLPath(item, "group", &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: name.Value})
 			}
 			out.Content = append(out.Content, item)
 		}
@@ -469,6 +477,8 @@ func groupLegacyKeys(keys *yaml.Node, provider string) *yaml.Node {
 			group = &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
 			setYAMLPath(group, "name", &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: fmt.Sprintf("%s-%d", provider, index+1)})
 			key := deepCopyNode(entry)
+			// The group a key came from is derived from its group's name.
+			deleteYAMLPath(key, "group")
 			for i := 0; i < len(entry.Content); i += 2 {
 				field := entry.Content[i].Value
 				if field == "base-url" || sharedKeyFields[field] {

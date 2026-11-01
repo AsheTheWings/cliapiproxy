@@ -20,7 +20,8 @@ import (
 // PutProviderGroups replaces one API-key family's upstream groups. The body
 // is the family's whole list as GET /config shows it; a key sent back masked
 // keeps the stored key it masks, in the group of the same name or, for a
-// renamed group, in the group it replaces at the same position.
+// renamed group, in the group it replaces at the same position. A key's
+// label is trimmed, and a label given empty is rejected.
 func (h *Handler) PutProviderGroups(c *gin.Context) {
 	family := c.Param("family")
 	if !upstream.KnownFamily(family) {
@@ -31,7 +32,7 @@ func (h *Handler) PutProviderGroups(c *gin.Context) {
 	if !ok {
 		return
 	}
-	incoming, errDecode := decodeProviderGroups(body)
+	incoming, errDecode := decodeProviderGroups(family, body)
 	if errDecode != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_groups", "message": errDecode.Error()})
 		return
@@ -54,34 +55,47 @@ func (h *Handler) PutProviderGroups(c *gin.Context) {
 			}
 			groups[i] = upstream.Group{Spec: g.Spec, Keys: make([]upstream.Key, len(unmasked))}
 			for j, k := range unmasked {
-				groups[i].Keys[j] = upstream.Key{APIKey: k}
+				groups[i].Keys[j] = upstream.Key{APIKey: k, Label: g.Keys[j].Label}
 			}
 		}
 		return store.ReplaceGroups(family, groups)
 	})
 }
 
-// PutClientKeys replaces the client API keys and their names. The body is
-// the whole list, each item a key or an object of api-key and name, with the
-// keys as GET /config/access/api-keys shows them; a key sent back masked
-// keeps the stored key it masks. A key given as a string has no name. An
-// empty list refuses every proxy request.
+// PutClientKeys replaces the client API keys and their labels. The body is
+// the whole list of objects of api-key and an optional label, as
+// GET /config/access/api-keys shows them; a key sent back masked keeps the
+// stored key it masks, and the fingerprint GET adds is ignored. A label is
+// trimmed, and a label given empty is rejected. An empty list refuses every
+// proxy request.
 func (h *Handler) PutClientKeys(c *gin.Context) {
 	body, ok := readBody(c)
 	if !ok {
 		return
 	}
-	incoming, names, err := decodeClientKeys(body)
+	incoming, err := decodeClientKeys(body)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid_keys", "message": err.Error()})
 		return
 	}
 	h.replaceKeyState(c, func(store *keystate.Store) (*config.Config, error) {
-		keys, err := unmaskKeys(incoming, store.ClientKeys())
+		values := make([]string, len(incoming))
+		for i, k := range incoming {
+			values[i] = k.APIKey
+		}
+		var stored []string
+		for _, k := range store.ClientKeys() {
+			stored = append(stored, k.APIKey)
+		}
+		unmasked, err := unmaskKeys(values, stored)
 		if err != nil {
 			return nil, fmt.Errorf("%w: %v", errMasked, err)
 		}
-		return store.ReplaceClientKeys(keys, names)
+		keys := make([]upstream.Key, len(incoming))
+		for i, k := range incoming {
+			keys[i] = upstream.Key{APIKey: unmasked[i], Label: k.Label}
+		}
+		return store.ReplaceClientKeys(keys)
 	})
 }
 
@@ -106,35 +120,48 @@ func sourceGroup(stored, incoming []upstream.Group, i int) upstream.Group {
 	return stored[i]
 }
 
-// clientKeyItem is a client key with its name, as PUT takes it.
+// clientKeyItem is a client key with its label, as PUT takes it.
 type clientKeyItem struct {
-	APIKey string `json:"api-key"`
-	Name   string `json:"name"`
+	APIKey      string  `json:"api-key"`
+	Label       *string `json:"label"`
+	Fingerprint string  `json:"fingerprint"`
 }
 
-// decodeClientKeys reads a JSON list whose items are keys or objects of
-// api-key and name, returning the keys and their names in order.
-func decodeClientKeys(body []byte) ([]string, []string, error) {
-	errShape := errors.New("want a JSON list of keys, or of objects of api-key and name")
+// decodeClientKeys reads a JSON list of objects of api-key and label,
+// returning the keys with their trimmed labels in order. Errors name keys by
+// position, never by value.
+func decodeClientKeys(body []byte) ([]upstream.Key, error) {
+	errShape := errors.New("want a JSON list of objects of api-key and label")
 	var items []json.RawMessage
 	if err := json.Unmarshal(body, &items); err != nil || items == nil {
-		return nil, nil, errShape
+		return nil, errShape
 	}
-	keys := make([]string, len(items))
-	names := make([]string, len(items))
+	keys := make([]upstream.Key, len(items))
 	for i, raw := range items {
-		if err := json.Unmarshal(raw, &keys[i]); err == nil {
-			continue
+		position := fmt.Sprintf("access.api-keys: key %d", i+1)
+		if !bytes.HasPrefix(bytes.TrimSpace(raw), []byte("{")) {
+			return nil, fmt.Errorf("%s: want an object of api-key and label", position)
 		}
 		decoder := json.NewDecoder(bytes.NewReader(raw))
 		decoder.DisallowUnknownFields()
 		var item clientKeyItem
 		if err := decoder.Decode(&item); err != nil {
-			return nil, nil, errShape
+			var typeErr *json.UnmarshalTypeError
+			if errors.As(err, &typeErr) && typeErr.Field != "" {
+				return nil, fmt.Errorf("%s: %s must be a string", position, typeErr.Field)
+			}
+			return nil, fmt.Errorf("%s: want an object of api-key and label", position)
 		}
-		keys[i], names[i] = item.APIKey, item.Name
+		keys[i].APIKey = item.APIKey
+		if item.Label != nil {
+			label, err := upstream.NormalizeLabel(*item.Label)
+			if err != nil {
+				return nil, fmt.Errorf("%s: %v", position, err)
+			}
+			keys[i].Label = label
+		}
 	}
-	return keys, names, nil
+	return keys, nil
 }
 
 // errMasked marks a masked key that matches no stored key.
@@ -180,19 +207,40 @@ func (h *Handler) replaceKeyState(c *gin.Context, change func(*keystate.Store) (
 }
 
 // decodeProviderGroups reads a JSON list of groups, ignoring the auth indexes
-// GET /config adds.
-func decodeProviderGroups(body []byte) ([]upstream.Group, error) {
+// and fingerprints GET /config adds, and trims each key's label.
+func decodeProviderGroups(family string, body []byte) ([]upstream.Group, error) {
 	var node yaml.Node
 	if err := yaml.Unmarshal(body, &node); err != nil || len(node.Content) == 0 || node.Content[0].Kind != yaml.SequenceNode {
 		return nil, errors.New("want a JSON list of groups")
 	}
-	for _, group := range node.Content[0].Content {
+	for g, group := range node.Content[0].Content {
 		deleteConfigV8Path(group, []string{"auth_index"})
 		deleteConfigV8Path(group, []string{"auth-index"})
 		if keys := configV8Node(group, []string{"keys"}); keys != nil {
-			for _, key := range keys.Content {
+			name := fmt.Sprintf("%d", g+1)
+			if n := configV8Node(group, []string{"name"}); n != nil && n.Kind == yaml.ScalarNode {
+				name = n.Value
+			}
+			for k, key := range keys.Content {
 				deleteConfigV8Path(key, []string{"auth_index"})
 				deleteConfigV8Path(key, []string{"auth-index"})
+				deleteConfigV8Path(key, []string{"fingerprint"})
+				label := configV8Node(key, []string{"label"})
+				if label == nil {
+					continue
+				}
+				if label.Kind == yaml.ScalarNode && label.Tag == "!!null" {
+					deleteConfigV8Path(key, []string{"label"})
+					continue
+				}
+				if label.Kind != yaml.ScalarNode || label.Tag != "!!str" {
+					return nil, fmt.Errorf("api-keys.%s: group %s key %d: label must be a string", family, name, k+1)
+				}
+				trimmed, err := upstream.NormalizeLabel(label.Value)
+				if err != nil {
+					return nil, fmt.Errorf("api-keys.%s: group %s key %d: %v", family, name, k+1, err)
+				}
+				label.Value, label.Tag, label.Style = trimmed, "!!str", 0
 			}
 		}
 	}
@@ -204,7 +252,7 @@ func decodeProviderGroups(body []byte) ([]upstream.Group, error) {
 	decoder.KnownFields(true)
 	var groups []upstream.Group
 	if err = decoder.Decode(&groups); err != nil {
-		return nil, errors.New("want groups of name, base-url, prefix, models, and keys of api-key")
+		return nil, errors.New("want groups of name, base-url, prefix, models, and keys of api-key and label")
 	}
 	return groups, nil
 }
@@ -235,7 +283,7 @@ func unmaskKeys(keys, stored []string) ([]string, error) {
 }
 
 // keyStateGroupsNode renders each family's groups with their keys as the
-// api-keys subtree of the v8 layout.
+// api-keys subtree of the v8 layout, each key with its fingerprint.
 func keyStateGroupsNode(store *keystate.Store) (*yaml.Node, error) {
 	root := &yaml.Node{Kind: yaml.MappingNode}
 	for _, family := range upstream.Families() {
@@ -247,7 +295,38 @@ func keyStateGroupsNode(store *keystate.Store) (*yaml.Node, error) {
 		if err := list.Encode(groups); err != nil {
 			return nil, err
 		}
+		for g, group := range list.Content {
+			keys := configV8Node(group, []string{"keys"})
+			if keys == nil {
+				continue
+			}
+			for k, key := range keys.Content {
+				key.Content = append(key.Content,
+					&yaml.Node{Kind: yaml.ScalarNode, Value: "fingerprint"},
+					&yaml.Node{Kind: yaml.ScalarNode, Tag: "!!str", Value: upstream.Fingerprint(groups[g].Keys[k].APIKey)})
+			}
+		}
 		root.Content = append(root.Content, &yaml.Node{Kind: yaml.ScalarNode, Value: family}, &list)
 	}
 	return root, nil
+}
+
+// keyStateClientKeysNode renders the client keys as objects of api-key,
+// label, and fingerprint.
+func keyStateClientKeysNode(store *keystate.Store) (*yaml.Node, error) {
+	type item struct {
+		APIKey      string `yaml:"api-key"`
+		Label       string `yaml:"label,omitempty"`
+		Fingerprint string `yaml:"fingerprint"`
+	}
+	keys := store.ClientKeys()
+	items := make([]item, len(keys))
+	for i, k := range keys {
+		items[i] = item{APIKey: k.APIKey, Label: k.Label, Fingerprint: upstream.Fingerprint(k.APIKey)}
+	}
+	var list yaml.Node
+	if err := list.Encode(items); err != nil {
+		return nil, err
+	}
+	return &list, nil
 }

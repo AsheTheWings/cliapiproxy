@@ -57,19 +57,27 @@ func (s *Store) Groups(family string) []upstream.Group {
 	return slices.Clone(s.state.Upstream[family])
 }
 
-// ClientKeys returns the client API keys.
-func (s *Store) ClientKeys() []string {
+// ClientKeys returns the client API keys with their labels.
+func (s *Store) ClientKeys() []upstream.Key {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return slices.Clone(s.state.ClientKeys)
 }
 
-// ClientKeyNames returns the name of each client key, empty for an unnamed
-// key, or nil when no key has a name.
-func (s *Store) ClientKeyNames() []string {
+// ClientKeyLabel returns how a client key shows: its label, or for an
+// unlabeled key its fingerprint. It returns "" for a key the state lacks.
+func (s *Store) ClientKeyLabel(key string) string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return slices.Clone(s.state.ClientKeyNames)
+	for _, k := range s.state.ClientKeys {
+		if k.APIKey == key {
+			if k.Label != "" {
+				return k.Label
+			}
+			return upstream.Fingerprint(key)
+		}
+	}
+	return ""
 }
 
 // ReplaceGroups makes groups a family's groups, writes the state file, and
@@ -82,11 +90,11 @@ func (s *Store) ReplaceGroups(family string, groups []upstream.Group) (*config.C
 	return s.replace(func(st State) State { return st.WithGroups(family, groups) })
 }
 
-// ReplaceClientKeys makes keys the client API keys, named by names at the
-// same positions, writes the state file, and returns the configuration built
-// from it. No keys refuses every request to the proxy API.
-func (s *Store) ReplaceClientKeys(keys, names []string) (*config.Config, error) {
-	return s.replace(func(st State) State { return st.WithClientKeys(keys, names) })
+// ReplaceClientKeys makes keys the client API keys, writes the state file,
+// and returns the configuration built from it. No keys refuses every request
+// to the proxy API.
+func (s *Store) ReplaceClientKeys(keys []upstream.Key) (*config.Config, error) {
+	return s.replace(func(st State) State { return st.WithClientKeys(keys) })
 }
 
 func (s *Store) replace(change func(State) State) (*config.Config, error) {
@@ -94,6 +102,14 @@ func (s *Store) replace(change func(State) State) (*config.Config, error) {
 	defer s.mu.Unlock()
 	next := change(s.state)
 	if err := next.Validate(); err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrInvalid, err)
+	}
+	// The file must read back as the state it holds, or the next start fails.
+	encoded, err := next.Encode()
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrInvalid, err)
+	}
+	if _, err = Parse(encoded); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrInvalid, err)
 	}
 	cfg, err := s.build(next)

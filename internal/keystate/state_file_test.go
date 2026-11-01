@@ -6,12 +6,14 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/AsheTheWings/cliapiproxy/internal/upstream"
 )
 
 func TestWriteFileReplacesTheFileForItsOwnerAlone(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "state", "keys.yaml")
 	for _, key := range []string{"k1", "k2"} {
-		if err := WriteFile(path, State{ClientKeys: []string{key}}); err != nil {
+		if err := WriteFile(path, State{ClientKeys: []upstream.Key{{APIKey: key}}}); err != nil {
 			t.Fatal(err)
 		}
 		data, err := os.ReadFile(path)
@@ -19,7 +21,7 @@ func TestWriteFileReplacesTheFileForItsOwnerAlone(t *testing.T) {
 			t.Fatal(err)
 		}
 		parsed, err := Parse(data)
-		if err != nil || len(parsed.ClientKeys) != 1 || parsed.ClientKeys[0] != key {
+		if err != nil || len(parsed.ClientKeys) != 1 || parsed.ClientKeys[0].APIKey != key {
 			t.Fatalf("file holds %q (%v), want key %s", data, err, key)
 		}
 	}

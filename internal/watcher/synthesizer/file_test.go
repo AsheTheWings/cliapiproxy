@@ -26,6 +26,28 @@ func TestNewFileSynthesizer(t *testing.T) {
 	}
 }
 
+func TestOAuthFileLabelFallsBackToEmailThenProject(t *testing.T) {
+	for _, tc := range []struct {
+		name, fields, want string
+	}{
+		{"label", `"label":" account ","email":"user@example.invalid","project_id":"project"`, "account"},
+		{"email", `"label":"  ","email":" user@example.invalid ","project_id":"project"`, "user@example.invalid"},
+		{"project", `"email":"  ","project_id":" project "`, "project"},
+		{"provider", `"email":"  "`, "kimi"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := &SynthesisContext{Config: &config.Config{}, AuthDir: "/auths", Now: time.Unix(0, 0), IDGenerator: NewStableIDGenerator()}
+			auths, err := SynthesizeAuthFile(ctx, "/auths/account.json", []byte(`{"type":"kimi",`+tc.fields+`}`))
+			if err != nil || len(auths) != 1 {
+				t.Fatalf("synthesized %d credentials: %v", len(auths), err)
+			}
+			if auths[0].Label != tc.want {
+				t.Fatalf("label = %q, want %q", auths[0].Label, tc.want)
+			}
+		})
+	}
+}
+
 func TestFileSynthesizer_Synthesize_NilContext(t *testing.T) {
 	synth := NewFileSynthesizer()
 	auths, err := synth.Synthesize(nil)

@@ -19,11 +19,17 @@ const (
 	AttributeCodexAlphaSearch     = "codex_alpha_search"
 	AttributeCodexDisableCloaking = "codex_disable_cloaking"
 	AttributeConfigIndex          = "config_index"
-	AttributePath                 = "path"
-	AttributeRuntimeOnly          = "runtime_only"
-	AttributeSource               = "source"
-	AttributeSourceBackend        = "source_backend"
-	AttributeWeight               = "weight"
+	// AttributeGroup is the name of the key-state group an API-key
+	// credential belongs to.
+	AttributeGroup = "group"
+	// AttributeAccountLabel names an API-key credential's account: its key's
+	// label, or for an unlabeled key its group name and key fingerprint.
+	AttributeAccountLabel  = "account_label"
+	AttributePath          = "path"
+	AttributeRuntimeOnly   = "runtime_only"
+	AttributeSource        = "source"
+	AttributeSourceBackend = "source_backend"
+	AttributeWeight        = "weight"
 )
 
 // AuthKind returns the credential kind using explicit metadata first and legacy

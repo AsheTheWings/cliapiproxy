@@ -750,6 +750,12 @@ type CodexKey struct {
 	// APIKey is the authentication key for accessing Codex API services.
 	APIKey string `yaml:"api-key" json:"api-key"`
 
+	// Label optionally names the key's account for operators.
+	Label string `yaml:"label,omitempty" json:"label,omitempty"`
+
+	// Group is the name of the key-state group the key belongs to.
+	Group string `yaml:"group,omitempty" json:"group,omitempty"`
+
 	// Priority controls selection preference when multiple credentials match.
 	// Higher values are preferred; defaults to 0.
 	Priority int `yaml:"priority,omitempty" json:"priority,omitempty"`
@@ -867,6 +873,12 @@ type MetaModel = CodexModel
 type CommandCodeKey struct {
 	// APIKey is the account's Command Code API key.
 	APIKey string `yaml:"api-key" json:"api-key"`
+
+	// Label optionally names the key's account for operators.
+	Label string `yaml:"label,omitempty" json:"label,omitempty"`
+
+	// Group is the name of the key-state group the key belongs to.
+	Group string `yaml:"group,omitempty" json:"group,omitempty"`
 
 	// Prefix optionally namespaces the key's models (e.g., "cc/commandcode/deepseek/deepseek-v4-flash").
 	Prefix string `yaml:"prefix,omitempty" json:"prefix,omitempty"`
@@ -1021,6 +1033,9 @@ type OpenAICompatibility struct {
 type OpenAICompatibilityAPIKey struct {
 	// APIKey is the authentication key for accessing the external API services.
 	APIKey string `yaml:"api-key" json:"api-key"`
+
+	// Label optionally names the key's account for operators.
+	Label string `yaml:"label,omitempty" json:"label,omitempty"`
 
 	// Weight controls proportional selection under weighted-round-robin.
 	// An omitted value defaults to 1; non-positive values exclude this credential; maximum 1,000,000.

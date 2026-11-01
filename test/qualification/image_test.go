@@ -217,7 +217,7 @@ func TestImageServesAuthenticatedRequestsAndExportsTelemetry(t *testing.T) {
 		"CLIPROXY_MANAGEMENT_KEY='%s'\nOTEL_EXPORTER_OTLP_HEADERS='Authorization=%s'\n",
 		managementKey, strings.ReplaceAll(collectorAuthorization, " ", "%20")), 0o600)
 	// The server keeps its client keys as state.
-	writeFile(t, filepath.Join(root, "keys", "keys.yaml"), fmt.Sprintf("access: {api-keys: [%s]}\n", clientKey), 0o600)
+	writeFile(t, filepath.Join(root, "keys", "keys.yaml"), fmt.Sprintf("access: {api-keys: [{api-key: %s}]}\n", clientKey), 0o600)
 	containerArgs := func(extra ...string) []string {
 		args := []string{
 			"--network", "host", "--userns", "keep-id:uid=65532,gid=65532", "--read-only",
