@@ -157,6 +157,14 @@ func (r *Recorder) CheckCatalog(t testing.TB) {
 			for _, dp := range data.DataPoints {
 				checkAttrs(telemetry.SignalMetrics, m.Name, dp.Attributes.ToSlice())
 			}
+		case metricdata.Gauge[float64]:
+			for _, dp := range data.DataPoints {
+				checkAttrs(telemetry.SignalMetrics, m.Name, dp.Attributes.ToSlice())
+			}
+		case metricdata.Gauge[int64]:
+			for _, dp := range data.DataPoints {
+				checkAttrs(telemetry.SignalMetrics, m.Name, dp.Attributes.ToSlice())
+			}
 		default:
 			t.Errorf("metric %q has data of type %T, which CheckCatalog does not inspect", m.Name, m.Data)
 		}

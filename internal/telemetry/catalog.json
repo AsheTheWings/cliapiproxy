@@ -1,6 +1,6 @@
 {
   "schema_version": "opentelemetry.producer/signal-catalog/v1",
-  "catalog_version": 5,
+  "catalog_version": 6,
   "service_namespace": "cliapiproxy",
   "service_names": ["cliapiproxy"],
   "catalog": {
@@ -24,6 +24,7 @@
       "cliapiproxy.store.queue.entries",
       "cliapiproxy.store.queue.bytes",
       "cliapiproxy.store.database.size",
+      "cliapiproxy.store.dump.age",
       "cliapiproxy.usage.poll.duration",
       "cliapiproxy.usage.remaining",
       "cliapiproxy.store.prune.duration",
@@ -98,6 +99,7 @@
     "cliapiproxy.store.queue.entries": "{generation}",
     "cliapiproxy.store.queue.bytes": "By",
     "cliapiproxy.store.database.size": "By",
+    "cliapiproxy.store.dump.age": "s",
     "cliapiproxy.usage.poll.duration": "s",
     "cliapiproxy.usage.remaining": "1",
     "cliapiproxy.store.prune.duration": "s",

@@ -19,11 +19,14 @@ generations.
 When retries move a request across credentials, the generation describes
 the attempt that completed. Its three payloads hold bodies only, never
 headers: the client's request body, the body sent upstream, and the
-upstream response as it arrived, a stream or WebSocket session one event or
-frame per line. A credential value the server put into the upstream body is
+upstream response as reported. Scanner lines keep their event delimiters,
+raw transport chunks are concatenated unchanged, and WebSocket frames are
+stored one per line. A credential value the server put into the upstream body is
 replaced with `[credential]`; what the client put into its own body is kept.
 A body larger than `store.payload-limit-bytes` is kept up to that size and
-marked truncated, and its size and SHA-256 describe the whole body.
+marked truncated, and its size and SHA-256 describe the whole body. Status,
+usage, cost, and the system instruction are extracted from the complete
+request and reported response events, independently of this payload limit.
 
 Generations reach the store through a queue that one writer drains, so the
 store never delays or fails a response. The queue holds at most 1,000
@@ -74,6 +77,7 @@ server cannot read, stores nothing.
 
 Each fetcher sends the credential's own token only to its provider's fixed
 URLs; a base URL in the credential or the configuration never changes them.
+Usage calls reject redirects, including redirects within the same host.
 Kiro and Command Code are read with the credential's API key, and the
 others with an OAuth credential's access token, so a Claude or Codex API
 key has no usage source.
@@ -129,6 +133,33 @@ oldest activity first, and only one pass runs at a time across servers.
 A conversation whose evaluation fails is skipped for the rest of the pass;
 after three consecutive failed passes its inputs are left full until it
 gains a new input or the evaluator's version changes.
+
+A residual's body is a JSON object:
+
+```json
+{"version": 1, "projection": "responses.input", "items": 12,
+ "canonical_sha256": "<64 hex digits>", "rest": {"model": "...", "stream": true}}
+```
+
+`projection` names where the request keeps its item list:
+`responses.input` (`input`), `messages` (`messages`), `gemini.contents`
+(`contents`), `cloudcode.contents` (`request.contents`), or
+`commandcode.messages` (`params.messages`). `rest` is the request outside
+the item list in RFC 8785 form; it is absent when it equals the rest of the
+input that `rest_source_payload_id` names, which is the base. To rebuild an
+input, decompress the full body that `base_payload_id` names, take the
+first `items` entries of its item list, put them at the projection's path
+in `rest`, or in the base's own rest when `rest` is absent, serialize the
+result in RFC 8785 form, and check its SHA-256 against `canonical_sha256`.
+The payload route does this and refuses a rebuild that does not match.
+
+A replaced body's space stays in the table, and PostgreSQL reuses it for
+later rows, so pruning slows the database's growth without shrinking its
+files. `VACUUM FULL generation_payloads` rewrites the table and returns that
+space to the file system, and needs free disk space for a full copy of the
+table while it runs. It locks the table exclusively while it runs, so
+writes wait for it, and a long run can fill the write queue and drop
+generations.
 
 ## Tables and views
 

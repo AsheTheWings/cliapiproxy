@@ -51,6 +51,12 @@ from `CLIPROXY_DEPLOYMENT_ENVIRONMENT`.
   `cliapiproxy.store.drop_reason` `queue_entries`, `queue_bytes`,
   `terminal_write`, or `shutdown`. `cliapiproxy.store.database.size` is the
   database's size, measured each minute.
+- `cliapiproxy.store.dump.age` is the age in seconds of the newest promoted
+  dump in the directory `store.dump-directory` names: a regular file named
+  `cliapiproxy-YYYYMMDDTHHMMSSZ.dump` whose UTC start time is valid and not
+  in the future. It is read at each collection and reports no value while
+  the directory holds no such dump, cannot be read, or is not configured,
+  so an alert on it fires on a stale value or on its absence.
 - Each [pruning pass](generations.md#payload-pruning) is a
   `cliapiproxy.store.prune` span, and its duration is
   `cliapiproxy.store.prune.duration`, both with

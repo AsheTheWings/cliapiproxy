@@ -20,6 +20,7 @@ import (
 	"github.com/AsheTheWings/cliapiproxy/internal/buildinfo"
 	"github.com/AsheTheWings/cliapiproxy/internal/cmd"
 	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/dumps"
 	"github.com/AsheTheWings/cliapiproxy/internal/generations"
 	"github.com/AsheTheWings/cliapiproxy/internal/generations/schema"
 	"github.com/AsheTheWings/cliapiproxy/internal/generations/snapshots"
@@ -116,6 +117,14 @@ func run() int {
 	if plan.command != nil {
 		plan.command(cfg)
 		return 0
+	}
+	if plan.dumpDirectory != "" {
+		unregister, errDump := dumps.RegisterAgeGauge(plan.dumpDirectory, time.Now)
+		if errDump != nil {
+			fmt.Fprintf(os.Stderr, "store.dump-directory: %v\n", errDump)
+			return 1
+		}
+		defer unregister()
 	}
 	// Request and error-request files would be a second diagnostics sink.
 	serverOptions := []api.ServerOption{
@@ -233,6 +242,9 @@ type runPlan struct {
 
 	// traceURLTemplate links generations to their traces.
 	traceURLTemplate string
+	// dumpDirectory holds the store's scheduled dumps, whose newest one's
+	// age the server reports; empty reports none.
+	dumpDirectory string
 
 	telemetry telemetry.Settings
 	// telemetryProbe runs the telemetry probe instead of serving.
@@ -309,7 +321,8 @@ func resolveRun(process inputs.Process, files inputs.Files) (*runPlan, error) {
 		pruneInterval: time.Duration(eff.Int("store.prune-interval-seconds")) * time.Second,
 		pruneBatch:    int(eff.Int("store.prune-batch-conversations")),
 		validate:      eff.Bool("validate"), migrate: eff.Bool("migrate"), migrateStatus: eff.Bool("migrate-status"),
-		localModel: eff.Bool("local-model"), command: command, traceURLTemplate: eff.String("dashboard.trace-url-template")}, nil
+		localModel: eff.Bool("local-model"), command: command, traceURLTemplate: eff.String("dashboard.trace-url-template"),
+		dumpDirectory: eff.String("store.dump-directory")}, nil
 }
 
 // readKeyState reads the key state file, which holds keys and so must be
