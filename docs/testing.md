@@ -38,7 +38,9 @@ named by `CLIPROXY_QUALIFICATION_LAYOUT`, and checks it carries the revision
 beyond the toolchain. It loads the image into a run-owned Podman store,
 starts a run-owned PostgreSQL store, and runs the image's `-migrate-status`,
 `-migrate`, a second `-migrate` that applies nothing, and `-migrate-status`
-again. It then serves the image with production inputs against the store and
+again. Migrations and startup run with conflicting PostgreSQL environment
+variables, including unavailable service and certificate files, to check
+that only declared store inputs affect the connection. It then serves the image with production inputs against the store and
 a run-owned OTLP endpoint, checks authentication, the embedded dashboard
 page, a clean exit on SIGTERM, and the exported traces and metrics, runs the
 telemetry probe, and removes both stores.
@@ -47,6 +49,15 @@ telemetry probe, and removes both stores.
 CLIPROXY_QUALIFICATION_LAYOUT=image-layout CLIPROXY_QUALIFICATION_REVISION="$(git rev-parse HEAD)" \
   scripts/test.sh qualification ./test/qualification
 ```
+
+## The release gate
+
+An image is released only through the release gate, the `qualify` action
+in [`.github/actions/qualify`](../.github/actions/qualify/action.yml). It
+runs the fast gate and the integration class, builds the image, which runs
+the dashboard's tests, and qualifies that exact image. The `Image` workflow
+runs it on every pull request, branch push, and manual run, and a push or
+manual run publishes the image only after the gate passed in the same job.
 
 ## The PostgreSQL store's tests
 
