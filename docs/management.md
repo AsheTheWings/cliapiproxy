@@ -36,6 +36,27 @@ stored key masks to answers 409. A list that breaks the rules of the
 A credential file written through the API takes effect as any other change to
 the auth directory does, without a restart.
 
+## Usage and generations
+
+These routes read the [store](generations.md) and answer 503 while it is
+off. Times are RFC 3339 and days are UTC `YYYY-MM-DD`; a malformed
+parameter answers 400 with the reason.
+
+| Route | Does |
+| --- | --- |
+| `GET /quota` | Every credential the server has, then stored credentials it no longer has, each with its provider, group, account label, whether the server polls its usage, and its latest usage snapshot: the time, source, plan, and each meter's used, limit, remaining, window, and reset. |
+| `POST /quota/refresh` | Poll one credential's usage source now, the body `{"credential_id": "<id>"}`, and answer the poll's outcome and the credential's latest usage. A credential without a usage source, or whose poll is running, answers 409. |
+| `GET /quota/timeline?credential=<id>&from=&to=` | One credential's snapshots, by default over the last 7 days: each meter's value, its change since the previous snapshot, and the generations and tokens between the two. |
+| `GET /generations` | Generations newest first, filtered by `from`, `to`, `provider`, `credential`, `model` (upstream), `effort`, `client` (key fingerprint), `conversation`, and `status`, `limit` per page (50 by default, at most 500). A page's `next_cursor`, passed as `cursor`, continues the listing. A generation with a trace carries its `trace_url` when `dashboard.trace-url-template` is set, the template's `{trace_id}` replaced by the trace ID. |
+| `GET /generations/<id>` | One generation's columns, its usage before and after it, and each payload's kind, content type, sizes, and whether it is truncated or pruned. |
+| `GET /generations/<id>/payloads/<kind>` | One payload decompressed with the content type it was sent with: `client_input`, `upstream_input`, or `upstream_response`. A pruned input is rebuilt as the RFC 8785 serialization of the body as sent, checked against its SHA-256, and marked `X-Payload-Rebuilt: true`; a failed check answers 500 without a body. A truncated body is marked `X-Payload-Truncated: true`. |
+| `GET /generations/summary?from=&to=&group_by=` | Daily generation counts, token sums, and usage amounts over a range of days, by default the last 30, grouped by any of `credential`, `model`, `effort`, and `client`. A credential bucket carries the provider, group, and account label of its latest generation that day, and a client bucket its key label. |
+| `GET /generations/latency?from=&to=` | The daily 50th, 90th, and 99th percentile time to first token per upstream model, by default over the last 30 days. |
+
+The summary reads `generation_usage_daily`, which the server refreshes every
+15 minutes, so it can trail the latest generations by that much. The latency
+and every other route read the store as it is.
+
 ## Dashboard
 
 The server serves a management dashboard at `/management.html`, a single page

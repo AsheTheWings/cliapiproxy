@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	managementHandlers "github.com/AsheTheWings/cliapiproxy/internal/api/handlers/management"
 	"github.com/AsheTheWings/cliapiproxy/internal/api/middleware"
 	codexlive "github.com/AsheTheWings/cliapiproxy/internal/client/codex/live"
 	"github.com/AsheTheWings/cliapiproxy/internal/config"
@@ -40,6 +41,9 @@ var corsExposedResponseHeaders = []string{
 	"ETag",
 	"X-Request-Id",
 	"OpenAI-Request-Id",
+	// Cross-origin dashboards tag a rebuilt or truncated payload from these.
+	managementHandlers.HeaderPayloadRebuilt,
+	managementHandlers.HeaderPayloadTruncated,
 }
 
 var corsExposedResponseHeadersJoined = strings.Join(corsExposedResponseHeaders, ", ")

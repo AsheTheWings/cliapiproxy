@@ -8,8 +8,9 @@ import (
 // registerManagementV8Routes defines the management API: a view of the
 // configuration, the upstream groups the server keeps as state, the
 // credentials in the auth directory and the OAuth flows that create them,
-// and the model catalog. The server's inputs own the rest of the
-// configuration, so no other route writes it.
+// the model catalog, and reads of the store's usage and generations. The
+// server's inputs own the rest of the configuration, so no other route
+// writes it.
 func (s *Server) registerManagementV8Routes() {
 	const prefix = "/v8/management"
 	s.engine.GET(prefix+"/oauth/callback", s.managementAvailabilityMiddleware(), s.mgmt.GetOAuthCallbackV8)
@@ -45,4 +46,13 @@ func (s *Server) registerManagementV8Routes() {
 	v8.GET("/credentials/siwc/status", s.mgmt.GetSIWCStatus)
 	v8.GET("/oauth/status", s.mgmt.GetAuthStatus)
 	v8.DELETE("/oauth/session", s.mgmt.CancelAuthSession)
+
+	v8.GET("/quota", s.mgmt.GetQuota)
+	v8.POST("/quota/refresh", s.mgmt.RefreshQuota)
+	v8.GET("/quota/timeline", s.mgmt.GetQuotaTimeline)
+	v8.GET("/generations", s.mgmt.ListGenerations)
+	v8.GET("/generations/summary", s.mgmt.GetGenerationsSummary)
+	v8.GET("/generations/latency", s.mgmt.GetGenerationsLatency)
+	v8.GET("/generations/:id", s.mgmt.GetGeneration)
+	v8.GET("/generations/:id/payloads/:kind", s.mgmt.GetGenerationPayload)
 }

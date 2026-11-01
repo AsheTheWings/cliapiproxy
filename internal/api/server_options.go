@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/AsheTheWings/cliapiproxy/internal/api/handlers/management"
 	"github.com/AsheTheWings/cliapiproxy/internal/config"
 	"github.com/AsheTheWings/cliapiproxy/internal/keystate"
 	"github.com/AsheTheWings/cliapiproxy/internal/logging"
@@ -28,6 +29,8 @@ type serverOptionConfig struct {
 	pluginHost            *pluginhost.Host
 	configReloadHook      func(context.Context, *config.Config)
 	keyStore              *keystate.Store
+	store                 management.StoreReader
+	traceURLTemplate      string
 	authManagerHook       func(*auth.Manager)
 	exampleAPIKeySafeMode bool
 }
@@ -144,6 +147,16 @@ func WithKeyStore(store *keystate.Store) ServerOption {
 func WithAuthManagerHook(hook func(*auth.Manager)) ServerOption {
 	return func(cfg *serverOptionConfig) {
 		cfg.authManagerHook = hook
+	}
+}
+
+// WithStore gives the quota and generations management routes the store
+// they read, without which they answer 503, and the URL template that
+// links a generation to its trace.
+func WithStore(store management.StoreReader, traceURLTemplate string) ServerOption {
+	return func(cfg *serverOptionConfig) {
+		cfg.store = store
+		cfg.traceURLTemplate = traceURLTemplate
 	}
 }
 

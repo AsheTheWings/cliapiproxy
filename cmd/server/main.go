@@ -140,6 +140,7 @@ func run() int {
 			fmt.Fprintf(os.Stderr, "store: %v\n", errPrune)
 			return 1
 		}
+		serverOptions = append(serverOptions, api.WithStore(store, plan.traceURLTemplate))
 		serverOptions = append(serverOptions, api.WithAuthManagerHook(func(manager *coreauth.Manager) {
 			client := func(ctx context.Context, auth *coreauth.Auth) *http.Client {
 				return helps.NewProxyAwareHTTPClient(ctx, cfg, auth, snapshots.PollTimeout)
@@ -229,7 +230,11 @@ type runPlan struct {
 	// pruneInterval and pruneBatch schedule payload pruning.
 	pruneInterval time.Duration
 	pruneBatch    int
-	telemetry     telemetry.Settings
+
+	// traceURLTemplate links generations to their traces.
+	traceURLTemplate string
+
+	telemetry telemetry.Settings
 	// telemetryProbe runs the telemetry probe instead of serving.
 	telemetryProbe bool
 	// validate stops once the inputs are valid, before any other work.
@@ -304,7 +309,7 @@ func resolveRun(process inputs.Process, files inputs.Files) (*runPlan, error) {
 		pruneInterval: time.Duration(eff.Int("store.prune-interval-seconds")) * time.Second,
 		pruneBatch:    int(eff.Int("store.prune-batch-conversations")),
 		validate:      eff.Bool("validate"), migrate: eff.Bool("migrate"), migrateStatus: eff.Bool("migrate-status"),
-		localModel: eff.Bool("local-model"), command: command}, nil
+		localModel: eff.Bool("local-model"), command: command, traceURLTemplate: eff.String("dashboard.trace-url-template")}, nil
 }
 
 // readKeyState reads the key state file, which holds keys and so must be

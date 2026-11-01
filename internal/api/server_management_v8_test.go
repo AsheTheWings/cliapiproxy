@@ -69,6 +69,10 @@ func TestManagementRoutesAreTheExpectedSet(t *testing.T) {
 		"POST /v8/management/oauth/siwc/bind", "GET /v8/management/oauth/siwc/status",
 		"GET /v8/management/credentials/siwc/status", "GET /v8/management/oauth/status",
 		"DELETE /v8/management/oauth/session",
+		"GET /v8/management/quota", "POST /v8/management/quota/refresh", "GET /v8/management/quota/timeline",
+		"GET /v8/management/generations", "GET /v8/management/generations/summary",
+		"GET /v8/management/generations/latency", "GET /v8/management/generations/:id",
+		"GET /v8/management/generations/:id/payloads/:kind",
 	}
 	slices.Sort(got)
 	slices.Sort(want)

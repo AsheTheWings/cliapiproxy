@@ -57,6 +57,8 @@ type Handler struct {
 	pluginHost              *pluginhost.Host
 	configReloadHook        func(context.Context, *config.Config)
 	keyStore                *keystate.Store
+	store                   StoreReader
+	traceURLTemplate        string
 	pluginStoreRegistryURL  string
 	pluginStoreHTTPClient   pluginstore.HTTPDoer
 	pluginStoreRateLimiter  *pluginstore.GitHubRateLimiter
