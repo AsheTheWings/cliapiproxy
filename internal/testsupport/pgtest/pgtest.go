@@ -61,6 +61,12 @@ func Start(ctx context.Context) (*Server, error) {
 		return nil, err
 	}
 	s := &Server{root: root, password: randomHex(16), templates: map[string]*template{}}
+	// File locks under the run's directory keep runs in parallel test
+	// packages off rootless Podman's one shared-memory lock segment.
+	if err = os.WriteFile(s.conf(), []byte("[engine]\nlock_type = \"file\"\n"), 0o600); err != nil {
+		s.Stop()
+		return nil, err
+	}
 	if err = s.start(ctx); err != nil {
 		s.Stop()
 		return nil, err
@@ -220,11 +226,14 @@ func (s *Server) podman(ctx context.Context, args ...string) (string, error) {
 	return s.podmanRaw(ctx, append(base, args...)...)
 }
 
+func (s *Server) conf() string { return filepath.Join(s.root, "containers.conf") }
+
 func (s *Server) podmanRaw(ctx context.Context, args ...string) (string, error) {
 	ctx, cancel := context.WithTimeout(ctx, commandTimeout)
 	defer cancel()
 	var stdout, stderr bytes.Buffer
 	cmd := exec.CommandContext(ctx, "podman", args...)
+	cmd.Env = append(os.Environ(), "CONTAINERS_CONF_OVERRIDE="+s.conf())
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
 	if err := cmd.Run(); err != nil {
 		return "", fmt.Errorf("podman %s: %w\n%s", args[0], err, strings.TrimSpace(stderr.String()))
