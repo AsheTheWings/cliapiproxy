@@ -43,6 +43,45 @@ its input usage and its final output usage. `usage_amount` holds Kiro's
 `kiro:credits` and, from an OpenRouter base URL, `usage.cost` in `credits`,
 and Command Code's gateway cost in `usd`.
 
+## Usage snapshots
+
+A usage snapshot is what a credential's provider reported about its plan
+and usage at one moment. The server stores one only when the readings
+differ from the credential's latest snapshot, compared by the SHA-256 of
+the plan and every meter's values, window, and reset.
+
+The server polls each credential's usage source once its requests have
+paused for 10 seconds, or 30 seconds for Command Code, whose counters settle
+about 20 seconds after a call. Each credential with a source is also polled
+at least every 15 minutes, at an offset that spreads credentials across
+that period. A credential runs one poll at a time, and a poll that takes
+more than 15 seconds is abandoned. A poll that fails, or whose answer the
+server cannot read, stores nothing.
+
+| Provider | Source |
+| --- | --- |
+| Kiro | `GetUsageLimits`: the subscription as the plan, each usage entry and its overage cap |
+| Command Code | `/alpha/billing/subscriptions` and `/alpha/billing/credits`: the plan, monthly, purchased, and free credits, and the five-hour and weekly windows |
+| Claude | OAuth usage: the five-hour and seven-day windows and extra usage; each response's `anthropic-ratelimit-unified-*` headers |
+| Codex | `wham/usage`: the plan, its windows, and credits; each response's `x-codex-*` headers |
+| Kimi | the coding usage and its windows |
+| xAI | weekly and monthly billing and the subscription tier |
+| Meta | the Muse Code key route with the OAuth file's `dca_token`, without the key it returns |
+| Devin | `GetUserStatus`: the plan and the daily and weekly quota |
+| Antigravity | the quota summary's buckets |
+
+Each fetcher sends the credential's own token only to its provider's fixed
+URLs; a base URL in the credential or the configuration never changes them.
+Kiro and Command Code are read with the credential's API key, and the
+others with an OAuth credential's access token, so a Claude or Codex API
+key has no usage source.
+
+A response's headers become a snapshot with source `response_headers` in
+the same transaction as its generation. The generation's
+`prior_snapshot_id` names the credential's latest snapshot before the
+generation started, and `response_snapshot_id` names the snapshot from its
+own headers when they changed the readings.
+
 ## Tables and views
 
 | Relation | Holds |

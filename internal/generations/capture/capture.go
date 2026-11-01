@@ -9,6 +9,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"hash"
+	"net/http"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -66,6 +67,18 @@ func currentSink() Sink {
 	return nil
 }
 
+var activity atomic.Pointer[func(credentialID string)]
+
+// SetActivity installs a function told of every upstream attempt's
+// credential, whether or not capture is on; nil removes it.
+func SetActivity(f func(credentialID string)) {
+	if f == nil {
+		activity.Store(nil)
+		return
+	}
+	activity.Store(&f)
+}
+
 // Credential describes the credential of an upstream attempt without its
 // secret: Secrets lists values to remove from the upstream input.
 type Credential struct {
@@ -117,7 +130,10 @@ type Generation struct {
 	Duration             time.Duration
 	FirstToken           time.Duration
 	SystemInstruction    string
-	Payloads             []Payload
+	// QuotaHeaders are the response's usage headers, from which the store
+	// takes a usage snapshot.
+	QuotaHeaders http.Header
+	Payloads     []Payload
 }
 
 // body accumulates one payload up to a limit, hashing all of it.
@@ -307,6 +323,9 @@ func UpstreamWebsocketResponse(ctx context.Context, payload []byte) {
 // Attempt records the usage record of the attempt and its credential. ctx
 // is the attempt's context, which carries the execution's span.
 func Attempt(ctx context.Context, record usage.Record, cred Credential) {
+	if f := activity.Load(); f != nil && cred.ID != "" {
+		(*f)(cred.ID)
+	}
 	c := fromContext(ctx)
 	if c == nil {
 		return
@@ -393,6 +412,7 @@ func (c *Capture) build(record *usage.Record, cred Credential, traceID string, i
 		Duration:             record.Latency,
 		FirstToken:           record.TTFT,
 		SystemInstruction:    systemInstruction(c.client.data),
+		QuotaHeaders:         quotaHeaders(record.ResponseHeaders),
 	}
 	if cred.Provider == "kiro" {
 		g.TokenSource = TokensEstimated
@@ -408,6 +428,21 @@ func (c *Capture) build(record *usage.Record, cred Credential, traceID string, i
 	redact(input, cred.Secrets)
 	g.Payloads = []Payload{c.client.payload(KindClientInput), input.payload(KindUpstreamInput), response.payload(KindUpstreamResponse)}
 	return g
+}
+
+// quotaHeaders keeps a response's Claude and Codex usage headers.
+func quotaHeaders(h http.Header) http.Header {
+	out := http.Header{}
+	for name, values := range h {
+		lower := strings.ToLower(name)
+		if strings.HasPrefix(lower, "anthropic-ratelimit-unified-") || strings.HasPrefix(lower, "x-codex-") {
+			out[http.CanonicalHeaderKey(name)] = append([]string(nil), values...)
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 // redact replaces each secret the server put into the upstream body.

@@ -606,6 +606,7 @@ func (r *UsageReporter) EnsurePublished(ctx context.Context) {
 // observability warnings that belong to the attempt rather than to a single event.
 func (r *UsageReporter) publishAttemptRecord(ctx context.Context, record usage.Record) {
 	if r != nil {
+		record.ResponseHeaders = internallogging.GetResponseHeaders(ctx)
 		capture.Attempt(ctx, record, captureCredential(r.auth, r.provider))
 	}
 	r.publishRecord(ctx, record)

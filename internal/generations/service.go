@@ -2,11 +2,14 @@ package generations
 
 import (
 	"context"
+	"net/http"
 	"sync/atomic"
 	"time"
 
 	"github.com/AsheTheWings/cliapiproxy/internal/generations/capture"
+	"github.com/AsheTheWings/cliapiproxy/internal/generations/snapshots"
 	"github.com/AsheTheWings/cliapiproxy/internal/telemetry"
+	cliproxyauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -18,6 +21,8 @@ const sizeInterval = time.Minute
 type Service struct {
 	Pool       *pgxpool.Pool
 	writer     *Writer
+	store      *PGStore
+	poller     *snapshots.Poller
 	unregister func()
 	stopSize   context.CancelFunc
 	size       atomic.Int64
@@ -34,12 +39,13 @@ func Start(ctx context.Context, s Settings, opts WriterOptions) (*Service, error
 		pool.Close()
 		return nil, err
 	}
-	writer, err := NewWriter(NewPGStore(pool), opts)
+	store := NewPGStore(pool)
+	writer, err := NewWriter(store, opts)
 	if err != nil {
 		pool.Close()
 		return nil, err
 	}
-	svc := &Service{Pool: pool, writer: writer}
+	svc := &Service{Pool: pool, writer: writer, store: store}
 	svc.size.Store(-1)
 	svc.unregister, err = telemetry.RegisterStoreGauges(telemetry.StoreGauges{
 		QueueEntries: writer.QueueEntries,
@@ -56,6 +62,18 @@ func Start(ctx context.Context, s Settings, opts WriterOptions) (*Service, error
 	go svc.measureSize(sizeCtx)
 	capture.SetSink(writer)
 	return svc, nil
+}
+
+// StartPolling polls the usage of the credentials list returns, through the
+// HTTP clients client builds, until Close.
+func (s *Service) StartPolling(list func() []*cliproxyauth.Auth, client func(context.Context, *cliproxyauth.Auth) *http.Client) error {
+	s.poller = snapshots.NewPoller(snapshots.PollerOptions{Credentials: list, Client: client, Writer: s.store})
+	if err := s.poller.Start(); err != nil {
+		s.poller = nil
+		return err
+	}
+	capture.SetActivity(s.poller.Touch)
+	return nil
 }
 
 func (s *Service) measureSize(ctx context.Context) {
@@ -80,6 +98,10 @@ func (s *Service) measureSize(ctx context.Context) {
 // and closes the pool.
 func (s *Service) Close() {
 	capture.SetSink(nil)
+	if s.poller != nil {
+		capture.SetActivity(nil)
+		s.poller.Stop()
+	}
 	s.writer.Close(ShutdownDrain)
 	s.stopSize()
 	s.unregister()
