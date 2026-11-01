@@ -10,6 +10,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -24,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/AsheTheWings/cliapiproxy/internal/testsupport/pgtest"
 	"github.com/AsheTheWings/cliapiproxy/internal/testsupport/wait"
 )
 
@@ -58,15 +60,32 @@ func (p podman) command(ctx context.Context, args ...string) *exec.Cmd {
 
 func (p podman) run(args ...string) string {
 	p.t.Helper()
+	output, code, stderr := p.exit(args...)
+	if code != 0 {
+		p.t.Fatalf("podman %s: exit status %d\n%s", args[0], code, stderr)
+	}
+	return output
+}
+
+// exit runs Podman and returns its output, exit code, and error output.
+func (p podman) exit(args ...string) (string, int, string) {
+	p.t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), commandTimeout)
 	defer cancel()
 	var stdout, stderr bytes.Buffer
 	cmd := p.command(ctx, args...)
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
-	if errRun := cmd.Run(); errRun != nil {
+	errRun := cmd.Run()
+	var exitErr *exec.ExitError
+	switch {
+	case errRun == nil:
+		return strings.TrimSpace(stdout.String()), 0, ""
+	case errors.As(errRun, &exitErr):
+		return strings.TrimSpace(stdout.String()), exitErr.ExitCode(), stderr.String()
+	default:
 		p.t.Fatalf("podman %s: %v\n%s", args[0], errRun, stderr.String())
+		return "", 0, ""
 	}
-	return strings.TrimSpace(stdout.String())
 }
 
 // collector is a run-owned OTLP/HTTP endpoint recording what it receives.
@@ -205,6 +224,16 @@ func TestImageServesAuthenticatedRequestsAndExportsTelemetry(t *testing.T) {
 	}
 	image := p.run("pull", "--quiet", "oci:"+layout+":"+layoutTag)
 
+	// The server runs against a store of its own, in a database the run owns.
+	ctxStore, cancelStore := context.WithTimeout(context.Background(), commandTimeout)
+	store, errStore := pgtest.Start(ctxStore)
+	cancelStore()
+	if errStore != nil {
+		t.Fatal(errStore)
+	}
+	t.Cleanup(store.Stop)
+	database := store.Database(t)
+
 	sink := &collector{requests: map[string][][]byte{}}
 	otlp := httptest.NewServer(sink)
 	t.Cleanup(otlp.Close)
@@ -212,10 +241,12 @@ func TestImageServesAuthenticatedRequestsAndExportsTelemetry(t *testing.T) {
 	port := freePort(t)
 	inputs := filepath.Join(root, "inputs")
 	writeFile(t, filepath.Join(inputs, "overlay.yaml"), fmt.Sprintf(
-		"server: {port: %d}\noauth: {auth-dir: /data/auths}\nkeys: {state-file: /data/keys/keys.yaml}\n", port), 0o600)
+		"server: {port: %d}\noauth: {auth-dir: /data/auths}\nkeys: {state-file: /data/keys/keys.yaml}\n"+
+			"store: {host: %s, port: %d, database: %s, user: %s, dump-directory: /data/dumps}\n",
+		port, store.Host(), store.Port(), database, pgtest.Owner), 0o600)
 	writeFile(t, filepath.Join(inputs, "protected.env"), fmt.Sprintf(
-		"CLIPROXY_MANAGEMENT_KEY='%s'\nOTEL_EXPORTER_OTLP_HEADERS='Authorization=%s'\n",
-		managementKey, strings.ReplaceAll(collectorAuthorization, " ", "%20")), 0o600)
+		"CLIPROXY_MANAGEMENT_KEY='%s'\nOTEL_EXPORTER_OTLP_HEADERS='Authorization=%s'\nCLIPROXY_POSTGRES_PASSWORD='%s'\n",
+		managementKey, strings.ReplaceAll(collectorAuthorization, " ", "%20"), store.Password()), 0o600)
 	// The server keeps its client keys as state.
 	writeFile(t, filepath.Join(root, "keys", "keys.yaml"), fmt.Sprintf("access: {api-keys: [{api-key: %s}]}\n", clientKey), 0o600)
 	containerArgs := func(extra ...string) []string {
@@ -235,6 +266,22 @@ func TestImageServesAuthenticatedRequestsAndExportsTelemetry(t *testing.T) {
 
 	if output := p.run(append([]string{"run", "--rm"}, containerArgs("-validate")...)...); output != "valid" {
 		t.Fatalf("-validate printed %q, want valid", output)
+	}
+	migrate := func(flag string) (string, int) {
+		output, code, _ := p.exit(append([]string{"run", "--rm"}, containerArgs(flag)...)...)
+		return output, code
+	}
+	if output, code := migrate("-migrate-status"); code != 3 || !strings.Contains(output, "pending 0001_") {
+		t.Fatalf("-migrate-status on an empty store exited %d with %q, want 3 and pending migrations", code, output)
+	}
+	if output, code := migrate("-migrate"); code != 0 || !strings.Contains(output, "applied 0001_") {
+		t.Fatalf("-migrate exited %d with %q, want 0 and applied migrations", code, output)
+	}
+	if output, code := migrate("-migrate"); code != 0 || output != "no pending migrations" {
+		t.Fatalf("a second -migrate exited %d with %q, want a no-op", code, output)
+	}
+	if output, code := migrate("-migrate-status"); code != 0 || strings.Contains(output, "pending") || strings.Contains(output, "drifted") {
+		t.Fatalf("-migrate-status after -migrate exited %d with %q, want 0 and only applied migrations", code, output)
 	}
 	p.run(append([]string{"run", "--detach", "--name", name}, containerArgs()...)...)
 	base := fmt.Sprintf("http://127.0.0.1:%d", port)

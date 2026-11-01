@@ -36,9 +36,12 @@ Qualification runs the exact image layout [building](building.md) produces,
 named by `CLIPROXY_QUALIFICATION_LAYOUT`, and checks it carries the revision
 `CLIPROXY_QUALIFICATION_REVISION` names; those two values are its only inputs
 beyond the toolchain. It loads the image into a run-owned Podman store,
-serves it with production inputs against a run-owned OTLP endpoint, checks
-authentication, the embedded dashboard page, a clean exit on SIGTERM, and the exported traces and metrics,
-runs the telemetry probe, and removes the store.
+starts a run-owned PostgreSQL store, and runs the image's `-migrate-status`,
+`-migrate`, a second `-migrate` that applies nothing, and `-migrate-status`
+again. It then serves the image with production inputs against the store and
+a run-owned OTLP endpoint, checks authentication, the embedded dashboard
+page, a clean exit on SIGTERM, and the exported traces and metrics, runs the
+telemetry probe, and removes both stores.
 
 ```sh
 CLIPROXY_QUALIFICATION_LAYOUT=image-layout CLIPROXY_QUALIFICATION_REVISION="$(git rev-parse HEAD)" \
