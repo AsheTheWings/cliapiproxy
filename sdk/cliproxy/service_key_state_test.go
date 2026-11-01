@@ -25,7 +25,7 @@ func TestManagementClientKeyChangesReachTheRunningService(t *testing.T) {
 		t.Fatal(err)
 	}
 	document := fmt.Sprintf("config-version: 8\nmanagement: {secret-key: %q, allow-remote: true}\noauth: {auth-dir: %q}\n", hash, t.TempDir())
-	store, err := keystate.New(filepath.Join(t.TempDir(), "keys.yaml"), []byte(document), []byte("access: {api-keys: [client-key-a]}\n"))
+	store, err := keystate.New(filepath.Join(t.TempDir(), "keys.yaml"), []byte(document), []byte("access: {api-keys: [{api-key: client-key-a}]}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func TestManagementClientKeyChangesReachTheRunningService(t *testing.T) {
 	if got := models("client-key-a"); got != http.StatusOK {
 		t.Fatalf("initial key: status %d, want 200", got)
 	}
-	putClientKeys(`["client-key-b"]`)
+	putClientKeys(`[{"api-key":"client-key-b"}]`)
 	if got := models("client-key-a"); got != http.StatusUnauthorized {
 		t.Errorf("replaced key: status %d, want 401", got)
 	}

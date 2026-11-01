@@ -44,9 +44,11 @@ type Thinking struct {
 	Levels []string `yaml:"levels" json:"levels"`
 }
 
-// Key is one API key of a group.
+// Key is one API key of a group, or a client key, with an optional label
+// that names its account for operators.
 type Key struct {
 	APIKey string `yaml:"api-key" json:"api-key"`
+	Label  string `yaml:"label,omitempty" json:"label,omitempty"`
 }
 
 // Group is a spec with its keys, the form the configuration's v8 api-keys

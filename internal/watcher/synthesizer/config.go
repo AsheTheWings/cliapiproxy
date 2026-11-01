@@ -6,6 +6,7 @@ import (
 	"github.com/AsheTheWings/cliapiproxy/internal/auth/kiro"
 	"github.com/AsheTheWings/cliapiproxy/internal/config"
 	"github.com/AsheTheWings/cliapiproxy/internal/constant"
+	"github.com/AsheTheWings/cliapiproxy/internal/upstream"
 	"github.com/AsheTheWings/cliapiproxy/internal/util"
 	"github.com/AsheTheWings/cliapiproxy/internal/watcher/diff"
 	coreauth "github.com/AsheTheWings/cliapiproxy/sdk/cliproxy/auth"
@@ -32,6 +33,19 @@ func addWeightToAttrs(weight *int, attrs map[string]string) {
 		normalized = 0
 	}
 	attrs[coreauth.AttributeWeight] = strconv.Itoa(normalized)
+}
+
+// addKeyIdentityToAttrs records the key-state group and the account label
+// the key's label, or its group and fingerprint, give it. The credential ID
+// never derives from them, so relabeling keeps the ID.
+func addKeyIdentityToAttrs(group, key, label string, attrs map[string]string) {
+	group = strings.TrimSpace(group)
+	if group != "" {
+		attrs[coreauth.AttributeGroup] = group
+	}
+	if group != "" && key != "" {
+		attrs[coreauth.AttributeAccountLabel] = upstream.AccountLabel(group, upstream.Key{APIKey: key, Label: label})
+	}
 }
 
 // Synthesize generates Auth entries from config API keys.
@@ -237,7 +251,7 @@ func (s *ConfigSynthesizer) synthesizeAccountKeys(ctx *SynthesisContext, entries
 		}
 		prefix := strings.TrimSpace(entry.Prefix)
 		id, token := ctx.IDGenerator.Next(provider+":apikey", key, prefix)
-		out = append(out, &coreauth.Auth{
+		a := &coreauth.Auth{
 			ID:       id,
 			Provider: provider,
 			Label:    provider + "-apikey",
@@ -252,7 +266,9 @@ func (s *ConfigSynthesizer) synthesizeAccountKeys(ctx *SynthesisContext, entries
 			Metadata:  map[string]any{"type": provider},
 			CreatedAt: ctx.Now,
 			UpdatedAt: ctx.Now,
-		})
+		}
+		addKeyIdentityToAttrs(entry.Group, key, entry.Label, a.Attributes)
+		out = append(out, a)
 	}
 	return out
 }
@@ -295,6 +311,7 @@ func (s *ConfigSynthesizer) synthesizeCodexStyleKeys(ctx *SynthesisContext, entr
 		if entry.Websockets {
 			attrs["websockets"] = "true"
 		}
+		addKeyIdentityToAttrs(entry.Group, key, entry.Label, attrs)
 		if provider == "codex" && entry.AlphaSearch {
 			attrs[coreauth.AttributeCodexAlphaSearch] = "true"
 		}
@@ -375,6 +392,7 @@ func (s *ConfigSynthesizer) synthesizeOpenAICompat(ctx *SynthesisContext) []*cor
 			if key != "" {
 				attrs["api_key"] = key
 			}
+			addKeyIdentityToAttrs(compat.Name, key, entry.Label, attrs)
 			if hash := diff.ComputeOpenAICompatModelsHash(compat.Models); hash != "" {
 				attrs["models_hash"] = hash
 			}

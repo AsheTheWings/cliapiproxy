@@ -74,8 +74,7 @@ keys, and a server without client keys refuses every proxy request.
 
 ```yaml
 access:
-  api-keys: [<client key>, <client key>]
-  api-key-names: [Alice's laptop, ""]
+  api-keys: [{api-key: <client key>, label: Alice's laptop}, {api-key: <client key>}]
 api-keys:
   openai-compatibility:
     - name: example
@@ -86,7 +85,7 @@ api-keys:
           max-context-length: 200000
           input-modalities: [text, image]
           thinking: {levels: [low, medium, high]}
-      keys: [{api-key: <key>}, {api-key: <key>}]
+      keys: [{api-key: <key>, label: team account}, {api-key: <key>}]
   meta:
     - name: muse
       models: [{name: muse-spark-1.3}]
@@ -97,11 +96,8 @@ api-keys:
       keys: [{api-key: <key>}]
 ```
 
-`access.api-keys` lists the keys clients present to use the proxy API, and
-`access.api-key-names`, when present, names the key at the same position, an
-empty name leaving it unnamed. A name is one line of at most 64 characters
-without surrounding spaces; it labels the key for operators and has no effect
-on requests. Under
+`access.api-keys` lists the keys clients present to use the proxy API, each
+an object of `api-key` and an optional `label`. Under
 `api-keys`, each upstream family holds groups, and a group with several keys
 balances requests across them. A group has a `name` of lowercase letters,
 digits, and hyphens, at least one key, and may set `base-url`, `prefix`, and
@@ -119,10 +115,23 @@ it; a model's `name` is its id in that catalog, as `/v1/models` lists it. Its
 `thinking.levels` change the levels it publishes, but a request still reaches
 the upstream with only an effort the catalog lists for the model.
 
+Every client and upstream key may carry a `label` that names its account for
+operators; it has no effect on routing and never enters a credential's ID, so
+adding, changing, or removing one keeps the credential. A label is one line
+of at most 64 characters without control characters; the management API
+trims the label it receives and refuses one that trims to nothing. Labels are
+unique among the client keys and within each upstream family, across its
+groups. Each key also has a fingerprint, the first 12 hexadecimal characters
+of the SHA-256 of the key alone, which no label, group, prefix, or position
+change alters. An unlabeled upstream key shows as its group name followed by
+its fingerprint, for example `example 3f2a9c1b7e04`, and an unlabeled client
+key as its fingerprint.
+
 The server refuses to start, naming groups and positions but never keys, when
 the file holds a field outside this list, a group breaks its family's rules
 or has no key, a key is blank, has surrounding spaces, or repeats within its
-list, or the names do not match the client keys one for one.
+list, a client key is a bare string, or a label is invalid or repeated within
+its scope.
 
 ## OAuth models
 
