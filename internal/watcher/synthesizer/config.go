@@ -34,6 +34,17 @@ func addWeightToAttrs(weight *int, attrs map[string]string) {
 	attrs[coreauth.AttributeWeight] = strconv.Itoa(normalized)
 }
 
+// addKeyIdentityToAttrs records the key-state group and the key's label. The
+// credential ID never derives from either, so relabeling keeps the ID.
+func addKeyIdentityToAttrs(group, label string, attrs map[string]string) {
+	if group = strings.TrimSpace(group); group != "" {
+		attrs[coreauth.AttributeGroup] = group
+	}
+	if label != "" {
+		attrs[coreauth.AttributeKeyLabel] = label
+	}
+}
+
 // Synthesize generates Auth entries from config API keys.
 func (s *ConfigSynthesizer) Synthesize(ctx *SynthesisContext) ([]*coreauth.Auth, error) {
 	out := make([]*coreauth.Auth, 0, 32)
@@ -237,7 +248,7 @@ func (s *ConfigSynthesizer) synthesizeAccountKeys(ctx *SynthesisContext, entries
 		}
 		prefix := strings.TrimSpace(entry.Prefix)
 		id, token := ctx.IDGenerator.Next(provider+":apikey", key, prefix)
-		out = append(out, &coreauth.Auth{
+		a := &coreauth.Auth{
 			ID:       id,
 			Provider: provider,
 			Label:    provider + "-apikey",
@@ -252,7 +263,9 @@ func (s *ConfigSynthesizer) synthesizeAccountKeys(ctx *SynthesisContext, entries
 			Metadata:  map[string]any{"type": provider},
 			CreatedAt: ctx.Now,
 			UpdatedAt: ctx.Now,
-		})
+		}
+		addKeyIdentityToAttrs(entry.Group, entry.Label, a.Attributes)
+		out = append(out, a)
 	}
 	return out
 }
@@ -295,6 +308,7 @@ func (s *ConfigSynthesizer) synthesizeCodexStyleKeys(ctx *SynthesisContext, entr
 		if entry.Websockets {
 			attrs["websockets"] = "true"
 		}
+		addKeyIdentityToAttrs(entry.Group, entry.Label, attrs)
 		if provider == "codex" && entry.AlphaSearch {
 			attrs[coreauth.AttributeCodexAlphaSearch] = "true"
 		}
@@ -375,6 +389,7 @@ func (s *ConfigSynthesizer) synthesizeOpenAICompat(ctx *SynthesisContext) []*cor
 			if key != "" {
 				attrs["api_key"] = key
 			}
+			addKeyIdentityToAttrs(compat.Name, entry.Label, attrs)
 			if hash := diff.ComputeOpenAICompatModelsHash(compat.Models); hash != "" {
 				attrs["models_hash"] = hash
 			}

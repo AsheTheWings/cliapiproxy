@@ -10,11 +10,11 @@ import (
 )
 
 // ConfigV8Effective serves the configuration the server runs with, in the v8
-// layout. The key state's client keys, their names under
-// access.api-key-names, and upstream groups change through their own routes;
-// the server's inputs own every other value. Each protected value is redacted: client and upstream API keys
-// keep only a short suffix, and the management key, the proxy URL, and relay
-// credentials are left out.
+// layout. The key state's client keys and upstream groups, each key an object
+// with its label and fingerprint, change through their own routes; the
+// server's inputs own every other value. Each protected value is redacted:
+// client and upstream API keys keep only a short suffix, and the management
+// key, the proxy URL, and relay credentials are left out.
 func (h *Handler) ConfigV8Effective(c *gin.Context) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -47,18 +47,21 @@ func (h *Handler) ConfigV8Effective(c *gin.Context) {
 			root.Content = append(root.Content, &yaml.Node{Kind: yaml.ScalarNode, Value: "api-keys"}, groups)
 		}
 	}
-	// Client key names live only in the key state, beside the keys they name.
+	// Client key labels live only in the key state, beside the keys they name.
 	if store := h.keyStore; store != nil {
-		if names := store.ClientKeyNames(); names != nil {
-			if access := configV8Node(root, []string{"access"}); access != nil && access.Kind == yaml.MappingNode {
-				var list yaml.Node
-				if errNames := list.Encode(names); errNames != nil {
-					c.JSON(http.StatusInternalServerError, gin.H{"error": "render_failed"})
-					return
-				}
-				access.Content = append(access.Content, &yaml.Node{Kind: yaml.ScalarNode, Value: "api-key-names"}, &list)
-			}
+		list, errKeys := keyStateClientKeysNode(store)
+		if errKeys != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "render_failed"})
+			return
 		}
+		deleteConfigV8Path(root, []string{"access", "api-keys"})
+		access := configV8Node(root, []string{"access"})
+		if access == nil || access.Kind != yaml.MappingNode {
+			deleteConfigV8Path(root, []string{"access"})
+			access = &yaml.Node{Kind: yaml.MappingNode}
+			root.Content = append(root.Content, &yaml.Node{Kind: yaml.ScalarNode, Value: "access"}, access)
+		}
+		access.Content = append(access.Content, &yaml.Node{Kind: yaml.ScalarNode, Value: "api-keys"}, list)
 	}
 	// Auth indexes derive from the keys, so they are added before redaction.
 	h.injectV8APIKeyAuthIndexesLocked(root, data)
@@ -91,6 +94,7 @@ func redactV8Secrets(root *yaml.Node) {
 	}
 	if keys := configV8Node(root, []string{"access", "api-keys"}); keys != nil {
 		maskScalars(keys)
+		maskFields(keys, "api-key")
 	}
 	if families := configV8Node(root, []string{"api-keys"}); families != nil {
 		maskFields(families, "api-key")

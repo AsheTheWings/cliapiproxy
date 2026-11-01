@@ -61,7 +61,7 @@ keys: {state-file: /var/lib/cliapiproxy/keys.yaml}
 // keyState holds every key the server uses: the client keys and each
 // family's upstream groups.
 const keyState = `access:
-  api-keys: [client-key-a, client-key-b]
+  api-keys: [{api-key: client-key-a}, {api-key: client-key-b, label: ci}]
 api-keys:
   openai-compatibility:
     - name: alpha
@@ -209,10 +209,10 @@ func TestKeyStateHoldsEveryKey(t *testing.T) {
 		},
 		"api-keys.meta": []string{"upstream-key-m prefix= models=[muse-model:480000]"},
 		"api-keys.commandcode": []config.CommandCodeKey{
-			{APIKey: "upstream-key-c1", Prefix: "cc", Models: []config.CodexModel{{Name: "commandcode/deepseek/deepseek-v4.1-flash", Alias: "flash"}}},
-			{APIKey: "upstream-key-c2", Prefix: "cc", Models: []config.CodexModel{{Name: "commandcode/deepseek/deepseek-v4.1-flash", Alias: "flash"}}},
+			{APIKey: "upstream-key-c1", Group: "cc", Prefix: "cc", Models: []config.CodexModel{{Name: "commandcode/deepseek/deepseek-v4.1-flash", Alias: "flash"}}},
+			{APIKey: "upstream-key-c2", Group: "cc", Prefix: "cc", Models: []config.CodexModel{{Name: "commandcode/deepseek/deepseek-v4.1-flash", Alias: "flash"}}},
 		},
-		"api-keys.kiro": []config.KiroKey{{APIKey: "upstream-key-k"}},
+		"api-keys.kiro": []config.KiroKey{{APIKey: "upstream-key-k", Group: "kiro"}},
 	}
 	for key, value := range want {
 		if !reflect.DeepEqual(got[key], value) {

@@ -16,6 +16,7 @@ import (
 	"github.com/AsheTheWings/cliapiproxy/internal/api/handlers/management"
 	"github.com/AsheTheWings/cliapiproxy/internal/config"
 	"github.com/AsheTheWings/cliapiproxy/internal/keystate"
+	"github.com/AsheTheWings/cliapiproxy/internal/upstream"
 	"github.com/gin-gonic/gin"
 )
 
@@ -61,10 +62,10 @@ func putKeys(s *Server, path, body string) *httptest.ResponseRecorder {
 
 func TestManagementKeepsKeysAsState(t *testing.T) {
 	s, path, applied := newKeyStateServer(t)
-	if got := putKeys(s, "api-keys/kiro", `[{"name":"kiro","prefix":"k","keys":[{"api-key":"state-key-0123456789"}]}]`); got.Code != http.StatusOK {
+	if got := putKeys(s, "api-keys/kiro", `[{"name":"kiro","prefix":"k","keys":[{"api-key":"state-key-0123456789","label":"  team account "}]}]`); got.Code != http.StatusOK {
 		t.Fatalf("PUT kiro: status %d, body %s", got.Code, got.Body)
 	}
-	if got := putKeys(s, "access/api-keys", `[{"api-key":"client-key-0123456789","name":"Alice's laptop"}]`); got.Code != http.StatusOK {
+	if got := putKeys(s, "access/api-keys", `[{"api-key":"client-key-0123456789","label":"Alice's laptop"}]`); got.Code != http.StatusOK {
 		t.Fatalf("PUT client keys: status %d, body %s", got.Code, got.Body)
 	}
 	var cfg *config.Config
@@ -81,24 +82,36 @@ func TestManagementKeepsKeysAsState(t *testing.T) {
 	}
 	var doc struct {
 		Access struct {
-			APIKeys     []string `json:"api-keys"`
-			APIKeyNames []string `json:"api-key-names"`
+			APIKeys []map[string]string `json:"api-keys"`
 		} `json:"access"`
-		APIKeys map[string][]map[string]any `json:"api-keys"`
+		APIKeys map[string][]struct {
+			Name string              `json:"name"`
+			Keys []map[string]string `json:"keys"`
+		} `json:"api-keys"`
 	}
 	if err := json.Unmarshal(view.Body.Bytes(), &doc); err != nil {
 		t.Fatal(err)
 	}
-	if len(doc.APIKeys["kiro"]) != 1 || doc.APIKeys["kiro"][0]["name"] != "kiro" || len(doc.Access.APIKeys) != 1 || len(doc.Access.APIKeyNames) != 1 || doc.Access.APIKeyNames[0] != "Alice's laptop" {
+	if len(doc.APIKeys["kiro"]) != 1 || doc.APIKeys["kiro"][0].Name != "kiro" || len(doc.Access.APIKeys) != 1 {
 		t.Fatalf("view = %s", view.Body)
+	}
+	kiroKey, client := doc.APIKeys["kiro"][0].Keys[0], doc.Access.APIKeys[0]
+	if kiroKey["label"] != "team account" || kiroKey["fingerprint"] != upstream.Fingerprint("state-key-0123456789") {
+		t.Fatalf("kiro key view = %v; want the trimmed label and the fingerprint", kiroKey)
+	}
+	if client["label"] != "Alice's laptop" || client["fingerprint"] != upstream.Fingerprint("client-key-0123456789") || client["api-key"] != "****6789" {
+		t.Fatalf("client key view = %v; want the masked key, label, and fingerprint", client)
+	}
+	if strings.Contains(view.Body.String(), "api-key-names") {
+		t.Fatalf("view holds client key names: %s", view.Body)
 	}
 
 	// The view sent back unchanged keeps the stored keys it masks, and a key
-	// replaced in place keeps its position and takes its new name.
+	// replaced in place keeps its position and takes its new label.
 	kiro, _ := json.Marshal(doc.APIKeys["kiro"])
 	clients, _ := json.Marshal([]map[string]string{
-		{"api-key": "client-key-replaced", "name": "Alice's desktop"},
-		{"api-key": doc.Access.APIKeys[0]},
+		{"api-key": "client-key-replaced", "label": "Alice's desktop"},
+		client,
 	})
 	for route, body := range map[string]string{"api-keys/kiro": string(kiro), "access/api-keys": string(clients)} {
 		if got := putKeys(s, route, body); got.Code != http.StatusOK {
@@ -109,10 +122,13 @@ func TestManagementKeepsKeysAsState(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, key := range []string{"state-key-0123456789", "client-key-replaced", "Alice's desktop", "client-key-0123456789"} {
+	for _, key := range []string{"state-key-0123456789", "label: team account", "client-key-replaced", "Alice's desktop", "client-key-0123456789", "Alice's laptop"} {
 		if !strings.Contains(string(saved), key) {
 			t.Fatalf("state file lacks %s:\n%s", key, saved)
 		}
+	}
+	if strings.Contains(string(saved), "fingerprint") {
+		t.Fatalf("state file holds a fingerprint:\n%s", saved)
 	}
 }
 
@@ -146,15 +162,23 @@ func TestManagementRefusesChangesItCannotKeep(t *testing.T) {
 		want              int
 	}{
 		{"masked key without a stored key", "api-keys/kiro", `[{"name":"kiro","keys":[{"api-key":"****6789"}]}]`, http.StatusConflict},
-		{"masked client key without a stored key", "access/api-keys", `["****6789"]`, http.StatusConflict},
+		{"masked client key without a stored key", "access/api-keys", `[{"api-key":"****6789"}]`, http.StatusConflict},
 		{"group without a key", "api-keys/kiro", `[{"name":"kiro","keys":[]}]`, http.StatusBadRequest},
 		{"unknown field", "api-keys/kiro", `[{"name":"kiro","region":"eu","keys":[{"api-key":"k"}]}]`, http.StatusBadRequest},
-		{"repeated client key", "access/api-keys", `["k","k"]`, http.StatusBadRequest},
-		{"blank client key", "access/api-keys", `[" "]`, http.StatusBadRequest},
+		{"repeated client key", "access/api-keys", `[{"api-key":"k"},{"api-key":"k"}]`, http.StatusBadRequest},
+		{"blank client key", "access/api-keys", `[{"api-key":" "}]`, http.StatusBadRequest},
+		{"client key as a string", "access/api-keys", `["k"]`, http.StatusBadRequest},
 		{"padded group key", "api-keys/kiro", `[{"name":"kiro","keys":[{"api-key":" k"}]}]`, http.StatusBadRequest},
 		{"client keys not a list", "access/api-keys", `{"k":1}`, http.StatusBadRequest},
 		{"client key with an unknown field", "access/api-keys", `[{"api-key":"k","note":"x"}]`, http.StatusBadRequest},
-		{"client key name too long", "access/api-keys", `[{"api-key":"k","name":"` + strings.Repeat("n", 65) + `"}]`, http.StatusBadRequest},
+		{"client key name", "access/api-keys", `[{"api-key":"k","name":"n"}]`, http.StatusBadRequest},
+		{"client key label too long", "access/api-keys", `[{"api-key":"k","label":"` + strings.Repeat("n", 65) + `"}]`, http.StatusBadRequest},
+		{"blank client key label", "access/api-keys", `[{"api-key":"k","label":"  "}]`, http.StatusBadRequest},
+		{"repeated client key label", "access/api-keys", `[{"api-key":"k1","label":"a"},{"api-key":"k2","label":"a"}]`, http.StatusBadRequest},
+		{"blank group key label", "api-keys/kiro", `[{"name":"kiro","keys":[{"api-key":"k","label":""}]}]`, http.StatusBadRequest},
+		{"group key label with a newline", "api-keys/kiro", `[{"name":"kiro","keys":[{"api-key":"k","label":"a\nb"}]}]`, http.StatusBadRequest},
+		{"group key label not a string", "api-keys/kiro", `[{"name":"kiro","keys":[{"api-key":"k","label":{"x":1}}]}]`, http.StatusBadRequest},
+		{"label repeated across groups", "api-keys/kiro", `[{"name":"a","keys":[{"api-key":"k1","label":"x"}]},{"name":"b","keys":[{"api-key":"k2","label":"x"}]}]`, http.StatusBadRequest},
 		{"unknown family", "api-keys/gemini", `[]`, http.StatusNotFound},
 	} {
 		if got := putKeys(s, tc.route, tc.body); got.Code != tc.want {
