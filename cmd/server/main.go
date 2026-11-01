@@ -19,6 +19,8 @@ import (
 	"github.com/AsheTheWings/cliapiproxy/internal/buildinfo"
 	"github.com/AsheTheWings/cliapiproxy/internal/cmd"
 	"github.com/AsheTheWings/cliapiproxy/internal/config"
+	"github.com/AsheTheWings/cliapiproxy/internal/generations"
+	"github.com/AsheTheWings/cliapiproxy/internal/generations/schema"
 	"github.com/AsheTheWings/cliapiproxy/internal/githubauth"
 	"github.com/AsheTheWings/cliapiproxy/internal/inputs"
 	"github.com/AsheTheWings/cliapiproxy/internal/keystate"
@@ -73,6 +75,9 @@ func run() int {
 		fmt.Println("valid")
 		return 0
 	}
+	if plan.migrate || plan.migrateStatus {
+		return runMigrations(plan)
+	}
 	cfg := plan.cfg
 
 	providers, errTelemetry := telemetry.Setup(context.Background(), plan.telemetry)
@@ -109,6 +114,19 @@ func run() int {
 		plan.command(cfg)
 		return 0
 	}
+	if plan.store.Enabled() {
+		ctxCheck, cancel := context.WithTimeout(context.Background(), storeCheckTimeout)
+		pool, errOpen := generations.Open(ctxCheck, plan.store)
+		if errOpen == nil {
+			errOpen = generations.CheckSchema(ctxCheck, pool)
+			pool.Close()
+		}
+		cancel()
+		if errOpen != nil {
+			fmt.Fprintf(os.Stderr, "store: %v\n", errOpen)
+			return 1
+		}
+	}
 	// Request and error-request files would be a second diagnostics sink.
 	serverOptions := []api.ServerOption{
 		api.WithRequestLoggerFactory(func(*config.Config, string) logging.RequestLogger { return nil }),
@@ -131,18 +149,74 @@ func run() int {
 // telemetryShutdownTimeout bounds the final flush of every signal.
 const telemetryShutdownTimeout = 10 * time.Second
 
+// storeCheckTimeout bounds connecting to the store and reading its ledger at
+// startup.
+const storeCheckTimeout = 30 * time.Second
+
+// migrationTimeout bounds one -migrate or -migrate-status run.
+const migrationTimeout = 10 * time.Minute
+
+// runMigrations applies the store's pending migrations, or reports their
+// state, and returns the exit code.
+func runMigrations(plan *runPlan) int {
+	ctx, cancel := context.WithTimeout(context.Background(), migrationTimeout)
+	defer cancel()
+	pool, err := generations.Open(ctx, plan.store)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	defer pool.Close()
+	migrations, err := schema.Discover(schema.Migrations())
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if plan.migrateStatus {
+		report, errStatus := schema.Status(ctx, pool, migrations)
+		if errStatus != nil {
+			fmt.Fprintln(os.Stderr, errStatus)
+			return 1
+		}
+		for _, line := range report.Lines() {
+			fmt.Println(line)
+		}
+		if !report.Clean() {
+			return 3
+		}
+		return 0
+	}
+	applied, err := schema.Apply(ctx, pool, migrations)
+	for _, m := range applied {
+		fmt.Printf("applied %s\n", m.Name)
+	}
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return 1
+	}
+	if len(applied) == 0 {
+		fmt.Println("no pending migrations")
+	}
+	return 0
+}
+
 // runPlan is what one run does: serve, or run one command and exit.
 type runPlan struct {
 	profile   string
 	cfg       *config.Config
 	keys      *keystate.Store
+	store     generations.Settings
 	telemetry telemetry.Settings
 	// telemetryProbe runs the telemetry probe instead of serving.
 	telemetryProbe bool
 	// validate stops once the inputs are valid, before any other work.
-	validate   bool
-	localModel bool
-	command    func(*config.Config)
+	validate bool
+	// migrate applies the store's pending migrations; migrateStatus reports
+	// them.
+	migrate       bool
+	migrateStatus bool
+	localModel    bool
+	command       func(*config.Config)
 }
 
 func resolveRun(process inputs.Process, files inputs.Files) (*runPlan, error) {
@@ -163,17 +237,30 @@ func resolveRun(process inputs.Process, files inputs.Files) (*runPlan, error) {
 	if errState != nil {
 		return nil, errState
 	}
-	store, errStore := keystate.New(statePath, doc, state)
+	keyStore, errStore := keystate.New(statePath, doc, state)
 	if errStore != nil {
 		return nil, errStore
 	}
-	cfg, errConfig := store.Config()
+	cfg, errConfig := keyStore.Config()
 	if errConfig != nil {
 		return nil, errConfig
 	}
 	command, errCommand := selectCommand(eff)
 	if errCommand != nil {
 		return nil, errCommand
+	}
+	store := generations.Settings{
+		Host:     eff.String("store.host"),
+		Port:     int(eff.Int("store.port")),
+		Database: eff.String("store.database"),
+		User:     eff.String("store.user"),
+		Password: eff.String("store.password"),
+	}
+	if !store.Enabled() && eff.Profile != "development" {
+		return nil, errors.New("store.host is empty; only the development profile runs without the store")
+	}
+	if (eff.Bool("migrate") || eff.Bool("migrate-status")) && !store.Enabled() {
+		return nil, errors.New("-migrate and -migrate-status need the store; set store.host")
 	}
 	headers, errHeaders := telemetry.ParseHeaders(eff.String("telemetry.otlp-headers"))
 	if errHeaders != nil {
@@ -189,8 +276,9 @@ func resolveRun(process inputs.Process, files inputs.Files) (*runPlan, error) {
 		Environment:    eff.String("CLIPROXY_DEPLOYMENT_ENVIRONMENT"),
 		Console:        os.Stdout,
 	}
-	return &runPlan{profile: eff.Profile, cfg: cfg, keys: store, telemetry: settings, telemetryProbe: eff.Bool("telemetry-probe"),
-		validate: eff.Bool("validate"), localModel: eff.Bool("local-model"), command: command}, nil
+	return &runPlan{profile: eff.Profile, cfg: cfg, keys: keyStore, store: store, telemetry: settings, telemetryProbe: eff.Bool("telemetry-probe"),
+		validate: eff.Bool("validate"), migrate: eff.Bool("migrate"), migrateStatus: eff.Bool("migrate-status"),
+		localModel: eff.Bool("local-model"), command: command}, nil
 }
 
 // readKeyState reads the key state file, which holds keys and so must be
@@ -263,6 +351,11 @@ func selectCommand(eff *inputs.Effective) (func(*config.Config), error) {
 	}
 	if eff.Bool("validate") {
 		requested = append(requested, "-validate")
+	}
+	for _, flag := range []string{"migrate", "migrate-status"} {
+		if eff.Bool(flag) {
+			requested = append(requested, "-"+flag)
+		}
 	}
 	if len(requested) > 1 {
 		return nil, fmt.Errorf("choose one command, not %s", strings.Join(requested, ", "))

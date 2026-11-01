@@ -206,6 +206,10 @@ var (
 
 const waitPackage = "github.com/AsheTheWings/cliapiproxy/internal/testsupport/wait"
 
+// pgtestPackage starts a PostgreSQL container, so a file using it starts
+// processes.
+const pgtestPackage = "github.com/AsheTheWings/cliapiproxy/internal/testsupport/pgtest"
+
 func parseFile(path, rel string) (*File, error) {
 	fset := token.NewFileSet()
 	syntax, errParse := parser.ParseFile(fset, path, nil, parser.ParseComments)
@@ -245,6 +249,8 @@ func parseFile(path, rel string) (*File, error) {
 			f.add(UseFilesystem, importPath)
 		case importPath == waitPackage:
 			f.add(UseWallClock, importPath)
+		case importPath == pgtestPackage:
+			f.add(UseProcess, importPath)
 		}
 	}
 	collectDecls(f, syntax)
