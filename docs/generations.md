@@ -37,9 +37,11 @@ telemetry; a crash loses the queue uncounted.
 `account_label` is an API key's label, or its group name and fingerprint,
 and an OAuth credential's label, email, or project ID. `client_key_label`
 is the client key's label, or its fingerprint. The server estimates Kiro's
-token counts, so its generations have `token_source` `estimated`. `usage_amount`
-holds Kiro's `kiro:credits` and OpenRouter's `usage.cost` in `credits` and
-Command Code's gateway cost in `usd`.
+token counts, so its generations have `token_source` `estimated`. `usage_raw`
+merges the response's usage objects in order, so a Claude stream keeps both
+its input usage and its final output usage. `usage_amount` holds Kiro's
+`kiro:credits` and, from an OpenRouter base URL, `usage.cost` in `credits`,
+and Command Code's gateway cost in `usd`.
 
 ## Tables and views
 
