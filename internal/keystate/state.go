@@ -80,7 +80,9 @@ func checkLabelTypes(data []byte) error {
 			if label == nil || (label.Kind == yaml.ScalarNode && label.Tag == "!!null") {
 				continue
 			}
-			if label.Kind != yaml.ScalarNode || label.Tag != "!!str" {
+			// yaml.v3 writes the label "<<" unquoted and reads it back as a
+			// merge key, which is still that text.
+			if label.Kind != yaml.ScalarNode || (label.Tag != "!!str" && label.Tag != "!!merge") {
 				return fmt.Errorf("%s: label must be a string", position(i))
 			}
 		}

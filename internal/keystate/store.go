@@ -88,6 +88,14 @@ func (s *Store) replace(change func(State) State) (*config.Config, error) {
 	if err := next.Validate(); err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrInvalid, err)
 	}
+	// The file must read back as the state it holds, or the next start fails.
+	encoded, err := next.Encode()
+	if err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrInvalid, err)
+	}
+	if _, err = Parse(encoded); err != nil {
+		return nil, fmt.Errorf("%w: %v", ErrInvalid, err)
+	}
 	cfg, err := s.build(next)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %v", ErrInvalid, err)
