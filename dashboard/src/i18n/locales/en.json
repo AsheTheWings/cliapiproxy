@@ -1218,15 +1218,21 @@
     "error_charset": "Use visible ASCII characters only, without spaces.",
     "error_masked": "A key cannot start with *.",
     "edit_key": "Edit client key",
-    "edit_hint": "Change the name, or enter a new key to replace this one in place. The stored key stays hidden.",
-    "name": "Name",
-    "name_placeholder": "For example: Alice's laptop",
-    "name_hint": "Optional. Saved with the key on the server, so it shows in every browser.",
+    "edit_hint": "Change the label, or enter a new key to replace this one in place. The stored key stays hidden.",
+    "label_placeholder": "For example: Alice's laptop",
+    "label_hint": "Optional. Saved with the key on the server; an unlabeled key shows as its fingerprint.",
     "key_placeholder": "Paste or generate a key",
     "strength_empty": "Not entered",
-    "unnamed": "Unnamed",
-    "updated": "Client key updated",
-    "error_name_long": "Use at most {{max}} characters."
+    "updated": "Client key updated"
+  },
+  "labels": {
+    "label": "Label",
+    "placeholder": "Label (optional)",
+    "unlabeled": "Unlabeled; shown as its key fingerprint",
+    "error_long": "Use at most {{max}} characters for a label.",
+    "error_control": "A label is one line without control characters.",
+    "error_taken": "Another key already has this label.",
+    "error_repeated": "Two keys have the label {{label}}."
   },
   "provider_groups": {
     "subtitle": "Upstream groups by API-key family. Each group balances requests across its keys.",

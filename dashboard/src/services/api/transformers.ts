@@ -1,5 +1,6 @@
 import type { Config } from '@/types/config';
 import { isRecord } from '@/utils/helpers';
+import { parseClientKeys } from './clientKeys';
 
 const normalizeBoolean = (value: unknown): boolean | undefined =>
   typeof value === 'boolean' ? value : undefined;
@@ -21,9 +22,6 @@ export const normalizeConfigResponse = (raw: unknown): Config => {
   config.forceModelPrefix = normalizeBoolean(at('routing.force-model-prefix'));
   const strategy = at('routing.strategy');
   if (typeof strategy === 'string') config.routingStrategy = strategy;
-  const keys = at('access.api-keys');
-  config.apiKeys = Array.isArray(keys)
-    ? keys.filter((key): key is string => typeof key === 'string')
-    : [];
+  config.apiKeys = parseClientKeys(at('access')).map((item) => item.key);
   return config;
 };

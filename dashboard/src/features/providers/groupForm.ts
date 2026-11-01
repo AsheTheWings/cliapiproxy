@@ -3,6 +3,7 @@
  * server's group. React-free, so tests use it directly.
  */
 import type { UpstreamGroup, UpstreamModel } from '@/services/api/providerGroups';
+import { MAX_LABEL_LENGTH, labelProblem } from '@/utils/keyLabels';
 import type { FamilyDescriptor } from './families';
 
 export interface ModelDraft {
@@ -17,8 +18,12 @@ export interface ModelDraft {
 export interface KeyDraft {
   /** A stored key as the server shows it, masked; sent back unchanged it keeps the key. */
   stored?: string;
+  /** The stored key's fingerprint, shown beside it. */
+  fingerprint?: string;
   /** A key entered in this form. */
   value: string;
+  /** The key's label as entered; blank leaves the key unlabeled. */
+  label: string;
 }
 
 export interface GroupDraft {
@@ -37,6 +42,14 @@ export interface DraftError {
 /** The server's form of group names and prefixes. */
 export const NAME_PATTERN = /^[a-z0-9][a-z0-9-]*$/;
 
+/**
+ * The name a group's key shows under: its label, or for an unlabeled stored
+ * key the group name followed by its fingerprint, as the server names the
+ * key's account. A new key has no fingerprint until it is saved.
+ */
+export const keyAccountLabel = (group: string, key: KeyDraft): string =>
+  key.label.trim() || (key.fingerprint ? `${group.trim()} ${key.fingerprint}` : '');
+
 export const emptyModel = (): ModelDraft => ({
   name: '',
   alias: '',
@@ -51,7 +64,7 @@ export const emptyDraft = (): GroupDraft => ({
   baseUrl: '',
   prefix: '',
   models: [],
-  keys: [{ value: '' }],
+  keys: [{ value: '', label: '' }],
 });
 
 export const toDraft = (group: UpstreamGroup): GroupDraft => ({
@@ -67,7 +80,12 @@ export const toDraft = (group: UpstreamGroup): GroupDraft => ({
     inputModalities: (model['input-modalities'] ?? []).join(', '),
     thinkingLevels: model.thinking?.levels ?? [],
   })),
-  keys: group.keys.map((key) => ({ stored: key['api-key'], value: '' })),
+  keys: group.keys.map((key) => ({
+    stored: key['api-key'],
+    ...(key.fingerprint ? { fingerprint: key.fingerprint } : {}),
+    value: '',
+    label: key.label ?? '',
+  })),
 });
 
 const splitList = (value: string): string[] =>
@@ -94,7 +112,10 @@ const usedKeys = (draft: GroupDraft) => draft.keys.filter((key) => key.stored ||
 export const fromDraft = (draft: GroupDraft, family: FamilyDescriptor): UpstreamGroup => {
   const group: UpstreamGroup = {
     name: draft.name.trim(),
-    keys: usedKeys(draft).map((key) => ({ 'api-key': key.stored ?? key.value.trim() })),
+    keys: usedKeys(draft).map((key) => ({
+      'api-key': key.stored ?? key.value.trim(),
+      ...(key.label.trim() ? { label: key.label.trim() } : {}),
+    })),
   };
   if (family.baseUrl !== 'none' && draft.baseUrl.trim()) group['base-url'] = draft.baseUrl.trim();
   if (draft.prefix.trim()) group.prefix = draft.prefix.trim();
@@ -150,6 +171,13 @@ export const validateDraft = (
   const entered = keys.filter((key) => !key.stored).map((key) => key.value.trim());
   if (new Set(entered).size !== entered.length)
     return { key: 'provider_groups.error_key_repeated' };
+  for (const key of keys) {
+    const problem = labelProblem(key.label);
+    if (problem) return { key: problem, values: { max: MAX_LABEL_LENGTH } };
+  }
+  const labels = keys.map((key) => key.label.trim()).filter(Boolean);
+  const repeated = labels.find((label, i) => labels.indexOf(label) !== i);
+  if (repeated) return { key: 'labels.error_repeated', values: { label: repeated } };
   return null;
 };
 
